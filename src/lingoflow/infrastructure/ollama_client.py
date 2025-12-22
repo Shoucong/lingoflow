@@ -105,7 +105,6 @@ class OllamaClient:
         self._timeout = httpx.Timeout(
             connect=OLLAMA_CONNECT_TIMEOUT,
             read=OLLAMA_READ_TIMEOUT,
-            write=OLLAMA_READ_TIMEOUT,
             write=10.0,
             pool=5.0,
         )
@@ -191,22 +190,131 @@ class OllamaClient:
                 raise OllamaModelERROR(f"Model '{model}' not found.") from e
             raise OllamaError(f"Ollama API error: {e.response.status_code}") from e
 
-def chat(
-    self,
-    message: str, 
-    model: str, 
-    system_prompt: Optional[str] = None,
-) -> OllamaResponse:
-    """
-    Send a chat message and get the complete response. 
+    def chat(
+        self,
+        message: str, 
+        model: str, 
+        system_prompt: Optional[str] = None,
+    ) -> OllamaResponse:
+        """
+        Send a chat message and get the complete response. 
 
-    For UI use, prefer previous streaming method for better UX. 
-    
-    Args: 
-        message: User message to send 
-        model: Model name to use
-        system_prompt: Optional system prompt for context
-    
-    Returns:
-        OllamaResponse with the complete response
-    """
+        For UI use, prefer previous streaming method for better UX. 
+        
+        Args: 
+            message: User message to send 
+            model: Model name to use
+            system_prompt: Optional system prompt for context
+        
+        Returns:
+            OllamaResponse with the complete response
+        """
+        url = f"{self.host}{OLLAMA_CHAT_ENDPOINT}"
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": message})
+
+        payload = {
+            "model": model, 
+            "messages": messages,
+            "stream": False, 
+        }
+
+        logger.debug(f"Starting non-streaming chat request to model: {model}")
+
+        try: 
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.post(url, json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+                return OllamaResponse(
+                    content=data.get("message", {}).get("content", ""),
+                    model=data.get("model", model),
+                    done=True,
+                    total_duration=data.get("total_duration"),
+                    eval_count=data.get("eval_count"),
+                )
+            
+        except httpx.ConnectError as e:
+            logger.error(f"Connection failed: {e}")
+            raise OllamaConnectionError(
+                f"Cannot connect to Ollama at {self.host}"
+                "Make sure Ollama is running."
+            ) from e
+        except httpx.TimeoutException as e: 
+            logger.error(f"Request timed out: {e}")
+            raise OllamaTimeoutError("Request to Ollama timed out.") from e
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error: {e.response.status_code}")
+            raise OllamaError(f"Ollama API error: {e.response.status_code}") from e
+
+    def list_models(self) -> list[OllamaModel]:
+        """
+        Get list of avaiable models from Ollama. 
+        
+        Returns:
+            List of OllamaModel objects
+        Raise:
+            OllamaConnectionError: if cannot connect to server
+        """
+        url = f"{self.host}{OLLAMA_TAGS_ENDPOINT}"
+
+        logger.debug("Fetching avaiable models")
+
+        try: 
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.get(url)
+                response.raise_for_status()
+                data = response.json()
+
+                models = [
+                    OllamaModel(
+                        name=m.get("name", ""),
+                        size=m.get("size", 0),
+                        modified_at=m.get("modified_at", ""),
+                    )
+                    for m in data.get("models", [])
+                ]
+
+                logger.info(f"Found {len(models)} avaiable models")
+                return models
+        except httpx.ConnectError as e:
+            logger.error(f"Connection failed: {e}")
+            raise OllamaConnectionError(
+                f"Cannot connect to Ollama at {self.host}."
+                "Make sure Ollama is running"
+            ) from e
+
+    def is_available(self) -> bool:
+        """
+        Check if Ollama server is reachable. 
+
+        Returns:
+            True if server responds, False otherwise
+        """
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.get(f"{self.host}/api/tags")
+                return response.status_code == 200
+        except Exception:
+            return False
+
+    def check_model_exists(self, model: str) -> bool:
+        """
+        Check if a specific model is avaiable . 
+        
+        Args:
+            model: Model name to check
+        
+        Returns:
+            True if model exists, False otherwise
+        """
+        try: 
+            models = self.list_models()
+            model_names = [m.name for m in models]
+            return model in model_names
+        except OllamaError:
+            return False
