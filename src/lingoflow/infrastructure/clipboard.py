@@ -11,6 +11,10 @@ from typing import Optional
 
 from lingoflow.utils.logger import get_logger
 
+# Import AppKit conditionally so it doesn't crash on non-macOS systems
+if platform.system() == "Darwin":
+    from AppKit import NSPasteboard, NSString, NSPasteboardTypeString
+
 logger = get_logger(__name__)
 
 # ===========================================================
@@ -158,36 +162,56 @@ class ClipboardManager:
     # ==========================================================
 
     def _get_text_macos(self) -> Optional[str]:
-        """Get clipboard text on macOS using pbpaste."""
-        result = subprocess.run(
-            ['pbpaste'],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0 and result.stdout:
-            return result.stdout
-        return None
+        """
+        Get clipboard text on macOS using native AppKit.
+        Faster than pbpaste subprocess.
+        """
+        try:
+            pb = NSPasteboard.generalPasteboard()
+            content = pb.stringForType_(NSPasteboardTypeString)
+            return content if content else None
+        except Exception as e:
+            logger.error(f"AppKit get_text error: {e}")
+            return None
     
     def _set_text_macos(self, text: str) -> bool:
-        """Set clipboard text on macOS using pbcopy."""
-        result = subprocess.run(
-            ['pbcopy'],
-            input=text,
-            text=True,
-        )
-        return result.returncode == 0
+        """
+        Set clipboard text on macOS using native AppKit.
+        Faster than pbcopy subprocess.
+        """
+        try:
+            pb = NSPasteboard.generalPasteboard()
+            # You must clear the clipboard before setting new content
+            pb.clearContents()
+            
+            # Convert python string to NSString
+            ns_string = NSString.stringWithString_(text)
+            
+            # Write to clipboard
+            success = pb.setString_forType_(ns_string, NSPasteboardTypeString)
+            return success
+        except Exception as e:
+            logger.error(f"AppKit set_text error: {e}")
+            return False
     
     def _simulate_copy_macos(self) -> None:
-        """Simulate Cmd+C on macOS using osascript."""
+        """
+        Simulate Cmd+C on macOS using osascript.
+        """
         script = """
         tell application "System Events"
             keystroke "c" using command down
         end tell
         """
-        subprocess.run(
-            ['oascrupt', "-e", script],
-            capture_output=True,
-        )
+        try:
+            # We use subprocess here because we are asking the System to press keys
+            subprocess.run(
+                ['osascript', "-e", script],
+                capture_output=True,
+                check=False
+            )
+        except Exception as e:
+            logger.error(f"Failed to run osascript: {e}")
 
     # ==========================================================
     # Windows Implementation
