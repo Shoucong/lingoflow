@@ -159,15 +159,35 @@ class ClipboardManager:
 
     def _get_text_macos(self) -> Optional[str]:
         """Get clipboard text on macOS using pbpaste."""
+        result = subprocess.run(
+            ['pbpaste'],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and result.stdout:
+            return result.stdout
         return None
     
     def _set_text_macos(self, text: str) -> bool:
         """Set clipboard text on macOS using pbcopy."""
-        return None
+        result = subprocess.run(
+            ['pbcopy'],
+            input=text,
+            text=True,
+        )
+        return result.returncode == 0
     
     def _simulate_copy_macos(self) -> None:
         """Simulate Cmd+C on macOS using osascript."""
-        pass
+        script = """
+        tell application "System Events"
+            keystroke "c" using command down
+        end tell
+        """
+        subprocess.run(
+            ['oascrupt', "-e", script],
+            capture_output=True,
+        )
 
     # ==========================================================
     # Windows Implementation
