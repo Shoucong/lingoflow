@@ -29,11 +29,11 @@ print()
 
 # Test word lookup feature
 print('Word lookup test:')
-print('Looking for word: "recommandion" meaning "a suggestion or proposal for some action"')
+print('Looking for word: "Architecture" meaning "The art and science of building design."')
 print('Result: ', end='')
 for chunk in service.lookup_word(
-    attempt='compasion',
-    meaning='feeling or caring about others',
+    attempt='archi',
+    meaning='a field of study that focused on construction',
     language='English'
 ):
     print(chunk, end='', flush=True)

@@ -66,21 +66,24 @@ TRANSLATION_USER_PROMPT_AUTO = """Translate the following text to {target_lang}:
 {text}"""
 
 # Word Looup feature prompts
-WORD_LOOKUP_SYSTEM_PROMPT = """You are a helpful dictionary assistant. The user will describe a word they're trying to remember or spell.
+WORD_LOOKUP_SYSTEM_PROMPT = """You are a precise dictionary assistant specialized in fuzzy lookups. The user will provide an approximate spelling, a definition, or both.
+
+Your Goal: Identify the word the user is thinking of.
 
 Rules:
-1. ALWAYS suggest at least exactly 3 possible words, even if one seems most likely
-2. Provide brief definitions for each
-3. Format each as: word (part of speech): brief definition
-4. List them in order of likelihood
-5. Output ONLY the list, no explanations or chats"""
+1. Provide EXACTLY 3 distinct suggestions, ranked by likelihood.
+2. If the input is vague, provide the 3 most common guesses.
+3. Format each entry strictly as:
+   [Word] ([Part of Speech]): [Brief Definition]
+4. Do not include introductory text, conversational fillers, or explanations.
+5. Output ONLY the list."""
 
-WORD_LOOKUP_USER_PROMPT = """I'm trying to think of a word. Here's what I know about it:
-- What I'm trying to spell or say: {attempt}
-- It means something like: {meaning}
-- Language: {language}
+WORD_LOOKUP_USER_PROMPT = """Find the word based on these clues:
+- Approximate Spelling: {attempt}
+- Intended Meaning: {meaning}
+- Target Language: {language}
 
-What word I'm thinking of?"""
+Output the list now:"""
 
 # ==========================================================
 # Translation Service
