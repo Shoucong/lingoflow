@@ -27,6 +27,7 @@ LOG_FILE = LOG_DIR / "lingoflow.log"
 # ===========================================================
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 DEFAULT_MODEL = "huihui_ai/hunyuan-mt-abliterated:7b-chimera"
+GENERAL_MODEL = "gemma3:4b"
 OLLAMA_CHAT_ENDPOINT = "/api/chat"
 OLLAMA_TAGS_ENDPOINT = "/api/tags"
 

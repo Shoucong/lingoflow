@@ -12,6 +12,7 @@ from lingoflow.config.constants import (
     CONFIG_DIR, 
     CONFIG_FILE,
     DEFAULT_MODEL,
+    GENERAL_MODEL,
     DEFAULT_OCR_HOTKEY,
     DEFAULT_OLLAMA_HOST,
     DEFAULT_SOURCE_LANG,
@@ -33,6 +34,10 @@ class OllamaSettings(BaseModel):
     model: str = Field(
         default = DEFAULT_MODEL, 
         description="Default model for translations",
+    )
+    general_model: str = Field(
+        default= GENERAL_MODEL,
+        description="Model for general purpose tasks",
     )
 
 class HotkeySettings(BaseModel):
