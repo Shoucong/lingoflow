@@ -136,7 +136,7 @@ class OCRService:
 
         logger.info(
             f"OCRService initialized on {self._system}"
-            f"language: {self.settings.orc.language}"
+            f"language: {self.settings.ocr.language}"
         )
 
     #==========================================================
@@ -387,7 +387,7 @@ class OCRService:
 
         Falls back to English + Chinese if language not mapped. 
         """
-        lang = self.settings.orc.language
+        lang = self.settings.ocr.language
 
         if lang in self.LANGUAGE_MAP:
             return self.LANGUAGE_MAP[lang]
