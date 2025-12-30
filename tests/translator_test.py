@@ -22,7 +22,7 @@ print()
 
 # Test non-streaming
 print('Non-streaming translation test:')
-result = service.translate('Good morning!', 'Japanese')
+result = service.translate('Good morning! Nice to see you!', 'Japanese')
 print(f'Status: {result.status.value}')
 print(f'Translation: {result.translated_text}')
 print()
