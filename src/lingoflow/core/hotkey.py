@@ -4,6 +4,7 @@ Global hotkey manager for LingoFlow.
 Handles system-wide keyboard shortcuts using pynput.
 """
 
+import platform
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
@@ -16,6 +17,8 @@ from lingoflow.config.settings import AppSettings
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+IS_MACOS = platform.system() == "Darwin"
 
 # ==========================================================
 # Data Types
@@ -40,18 +43,38 @@ class Hotkey:
     # Track if currently held to prevent repeat-span
     is_pressed: bool = False
 
+
+# =============================================================================
+# macOS Virtual Key Code Mapping
+# =============================================================================
+
+# On macOS, Option+letter produces special characters (e.g., Option+D = ∂)
+# We need to map virtual key codes to match letters regardless of modifiers
+# These are macOS virtual key codes for letter keys
+MACOS_VK_TO_LETTER = {
+    0: "a", 1: "s", 2: "d", 3: "f", 4: "h", 5: "g", 6: "z", 7: "x",
+    8: "c", 9: "v", 11: "b", 12: "q", 13: "w", 14: "e", 15: "r",
+    16: "y", 17: "t", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
+    23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
+    31: "o", 32: "u", 34: "i", 35: "p", 37: "l", 38: "j", 40: "k",
+    41: ";", 43: ",", 45: "n", 46: "m", 47: ".", 50: "`",
+}
+
+LETTER_TO_MACOS_VK = {v: k for k, v in MACOS_VK_TO_LETTER.items()}
+
+
 # ==========================================================
 # Hotkey Manager
 # ==========================================================
 
-class HotKeyManager:
+class HotkeyManager:
     """
     Global hotkey manager using pynput.
 
     Uses pynput's native hotkey parsing for robust cross-platform support. 
 
     Example: 
-        manager = HotKeyManager()
+        manager = HotkeyManager()
 
         manager.register_hotkey(
             HotkeyAction.TRANSLATE,
@@ -74,11 +97,12 @@ class HotKeyManager:
         
         self._hotkeys: Dict[HotkeyAction, Hotkey] = {}
         self._pressed_keys: Set = set()
+        self._pressed_vks: Set[int] = set()
         self._listener: Optional[keyboard.Listener] = None
         self._running = False
         self._lock = threading.Lock()
 
-        logger.info("HotKeyManager initialized.")
+        logger.info("HotkeyManager initialized.")
     
     # ==========================================================
     # Public Methods
@@ -174,11 +198,12 @@ class HotKeyManager:
     def start(self) -> None:
         """Start listening for hotkeys in background thread."""
         if self._running:
-            logger.warning("HotKeyManager already running.")
+            logger.warning("HotkeyManager already running.")
             return 
     
         self._running = True
         self._pressed_keys.clear()
+        self._pressed_vks.clear()
 
         self._listener = keyboard.Listener(
             on_press=self._on_key_press,
@@ -187,7 +212,7 @@ class HotKeyManager:
         self._listener.start()
 
         logger.info(
-            "HotKeyManager started. "
+            "HotkeyManager started. "
             "(Ensure 'Input Monitoring' permission is granted on macOS.)"
         )
     
@@ -200,7 +225,8 @@ class HotKeyManager:
             self._listener = None
         
         self._pressed_keys.clear()
-        logger.info("HotKeyManager stopped.")
+        self._pressed_vks.clear()
+        logger.info("HotkeyManager stopped.")
     
     def is_running(self) -> bool:
         """Check if the manager is currently listening."""
@@ -246,6 +272,11 @@ class HotKeyManager:
         """Handle key press event."""
         canonical_key = self._listener.canonical(key)
         self._pressed_keys.add(canonical_key)
+
+        # Update: on Macos, we should check virtual key codes to prevent ∂ß etc. 
+        if IS_MACOS and isinstance(key, KeyCode) and key.vk is not None:
+            self._pressed_vks.add(key.vk)
+
         self._check_hotkeys()
     
     def _on_key_release(self, key) -> None:
@@ -253,17 +284,25 @@ class HotKeyManager:
         canonical_key = self._listener.canonical(key)
         self._pressed_keys.discard(canonical_key)   
 
+        # Clear virtual key code
+        if IS_MACOS and isinstance(key, KeyCode) and key.vk is not None:
+            self._pressed_vks.discard(key.vk)
+
         # Reset 'is_pressed' for hotkeys containing this key
         with self._lock:
             for hotkey in self._hotkeys.values():
                 if canonical_key in hotkey.keys:
                     hotkey.is_pressed = False
+                # Also check vitural key code
+                if IS_MACOS and isinstance(key, KeyCode) and key.vk is not None:
+                    if self._vk_matches_any_key(key.vk, hotkey.keys):
+                        hotkey.is_pressed = False
     
     def _check_hotkeys(self) -> None: 
         """Check if any registered hotkey is pressed."""
         with self._lock:
             for action, hotkey in self._hotkeys.items():
-                if hotkey.keys.issubset(self._pressed_keys):
+                if self._hotkey_matches(hotkey.keys):
                     # Prevent repeat triggering while held
                     if not hotkey.is_pressed:
                         hotkey.is_pressed = True
@@ -274,6 +313,40 @@ class HotKeyManager:
                             args=(hotkey.callback, action),
                             daemon=True,
                         ).start()
+    
+    def _hotkey_matches(self, required_keys: frozenset) -> bool:
+        """
+        Check if required keys are currently pressed.
+        
+        On macOS, uses virtual key codes to handle Option+letter combinations.
+        """
+        for required_key in required_keys:
+            if required_key in self._pressed_keys:
+                # Direct match (works for modifiers and regular keys)
+                continue
+            elif IS_MACOS and isinstance(required_key, KeyCode):
+                # On macOS, check if the virtual key code matches
+                if required_key.char and required_key.char.lower() in LETTER_TO_MACOS_VK:
+                    expected_vk = LETTER_TO_MACOS_VK[required_key.char.lower()]
+                    if expected_vk in self._pressed_vks:
+                        continue
+                # Also check by vk directly
+                if required_key.vk is not None and required_key.vk in self._pressed_vks:
+                    continue
+            # Key not matched
+            return False
+        return True
+    
+    def _vk_matches_any_key(self, vk: int, keys: frozenset) -> bool:
+        """Check if a virtual key code matches any key in the set."""
+        for key in keys:
+            if isinstance(key, KeyCode):
+                if key.vk == vk:
+                    return True
+                if key.char and key.char.lower() in LETTER_TO_MACOS_VK:
+                    if LETTER_TO_MACOS_VK[key.char.lower()] == vk:
+                        return True
+        return False
     
     def _safe_callback(self, callback: Callable, action: HotkeyAction) -> None:
         """Execute callback safely with error handling."""
@@ -314,7 +387,7 @@ def create_default_hotkey_manager(
     on_translate: Callable[[], None], 
     on_ocr: Callable[[], None], 
     settings: Optional[AppSettings] = None,
-) -> HotKeyManager:
+) -> HotkeyManager:
     """
     Create a hotkey manager with default bindings. 
 
@@ -324,10 +397,10 @@ def create_default_hotkey_manager(
         settings: App settings (optional)
     
     Returns:
-        Configured HotKeyManager ready to start. 
+        Configured HotkeyManager ready to start. 
     """
     settings = settings or AppSettings.load()
-    manager = HotKeyManager(settings=settings)
+    manager = HotkeyManager(settings=settings)
 
     manager.register(
         HotkeyAction.TRANSLATE,
