@@ -32,8 +32,8 @@ print('Word lookup test:')
 print('Looking for word: "Architecture" meaning "The art and science of building design."')
 print('Result: ', end='')
 for chunk in service.lookup_word(
-    attempt='archi',
-    meaning='a field of study that focused on construction',
+    attempt='grocrery',
+    meaning='going out to buy something shopping',
     language='English'
 ):
     print(chunk, end='', flush=True)
