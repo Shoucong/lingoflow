@@ -92,6 +92,10 @@ class UISettings(BaseModel):
         default=True,
         description="Show original text in popup",
     )
+    hide_on_focus_loss: bool = Field(
+        default=True,
+        description="Hide popup when it loses focus",
+    )
 
 class OCRSettings(BaseModel):
     """OCT-Specific settings."""
