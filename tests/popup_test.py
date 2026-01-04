@@ -24,7 +24,7 @@ def stream_chunk(index):
 
 QTimer.singleShot(500, lambda: stream_chunk(0))
 
-# Auto-close after 5 seconds
-QTimer.singleShot(20000, app.quit)
+# Auto-close after 10 seconds
+QTimer.singleShot(10000, app.quit)
 
 sys.exit(app.exec())
