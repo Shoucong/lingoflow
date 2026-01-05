@@ -492,7 +492,8 @@ class TranslationPopup(QWidget):
             super().keyPressEvent(event)
 
     def focusOutEvent(self, event) -> None:
-        """Handle focus loss — optionally hide popup."""
-        # Uncomment to hide on focus loss:
-        # self.hide()
-        super().focusOutEvent(event)
+        """Handle focus loss — hide popup if configured."""
+        if self.settings.ui.hide_on_focus_loss:
+            self.hide()
+        else:
+            super().focusOutEvent(event)

@@ -68,4 +68,68 @@ class SettingsDialog(QDialog):
 
     def _setup_window(self) -> None:
         """Configure dialog window."""
+        self.setWindowTitle("Settings")
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(400)
+        self.setModal(True)
+    
+    def _setup_ui(self) -> None:
+        """Build the UI. """
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+
+        # Tab widget
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+
+        # Create tabs
+        self.tabs.addTab(self._create_general_tab(), "General")
+        self.tabs.addTab(self._create_translation_tab(), "Translation")
+        self.tabs.addTab(self._create_hotkeys_tab(), "Hotkeys")
+        self.tabs.addTab(self._create_appearance_tab(), "Appearance")
+        self.tabs.addTab(self._create_ocr_tab(), "OCR")
+
+        # Button row
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        self.reset_btn = QPushButton("Reset to Defaults")
+        self.reset_btn.clicked.connect(self._reset_to_defaults)
+        button_layout.addWidget(self.reset_btn)
+
+        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(self.cancel_btn)
+
+        self.save_btn = QPushButton("Save")
+        self.save_btn.setDefault(True)
+        self.save_btn.clicked.connect(self._save_settings)
+        button_layout.addWidget(self.save_btn)
+
+        layout.addLayout(button_layout)
+    
+    # =============================================================================
+    # Tab Creation
+    # =============================================================================
+    
+    def _create_general_tab(self) -> QWidget:
+        """Create the General tab."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        # Ollama Connection Group
+        ollama_group = QGroupBox("Ollama Connection")
+        ollama_layout = QFormLayout(ollama_group)
+
+        # Host
+        self.host_input = QLineEdit()
+        self.host_input.setPlaceholderText("http://localhost:11434")
+        ollama_layout.addRow("Ollama Host:", self.host_input)
+
+        # Test connection button
+        test_layout = QHBoxLayout()
+        self.test_btn = QPushButton("Test Connection")
+        self.test_btn.clicked.connect(self._test_connection)
+        test_layout.addWidget(self.test_btn)
+
         
