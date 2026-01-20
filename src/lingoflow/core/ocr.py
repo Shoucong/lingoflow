@@ -451,9 +451,9 @@ class OCRService:
         logger.error("Linux interactive capture not yet implemented")
         return None
     
-    # -------------------------------------------------------------------------
+    # =============================================================================
     # Windows: Placeholder Implementation
-    # -------------------------------------------------------------------------
+    # =============================================================================
 
     def _extract_text_windows(self, image_path: Path) -> OCRResult:
         """Extract text on Windows. TODO: Implement with Tesseract or Windows OCR."""
