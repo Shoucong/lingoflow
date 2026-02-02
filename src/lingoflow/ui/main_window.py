@@ -8,6 +8,7 @@ This is the central hub that connects:
 - Settings dialog (configuration)
 """
 
+from __unknown__ import selected_lang
 from PyQt6.QtWidgets import QGraphicsPolygonItem
 import threading
 from typing import Optional
@@ -160,3 +161,87 @@ class MainController(QObject):
         
         self.tray_icon.show()
         logger.debug("System tray icon created")
+
+    def _setup_hotkeys(self) -> None:
+        """Register global hotheys. """
+        # Register global hotkeys
+        self.hotkey_manager.register(
+            HotkeyAction.TRANSLATE, 
+            self.settings.hotkeys.translate,
+            self._on_hotkey_translate, 
+            description="Translate selected text",
+        )
+        
+        # Regisiter OCR hotkey
+        self.hotkey_manager.register(
+            HotkeyAction.OCR, 
+            self.settings.hotkeys.ocr,
+            self._on_hotkey_ocr, 
+            description="OCR screenshot and translalte",
+        )
+
+        # Start listening
+        self.hotkey_manager.start()
+        logger.info("Hotkeys registered and listening")
+    
+    def _format_hotkey(self, action: str) -> str:
+        """Format hotkey for display in menu."""
+        if action == "translate":
+            hotkey = self.settings.hotkeys.translate
+        elif action == "ocr":
+            hotkey = self.settings.hotkeys.ocr
+        else:
+            return ""
+        
+        # Simple formatting
+        display = hotkey.replace("<alt>", "⌥").replace("<cmd>", "⌘")
+        display = display.replace("<ctrl>", "⌃").replace("<shift>", "⇧")
+        display = display.replace("+", "")
+        return display.upper()
+    
+    # =============================================================================
+    # Hotkey Callbacks (Called from Background Thread)
+    # =============================================================================
+    
+    def _on_hotkey_translate(self) -> None:
+        """Called when translate hotkey is pressed (from background thread)."""
+        logger.debug("Translate hotkey triggered")
+        # Emit signal to handle on main thread
+        self.signals.translate_requested.emit()
+
+    def _on_hotkey_ocr(self) -> None:
+        """Called when OCR hotkey is pressed (from background thread)."""
+        logger.debug("OCR hotkey triggered")
+        # Emit signal to handle on main thread
+        self.signals.ocr_requested.emit()
+    
+    # =============================================================================
+    # Main Thread Handlers
+    # =============================================================================
+    
+    def _on_translate_requested(self) -> None:
+        """Handle translate request on main thread."""
+        if self._is_translating:
+            logger.debug("Translation already in progress, ignoring")
+            return 
+        
+        # Get selected text
+        selected_text = self.clipboard.get_selected_text()
+
+        if not selected_text or not selected_text.strip():
+            logger.debug("No text selected")
+            self._show_notification("No text selected", "Selected some text and try again")
+            return 
+        
+        selected_text = selected_text.strip()
+        logger.info(f"Translating: {selected_text[:50]}...")
+
+        # Show popup
+        self._ensure_popup()
+        self.popup.show_with_text(selected_text)
+
+        # Start translation in background
+        self._start_translation(selected_text)
+    
+    def _on_ocr_requested(self) -> None:
+        """Handle OCR request on main thread."""
