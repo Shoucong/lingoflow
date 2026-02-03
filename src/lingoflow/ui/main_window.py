@@ -8,6 +8,8 @@ This is the central hub that connects:
 - Settings dialog (configuration)
 """
 
+from sys import thread_info
+from anyio._core._eventloop import reset_current_async_library
 from __unknown__ import selected_lang
 from PyQt6.QtWidgets import QGraphicsPolygonItem
 import threading
@@ -244,4 +246,63 @@ class MainController(QObject):
         self._start_translation(selected_text)
     
     def _on_ocr_requested(self) -> None:
-        """Handle OCR request on main thread."""
+        """Handle OCR request (main thread)."""
+        if self._is_translating:
+            logger.debug("Translation already in progress, ignoring")
+            return
+        
+        logger.info("Starting OCR capture")
+        self._update_status("Capturing...")
+        
+        # Capture screen (this will show the selection UI)
+        result = self.ocr_service.capture_and_extract()
+        
+        if not result.success:
+            if result.error_message == "Screen capture cancelled":
+                logger.debug("OCR cancelled by user")
+                self._update_status("Ready")
+            else:
+                logger.error(f"OCR failed: {result.error_message}")
+                self._show_notification("OCR Error", result.error_message)
+                self._update_status("Ready")
+            return
+        
+        if not result.text or not result.text.strip():
+            logger.debug("No text extracted from image")
+            self._show_notification("No text found", "Could not extract text from the selected area.")
+            self._update_status("Ready")
+            return
+        
+        extracted_text = result.text.strip()
+        logger.info(f"OCR extracted: {extracted_text[:50]}...")
+        
+        # Show popup with extracted text
+        self._ensure_popup()
+        self.popup.show_with_text(extracted_text)
+        
+        # Start translation
+        self._start_translation(extracted_text)
+    
+    # =============================================================================
+    # Translation Logic
+    # =============================================================================
+
+    def _start_translation(self, text: str) -> None:
+        """Start translation in a background thread."""
+        self._is_translating = True
+        self._update_status("Translating...")
+        
+        # Notify popup
+        self.popup.start_translation()
+        
+        # Get target language from popup
+        target_lang = self.popup.get_target_language()
+        
+        # Run in background thread
+        self._current_translation_thread = threading.Thread(
+            target=self._translate_worker,
+            args=(text, target_lang),
+            daemon=True,
+        )
+        self._current_translation_thread.start()
+    
