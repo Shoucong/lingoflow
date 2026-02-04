@@ -124,38 +124,38 @@ class MainController(QObject):
         menu = QMenu()
         
         # Status item (non-clickable)
-        self.status_action = QAction("● Ready")
+        self.status_action = QAction("● Ready", menu)
         self.status_action.setEnabled(False)
         menu.addAction(self.status_action)
         
         menu.addSeparator()
         
         # Translate action
-        translate_action = QAction(f"Translate Selection ({self._format_hotkey('translate')})")
+        translate_action = QAction(f"Translate Selection ({self._format_hotkey('translate')})", menu)
         translate_action.triggered.connect(self._on_translate_requested)
         menu.addAction(translate_action)
         
         # OCR action
-        ocr_action = QAction(f"OCR Screenshot ({self._format_hotkey('ocr')})")
+        ocr_action = QAction(f"OCR Screenshot ({self._format_hotkey('ocr')})", menu)
         ocr_action.triggered.connect(self._on_ocr_requested)
         menu.addAction(ocr_action)
         
         menu.addSeparator()
         
         # Settings
-        settings_action = QAction("Settings...")
+        settings_action = QAction("Settings...", menu)
         settings_action.triggered.connect(self._show_settings)
         menu.addAction(settings_action)
         
         # About
-        about_action = QAction("About")
+        about_action = QAction("About", menu)
         about_action.triggered.connect(self._show_about)
         menu.addAction(about_action)
         
         menu.addSeparator()
         
         # Quit
-        quit_action = QAction("Quit")
+        quit_action = QAction("Quit", menu)
         quit_action.triggered.connect(self._quit)
         menu.addAction(quit_action)
         
