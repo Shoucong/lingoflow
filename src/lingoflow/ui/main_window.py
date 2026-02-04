@@ -306,3 +306,79 @@ class MainController(QObject):
         )
         self._current_translation_thread.start()
     
+    def _translate_worker(self, text: str, target_language: str) -> None:
+        """Background worker for translation."""
+        try:
+            for chunk in self.translator.translate_stream(
+                text,
+                target_language=target_language,
+            ):
+                if self.popup:
+                    self.popup.append_translation(chunk)
+            
+            # Finished successfully
+            if self.popup:
+                self.popup.finish_translation()
+            
+            logger.info("Translation completed")
+            
+        except OllamaConnectionError as e:
+            logger.error(f"Ollama connection error: {e}")
+            if self.popup:
+                self.popup.show_error("Cannot connect to Ollama. Make sure it's running.")
+        
+        except OllamaError as e:
+            logger.error(f"Ollama error: {e}")
+            if self.popup:
+                self.popup.show_error(str(e))
+        
+        except Exception as e:
+            logger.error(f"Translation error: {e}")
+            if self.popup:
+                self.popup.show_error(f"Translation failed: {e}")
+        
+        finally:
+            self._is_translating = False
+            # Update status on main thread
+            QTimer.singleShot(0, lambda: self._update_status("Ready"))
+    
+    # =============================================================================
+    # UI Helpers
+    # =============================================================================
+    
+    def _ensure_popup(self) -> None:
+        """Ensure popup window exists."""
+        if self.popup is None:
+            self.popup = TranslationPopup(self.settings)
+    
+    def _update_status(self, status: str) -> None:
+        """Update tray icon status."""
+        if status == "Ready":
+            self.status_action.setText("● Ready")
+            self.tray_icon.setToolTip(f"{APP_NAME} - Ready")
+        elif status == "Translating...":
+            self.status_action.setText("◐ Translating...")
+            self.tray_icon.setToolTip(f"{APP_NAME} - Translating...")
+        elif status == "Capturing...":
+            self.status_action.setText("◐ Capturing...")
+            self.tray_icon.setToolTip(f"{APP_NAME} - Capturing...")
+        else:
+            self.status_action.setText(f"● {status}")
+            self.tray_icon.setToolTip(f"{APP_NAME} - {status}")
+    
+    def _show_notification(self, title: str, message: str) -> None:
+        """Show a system notification."""
+        if self.tray_icon and self.tray_icon.isSystemTrayAvailable():
+            self.tray_icon.showMessage(
+                title,
+                message,
+                QSystemTrayIcon.MessageIcon.Information,
+                3000,  # 3 seconds
+            )
+
+    def _show_error_dialog(self, title: str, message: str) -> None:
+        """Show an error dialog."""
+        QMessageBox.critical(None, title, message)
+
+        
+    
