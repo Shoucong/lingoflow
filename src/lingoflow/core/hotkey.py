@@ -100,7 +100,7 @@ class HotkeyManager:
         self._pressed_vks: Set[int] = set()
         self._listener: Optional[keyboard.Listener] = None
         self._running = False
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         logger.info("HotkeyManager initialized.")
     
