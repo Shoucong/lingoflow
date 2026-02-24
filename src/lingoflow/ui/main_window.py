@@ -491,6 +491,21 @@ class MainController(QObject):
                 "Start Ollama with 'ollama serve' for translations to work."
             )
             self._update_status("Ollama offline")
+            logger.warning("Ollama is not available at startup")
         else:
+            # Verify the configured model exists
+            available_models = self.translator.get_available_models()
+            configured_model = self.settings.ollama.model
+            
+            if available_models and configured_model not in available_models:
+                fallback_model = available_models[0]
+                self._show_notification(
+                    "Model not found",
+                    f"Model '{configured_model}' not found. Using '{fallback_model}'."
+                )
+                logger.warning(f"Configured model '{configured_model}' not found, falling back to '{fallback_model}'")
+                self.settings.ollama.model = fallback_model
+                self.translator.update_settings(self.settings)
+            
             self._update_status("Ready")
             logger.info("Ollama connection verified")
