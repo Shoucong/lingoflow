@@ -88,6 +88,7 @@ class MainController(QObject):
         # State
         self._is_translating = False
         self._current_translation_thread: Optional[threading.Thread] = None
+        self._cancel_translation = threading.Event()
         self._settings_dialog_open = False
         
         self._setup_signals()
@@ -298,6 +299,7 @@ class MainController(QObject):
     def _start_translation(self, text: str) -> None:
         """Start translation in a background thread."""
         self._is_translating = True
+        self._cancel_translation.clear()
         self._update_status("Translating...")
         
         # Notify popup
@@ -321,10 +323,17 @@ class MainController(QObject):
                 text,
                 target_language=target_language,
             ):
+                # Check if translation was cancelled
+                if self._cancel_translation.is_set():
+                    logger.info("Translation cancelled")
+                    return
                 if self.popup:
                     self.popup.append_translation(chunk)
             
             # Finished successfully
+            if self._cancel_translation.is_set():
+                logger.info("Translation cancelled")
+                return
             if self.popup:
                 self.popup.finish_translation()
             
@@ -357,6 +366,20 @@ class MainController(QObject):
         """Ensure popup window exists."""
         if self.popup is None:
             self.popup = TranslationPopup(self.settings)
+            self.popup.language_changed.connect(self._on_popup_language_changed)
+
+    def _on_popup_language_changed(self, language: str) -> None:
+        """Re-translate when user changes target language in popup."""
+        # Cancel any in-progress translation
+        if self._is_translating:
+            self._cancel_translation.set()
+            self._is_translating = False
+        
+        source_text = self.popup.get_source_text()
+        if source_text:
+            # Clear previous translation and re-run (without repositioning)
+            self.popup.translation_text.clear()
+            self._start_translation(source_text)
 
     def _update_status(self, status: str) -> None:
         """Update tray icon status."""

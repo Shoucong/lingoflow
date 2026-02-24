@@ -75,6 +75,9 @@ class TranslationPopup(QWidget):
         popup.finish_translation()
     """
 
+    # Emitted when user changes the target language while popup is visible
+    language_changed = pyqtSignal(str)
+
     def __init__(self, settings: Optional[AppSettings] = None):
         super().__init__()
         
@@ -84,6 +87,7 @@ class TranslationPopup(QWidget):
         self._source_text = ""
         self._translated_text = ""
         self._is_translating = False
+        self._suppress_language_signal = False
         
         self._setup_window()
         self._setup_ui()
@@ -349,11 +353,13 @@ class TranslationPopup(QWidget):
         # Clear previous translation
         self.translation_text.clear()
         
-        # Set target language if specified
+        # Set target language if specified (suppress signal to avoid re-entrancy)
         if target_language:
             index = self.target_combo.findText(target_language)
             if index >= 0:
+                self._suppress_language_signal = True
                 self.target_combo.setCurrentIndex(index)
+                self._suppress_language_signal = False
         
         # Position and show
         self._position_near_cursor()
@@ -438,7 +444,9 @@ class TranslationPopup(QWidget):
     def _on_language_changed(self, language: str) -> None:
         """Handle target language change."""
         logger.debug(f"Target language changed to: {language}")
-        # The main controller will handle re-translation if needed
+        # Only emit if popup is visible, has source text, and not a programmatic change
+        if self.isVisible() and self._source_text and not self._suppress_language_signal:
+            self.language_changed.emit(language)
 
     def _copy_translation(self) -> None:
         """Copy translation to clipboard."""
