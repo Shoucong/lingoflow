@@ -299,7 +299,8 @@ class MainController(QObject):
     def _start_translation(self, text: str) -> None:
         """Start translation in a background thread."""
         self._is_translating = True
-        self._cancel_translation.clear()
+        # Each translation gets its own cancel event to avoid race conditions
+        self._cancel_translation = threading.Event()
         self._update_status("Translating...")
         
         # Notify popup
@@ -308,30 +309,33 @@ class MainController(QObject):
         # Get target language from popup
         target_lang = self.popup.get_target_language()
         
+        # Capture cancel event for this specific translation
+        cancel_event = self._cancel_translation
+        
         # Run in background thread
         self._current_translation_thread = threading.Thread(
             target=self._translate_worker,
-            args=(text, target_lang),
+            args=(text, target_lang, cancel_event),
             daemon=True,
         )
         self._current_translation_thread.start()
 
-    def _translate_worker(self, text: str, target_language: str) -> None:
+    def _translate_worker(self, text: str, target_language: str, cancel_event: threading.Event) -> None:
         """Background worker for translation."""
         try:
             for chunk in self.translator.translate_stream(
                 text,
                 target_language=target_language,
             ):
-                # Check if translation was cancelled
-                if self._cancel_translation.is_set():
+                # Check if this translation was cancelled
+                if cancel_event.is_set():
                     logger.info("Translation cancelled")
                     return
                 if self.popup:
                     self.popup.append_translation(chunk)
             
             # Finished successfully
-            if self._cancel_translation.is_set():
+            if cancel_event.is_set():
                 logger.info("Translation cancelled")
                 return
             if self.popup:
@@ -355,8 +359,9 @@ class MainController(QObject):
                 self.popup.show_error(f"Translation failed: {e}")
         
         finally:
-            # Use signal to update on main thread (thread-safe)
-            self.signals.translation_finished.emit()
+            # Only update state if this translation wasn't cancelled
+            if not cancel_event.is_set():
+                self.signals.translation_finished.emit()
 
     # -------------------------------------------------------------------------
     # UI Helpers
