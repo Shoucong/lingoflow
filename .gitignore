@@ -22,6 +22,7 @@ build/
 # Local configuration
 config.json
 *.log
+PRIVATE_PROJECT_UPDATE_PLAN.md
 
 # OS
 .DS_Store

@@ -269,7 +269,7 @@ class TranslationService:
 
     def is_available(self) -> bool:
         """Check if the translation service is avaiable."""
-        return self.client.is_available
+        return self.client.is_available()
     
     def get_available_models(self) -> list[str]:
         """Get list of available Ollama models."""

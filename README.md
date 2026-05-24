@@ -1,4 +1,4 @@
-# LingoFlow
+c# LingoFlow
 
 A lightweight, Ollama-powered translation app with OCR support.
 

@@ -231,6 +231,15 @@ class MainController(QObject):
             logger.debug("Translation already in progress, ignoring")
             return
         
+        # Quick check if Ollama is available
+        if not self.translator.is_available():
+            self._show_notification(
+                "Ollama not running",
+                "Start Ollama with 'ollama serve'"
+            )
+            self._update_status("Ollama offline")
+            return
+        
         # Get selected text
         selected_text = self.clipboard.get_selected_text()
         
@@ -240,6 +249,13 @@ class MainController(QObject):
             return
         
         selected_text = selected_text.strip()
+        
+        # Limit text length to prevent very long translations
+        max_length = 5000
+        if len(selected_text) > max_length:
+            logger.warning(f"Text too long ({len(selected_text)} chars), truncating")
+            selected_text = selected_text[:max_length] + "..."
+        
         logger.info(f"Translating: {selected_text[:50]}...")
         
         # Show popup
@@ -322,31 +338,52 @@ class MainController(QObject):
 
     def _translate_worker(self, text: str, target_language: str, cancel_event: threading.Event) -> None:
         """Background worker for translation."""
+        import time
+        max_retries = 2
+        retry_count = 0
+        
         try:
-            for chunk in self.translator.translate_stream(
-                text,
-                target_language=target_language,
-            ):
-                # Check if this translation was cancelled
+            while retry_count <= max_retries:
                 if cancel_event.is_set():
                     logger.info("Translation cancelled")
                     return
-                if self.popup:
-                    self.popup.append_translation(chunk)
-            
-            # Finished successfully
-            if cancel_event.is_set():
-                logger.info("Translation cancelled")
-                return
-            if self.popup:
-                self.popup.finish_translation()
-            
-            logger.info("Translation completed")
-            
-        except OllamaConnectionError as e:
-            logger.error(f"Ollama connection error: {e}")
-            if self.popup:
-                self.popup.show_error("Cannot connect to Ollama. Make sure it's running.")
+                
+                try:
+                    for chunk in self.translator.translate_stream(
+                        text,
+                        target_language=target_language,
+                    ):
+                        # Check if this translation was cancelled
+                        if cancel_event.is_set():
+                            logger.info("Translation cancelled")
+                            return
+                        if self.popup:
+                            self.popup.append_translation(chunk)
+                    
+                    # Finished successfully
+                    if cancel_event.is_set():
+                        logger.info("Translation cancelled")
+                        return
+                    if self.popup:
+                        self.popup.finish_translation()
+                    
+                    logger.info("Translation completed")
+                    break  # Success, exit retry loop
+                    
+                except OllamaConnectionError as e:
+                    retry_count += 1
+                    if retry_count <= max_retries:
+                        logger.warning(f"Connection failed, retrying ({retry_count}/{max_retries})...")
+                        time.sleep(1)
+                        if self.popup:
+                            self.popup.clear_translation()
+                    else:
+                        logger.error(f"Ollama connection error after {max_retries} retries: {e}")
+                        if self.popup:
+                            self.popup.show_error(
+                                "Cannot connect to Ollama.\n"
+                                "Make sure it's running: ollama serve"
+                            )
         
         except OllamaError as e:
             logger.error(f"Ollama error: {e}")
@@ -372,18 +409,37 @@ class MainController(QObject):
         if self.popup is None:
             self.popup = TranslationPopup(self.settings)
             self.popup.language_changed.connect(self._on_popup_language_changed)
+            self.popup.closed.connect(self._on_popup_closed)
+
+    def _cancel_active_translation(self, reason: str, update_status: bool = True) -> None:
+        """Cancel the active translation task if one is running."""
+        if not self._is_translating:
+            return
+
+        logger.info(reason)
+        self._cancel_translation.set()
+        self.translator.cancel()
+        self._is_translating = False
+
+        if update_status:
+            self._update_status("Ready")
+
+    def _on_popup_closed(self) -> None:
+        """Cancel translation work when the popup is dismissed."""
+        self._cancel_active_translation("Popup closed, cancelling active translation")
 
     def _on_popup_language_changed(self, language: str) -> None:
         """Re-translate when user changes target language in popup."""
         # Cancel any in-progress translation
-        if self._is_translating:
-            self._cancel_translation.set()
-            self._is_translating = False
+        self._cancel_active_translation(
+            "Target language changed, cancelling current translation",
+            update_status=False,
+        )
         
         source_text = self.popup.get_source_text()
         if source_text:
             # Clear previous translation and re-run (without repositioning)
-            self.popup.translation_text.clear()
+            self.popup.clear_translation()
             self._start_translation(source_text)
 
     def _update_status(self, status: str) -> None:
@@ -467,6 +523,9 @@ class MainController(QObject):
     def _quit(self) -> None:
         """Quit the application."""
         logger.info("Quitting application")
+
+        # Stop any active translation
+        self._cancel_active_translation("Quitting, cancelling active translation", update_status=False)
         
         # Stop hotkey listener
         self.hotkey_manager.stop()

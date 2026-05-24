@@ -47,6 +47,7 @@ class TranslationSignals(QObject):
     translation_started = pyqtSignal()  # Translation began
     translation_finished = pyqtSignal()  # Translation complete
     translation_error = pyqtSignal(str)  # Error message
+    translation_cleared = pyqtSignal()  # Clear translation output
 
 
 # =============================================================================
@@ -77,6 +78,7 @@ class TranslationPopup(QWidget):
 
     # Emitted when user changes the target language while popup is visible
     language_changed = pyqtSignal(str)
+    closed = pyqtSignal()
 
     def __init__(self, settings: Optional[AppSettings] = None):
         super().__init__()
@@ -167,7 +169,7 @@ class TranslationPopup(QWidget):
         self.close_btn = QPushButton("×")
         self.close_btn.setObjectName("closeButton")
         self.close_btn.setFixedSize(20, 20)
-        self.close_btn.clicked.connect(self.hide)
+        self.close_btn.clicked.connect(self._close_popup)
         header_layout.addWidget(self.close_btn)
         
         container_layout.addLayout(header_layout)
@@ -229,6 +231,7 @@ class TranslationPopup(QWidget):
         self.signals.translation_started.connect(self._on_translation_started)
         self.signals.translation_finished.connect(self._on_translation_finished)
         self.signals.translation_error.connect(self._on_translation_error)
+        self.signals.translation_cleared.connect(self._on_translation_cleared)
         
         # Language change triggers re-translation
         self.target_combo.currentTextChanged.connect(self._on_language_changed)
@@ -389,6 +392,10 @@ class TranslationPopup(QWidget):
         """Show an error message (thread-safe)."""
         self.signals.translation_error.emit(message)
 
+    def clear_translation(self) -> None:
+        """Clear current translation output (thread-safe)."""
+        self.signals.translation_cleared.emit()
+
     def get_target_language(self) -> str:
         """Get the currently selected target language."""
         return self.target_combo.currentText()
@@ -426,11 +433,14 @@ class TranslationPopup(QWidget):
     def _on_translation_finished(self) -> None:
         """Handle translation completion."""
         self._is_translating = False
-        self.status_label.setText("Done")
+        
+        # Show character count
+        char_count = len(self._translated_text)
+        self.status_label.setText(f"Done · {char_count} chars")
         self.copy_btn.setEnabled(True)
         
         # Clear status after a delay
-        QTimer.singleShot(2000, lambda: self.status_label.setText(""))
+        QTimer.singleShot(3000, lambda: self.status_label.setText(""))
 
     def _on_translation_error(self, message: str) -> None:
         """Handle translation error."""
@@ -440,6 +450,12 @@ class TranslationPopup(QWidget):
         
         # Show error in translation area
         self.translation_text.setPlainText(f"⚠️ {message}")
+
+    def _on_translation_cleared(self) -> None:
+        """Handle clearing translation output (for retries)."""
+        self._translated_text = ""
+        self.translation_text.clear()
+        self.status_label.setText("Retrying...")
 
     def _on_language_changed(self, language: str) -> None:
         """Handle target language change."""
@@ -495,13 +511,26 @@ class TranslationPopup(QWidget):
         """Handle key press events."""
         # Escape closes the popup
         if event.key() == Qt.Key.Key_Escape:
-            self.hide()
+            self._close_popup()
         else:
             super().keyPressEvent(event)
 
     def focusOutEvent(self, event) -> None:
         """Handle focus loss — hide popup if configured."""
         if self.settings.ui.hide_on_focus_loss:
-            self.hide()
+            self._close_popup()
         else:
             super().focusOutEvent(event)
+
+    def closeEvent(self, event) -> None:
+        """Handle window close."""
+        self._close_popup()
+        super().closeEvent(event)
+
+    def _close_popup(self) -> None:
+        """Close the popup and clean up."""
+        should_emit_closed = self.isVisible() or self._is_translating
+        self._is_translating = False
+        self.hide()
+        if should_emit_closed:
+            self.closed.emit()
