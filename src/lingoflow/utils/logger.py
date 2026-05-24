@@ -48,9 +48,6 @@ def setup_logging(level: int = DEFAULT_LOG_LEVEL, console: bool = True) -> None:
     if _initialized:
         return
     
-    # Ensure log directory exists
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-
     # Get root logger for the app
     root_logger = logging.getLogger(APP_NAME.lower())
     root_logger.setLevel(level)
@@ -65,15 +62,20 @@ def setup_logging(level: int = DEFAULT_LOG_LEVEL, console: bool = True) -> None:
     formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 
     # File handler with rotation
-    file_handler = RotatingFileHandler(
-        LOG_FILE,
-        maxBytes=MAX_LOG_SIZE,
-        backupCount=BACKUP_COUNT,
-        encoding='utf-8', 
-    )
-    file_handler.setLevel(level)
-    file_handler.setFormatter(formatter)
-    root_logger.addHandler(file_handler)
+    file_logging_error: Exception | None = None
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            LOG_FILE,
+            maxBytes=MAX_LOG_SIZE,
+            backupCount=BACKUP_COUNT,
+            encoding='utf-8',
+        )
+        file_handler.setLevel(level)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+    except OSError as e:
+        file_logging_error = e
 
     # Console handler
     if console:
@@ -81,8 +83,12 @@ def setup_logging(level: int = DEFAULT_LOG_LEVEL, console: bool = True) -> None:
         console_handler.setLevel(level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
+    elif file_logging_error:
+        root_logger.addHandler(logging.NullHandler())
     
     _initialized = True
+    if file_logging_error:
+        root_logger.warning(f"File logging disabled: {file_logging_error}")
     root_logger.debug("Logging initialized")
 
 def get_logger(name: str) -> logging.Logger:

@@ -85,10 +85,9 @@ class SettingsDialog(QDialog):
         
         # Create tabs
         self.tabs.addTab(self._create_general_tab(), "General")
-        self.tabs.addTab(self._create_translation_tab(), "Translation")
+        self.tabs.addTab(self._create_languages_tab(), "Languages")
         self.tabs.addTab(self._create_hotkeys_tab(), "Hotkeys")
         self.tabs.addTab(self._create_appearance_tab(), "Appearance")
-        self.tabs.addTab(self._create_ocr_tab(), "OCR")
         
         # Button row
         button_layout = QHBoxLayout()
@@ -158,13 +157,13 @@ class SettingsDialog(QDialog):
         
         return tab
 
-    def _create_translation_tab(self) -> QWidget:
-        """Create the Translation settings tab."""
+    def _create_languages_tab(self) -> QWidget:
+        """Create language settings for translation and OCR."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
         # Language Settings Group
-        lang_group = QGroupBox("Default Languages")
+        lang_group = QGroupBox("Translation")
         lang_layout = QFormLayout(lang_group)
         
         # Source language
@@ -172,29 +171,67 @@ class SettingsDialog(QDialog):
         for lang in SUPPORTED_LANGUAGES:
             display_name = "Auto-detect" if lang == "auto" else lang
             self.source_lang_combo.addItem(display_name, lang)
-        lang_layout.addRow("Source Language:", self.source_lang_combo)
+        lang_layout.addRow("Text Source:", self.source_lang_combo)
         
         # Target language
         self.target_lang_combo = QComboBox()
         for lang in SUPPORTED_LANGUAGES:
             if lang != "auto":
                 self.target_lang_combo.addItem(lang, lang)
-        lang_layout.addRow("Target Language:", self.target_lang_combo)
-        
+        lang_layout.addRow("Translate To:", self.target_lang_combo)
+
         layout.addWidget(lang_group)
-        
+
+        # OCR Settings Group
+        ocr_group = QGroupBox("OCR Recognition")
+        ocr_layout = QFormLayout(ocr_group)
+
+        # OCR Language
+        self.ocr_lang_combo = QComboBox()
+        ocr_languages = [
+            ("English", "eng"),
+            ("Chinese Simplified", "chi_sim"),
+            ("Chinese Traditional", "chi_tra"),
+            ("Japanese", "jpn"),
+            ("Korean", "kor"),
+            ("English + Chinese", "eng+chi_sim"),
+            ("English + Japanese", "eng+jpn"),
+        ]
+        for display, code in ocr_languages:
+            self.ocr_lang_combo.addItem(display, code)
+        ocr_layout.addRow("Screenshot Text:", self.ocr_lang_combo)
+
+        # Enhance image
+        self.enhance_image_check = QCheckBox("Enhance image before OCR")
+        self.enhance_image_check.setToolTip(
+            "Apply contrast and sharpening to improve accuracy"
+        )
+        ocr_layout.addRow("", self.enhance_image_check)
+
+        layout.addWidget(ocr_group)
+
+        # Info
+        info_label = QLabel(
+            "Screenshot Text is the language inside the image for recognition. "
+            "OCR results still translate to the Translate To language above."
+        )
+        info_label.setStyleSheet("color: gray; font-size: 11px;")
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
         # Advanced Group
         advanced_group = QGroupBox("Advanced")
         advanced_layout = QFormLayout(advanced_group)
-        
+
         # Custom prompt (future feature)
         self.custom_prompt_check = QCheckBox("Use custom system prompt")
         self.custom_prompt_check.setEnabled(False)  # Future feature
         advanced_layout.addRow("", self.custom_prompt_check)
-        
+
         layout.addWidget(advanced_group)
+
         layout.addStretch()
-        
+
         return tab
 
     def _create_hotkeys_tab(self) -> QWidget:
@@ -281,52 +318,6 @@ class SettingsDialog(QDialog):
         popup_layout.addRow("", self.show_source_check)
         
         layout.addWidget(popup_group)
-        layout.addStretch()
-        
-        return tab
-
-    def _create_ocr_tab(self) -> QWidget:
-        """Create the OCR settings tab."""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        
-        # OCR Settings Group
-        ocr_group = QGroupBox("OCR Settings")
-        ocr_layout = QFormLayout(ocr_group)
-        
-        # OCR Language
-        self.ocr_lang_combo = QComboBox()
-        ocr_languages = [
-            ("English", "eng"),
-            ("Chinese Simplified", "chi_sim"),
-            ("Chinese Traditional", "chi_tra"),
-            ("Japanese", "jpn"),
-            ("Korean", "kor"),
-            ("English + Chinese", "eng+chi_sim"),
-            ("English + Japanese", "eng+jpn"),
-        ]
-        for display, code in ocr_languages:
-            self.ocr_lang_combo.addItem(display, code)
-        ocr_layout.addRow("OCR Language:", self.ocr_lang_combo)
-        
-        # Enhance image
-        self.enhance_image_check = QCheckBox("Enhance image before OCR")
-        self.enhance_image_check.setToolTip(
-            "Apply contrast and sharpening to improve accuracy"
-        )
-        ocr_layout.addRow("", self.enhance_image_check)
-        
-        layout.addWidget(ocr_group)
-        
-        # Info
-        info_label = QLabel(
-            "On macOS, OCR uses Apple Vision framework.\n"
-            "No additional installation required."
-        )
-        info_label.setStyleSheet("color: gray; font-size: 11px;")
-        info_label.setWordWrap(True)
-        layout.addWidget(info_label)
-        
         layout.addStretch()
         
         return tab

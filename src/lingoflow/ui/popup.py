@@ -4,6 +4,7 @@ Translation popup window for LingoFlow.
 Displays source text and streaming translation results.
 """
 
+import platform
 import threading
 from typing import Optional
 
@@ -79,6 +80,7 @@ class TranslationPopup(QWidget):
     # Emitted when user changes the target language while popup is visible
     language_changed = pyqtSignal(str)
     closed = pyqtSignal()
+    outside_clicked = pyqtSignal()
 
     def __init__(self, settings: Optional[AppSettings] = None):
         super().__init__()
@@ -90,6 +92,12 @@ class TranslationPopup(QWidget):
         self._translated_text = ""
         self._is_translating = False
         self._suppress_language_signal = False
+        self._dismiss_emitted = False
+        self._closing = False
+        self._macos_event_monitors = []
+        self._status_clear_timer = QTimer(self)
+        self._status_clear_timer.setSingleShot(True)
+        self._status_clear_timer.timeout.connect(self._clear_status)
         
         self._setup_window()
         self._setup_ui()
@@ -112,6 +120,7 @@ class TranslationPopup(QWidget):
         
         # Allow transparency for rounded corners
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         
         # Size constraints
         self.setMinimumWidth(POPUP_MIN_WIDTH)
@@ -140,8 +149,7 @@ class TranslationPopup(QWidget):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(8)
         
-        # Source language (auto-detect for now)
-        self.source_label = QLabel("Auto")
+        self.source_label = QLabel(self._format_source_language())
         self.source_label.setObjectName("sourceLabel")
         header_layout.addWidget(self.source_label)
         
@@ -169,7 +177,7 @@ class TranslationPopup(QWidget):
         self.close_btn = QPushButton("×")
         self.close_btn.setObjectName("closeButton")
         self.close_btn.setFixedSize(20, 20)
-        self.close_btn.clicked.connect(self._close_popup)
+        self.close_btn.clicked.connect(self.dismiss)
         header_layout.addWidget(self.close_btn)
         
         container_layout.addLayout(header_layout)
@@ -235,6 +243,7 @@ class TranslationPopup(QWidget):
         
         # Language change triggers re-translation
         self.target_combo.currentTextChanged.connect(self._on_language_changed)
+        self.outside_clicked.connect(self.dismiss)
 
     def _get_stylesheet(self) -> str:
         """Return the popup stylesheet."""
@@ -339,6 +348,7 @@ class TranslationPopup(QWidget):
         self,
         source_text: str,
         target_language: Optional[str] = None,
+        source_language: Optional[str] = None,
     ) -> None:
         """
         Show the popup with source text and prepare for translation.
@@ -346,29 +356,30 @@ class TranslationPopup(QWidget):
         Args:
             source_text: Text to translate
             target_language: Target language (uses current selection if None)
+            source_language: Source language display (uses settings if None)
         """
         self._source_text = source_text
         self._translated_text = ""
+        self._dismiss_emitted = False
+        self._closing = False
+        self._status_clear_timer.stop()
         
         # Update source text display
         self.source_text_label.setText(source_text)
+        self.source_label.setText(self._format_source_language(source_language))
         
         # Clear previous translation
         self.translation_text.clear()
         
         # Set target language if specified (suppress signal to avoid re-entrancy)
         if target_language:
-            index = self.target_combo.findText(target_language)
-            if index >= 0:
-                self._suppress_language_signal = True
-                self.target_combo.setCurrentIndex(index)
-                self._suppress_language_signal = False
+            self._set_target_language(target_language)
         
         # Position and show
         self._position_near_cursor()
         self.show()
         self.raise_()
-        self.activateWindow()
+        self._start_outside_click_monitor()
         
         logger.debug(f"Popup shown with text: {source_text[:50]}...")
 
@@ -410,6 +421,8 @@ class TranslationPopup(QWidget):
         self.container.setStyleSheet(self._get_stylesheet())
         self.source_text_label.setVisible(settings.ui.show_source_text)
         self.separator.setVisible(settings.ui.show_source_text)
+        self._set_target_language(settings.translation.target_language)
+        self.source_label.setText(self._format_source_language())
 
     # =============================================================================
     # Private Slots
@@ -440,7 +453,7 @@ class TranslationPopup(QWidget):
         self.copy_btn.setEnabled(True)
         
         # Clear status after a delay
-        QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+        self._schedule_status_clear(3000)
 
     def _on_translation_error(self, message: str) -> None:
         """Handle translation error."""
@@ -464,13 +477,126 @@ class TranslationPopup(QWidget):
         if self.isVisible() and self._source_text and not self._suppress_language_signal:
             self.language_changed.emit(language)
 
+    def dismiss(self) -> None:
+        """Dismiss the popup as a closed interaction."""
+        self._closing = True
+        self.close()
+
+    def _clear_status(self) -> None:
+        """Clear transient status text while the popup is alive."""
+        self.status_label.setText("")
+
+    def _schedule_status_clear(self, delay_ms: int) -> None:
+        """Clear transient status text using a timer owned by this popup."""
+        self._status_clear_timer.start(delay_ms)
+
+    def _start_outside_click_monitor(self) -> None:
+        """Close the popup on outside clicks that Qt does not deliver on macOS."""
+        self._stop_outside_click_monitor()
+        if platform.system() != "Darwin":
+            return
+
+        try:
+            from AppKit import (
+                NSEvent,
+                NSEventMaskLeftMouseDown,
+                NSEventMaskRightMouseDown,
+                NSEventMaskOtherMouseDown,
+            )
+        except Exception as e:
+            logger.debug(f"macOS outside-click monitor unavailable: {e}")
+            return
+
+        mask = (
+            NSEventMaskLeftMouseDown
+            | NSEventMaskRightMouseDown
+            | NSEventMaskOtherMouseDown
+        )
+
+        def is_outside_popup() -> bool:
+            try:
+                cursor_pos = QCursor.pos()
+                if self.frameGeometry().contains(cursor_pos):
+                    return False
+
+                combo_popup = self.target_combo.view().window()
+                if (
+                    combo_popup
+                    and combo_popup.isVisible()
+                    and combo_popup.frameGeometry().contains(cursor_pos)
+                ):
+                    return False
+
+                return True
+            except RuntimeError:
+                return False
+
+        def global_handler(event) -> None:
+            if is_outside_popup():
+                self.outside_clicked.emit()
+
+        def local_handler(event):
+            if is_outside_popup():
+                self.outside_clicked.emit()
+            return event
+
+        try:
+            global_monitor = NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(
+                mask,
+                global_handler,
+            )
+            local_monitor = NSEvent.addLocalMonitorForEventsMatchingMask_handler_(
+                mask,
+                local_handler,
+            )
+            self._macos_event_monitors = [
+                monitor for monitor in (global_monitor, local_monitor) if monitor
+            ]
+        except Exception as e:
+            logger.debug(f"Could not install macOS outside-click monitor: {e}")
+            self._macos_event_monitors = []
+
+    def _stop_outside_click_monitor(self) -> None:
+        """Remove native outside-click monitors."""
+        if not self._macos_event_monitors:
+            return
+
+        try:
+            from AppKit import NSEvent
+
+            for monitor in self._macos_event_monitors:
+                NSEvent.removeMonitor_(monitor)
+        except Exception as e:
+            logger.debug(f"Could not remove macOS outside-click monitor: {e}")
+        finally:
+            self._macos_event_monitors = []
+
+    def _format_source_language(self, language: Optional[str] = None) -> str:
+        """Format source language for the popup header."""
+        source_language = language or self.settings.translation.source_language
+        if source_language.lower() == "auto":
+            return "Auto"
+        return source_language
+
+    def _set_target_language(self, language: str) -> None:
+        """Set target language without firing language_changed."""
+        index = self.target_combo.findText(language)
+        if index < 0 or index == self.target_combo.currentIndex():
+            return
+
+        self._suppress_language_signal = True
+        try:
+            self.target_combo.setCurrentIndex(index)
+        finally:
+            self._suppress_language_signal = False
+
     def _copy_translation(self) -> None:
         """Copy translation to clipboard."""
         if self._translated_text:
             clipboard = QApplication.clipboard()
             clipboard.setText(self._translated_text)
             self.status_label.setText("Copied!")
-            QTimer.singleShot(1500, lambda: self.status_label.setText(""))
+            self._schedule_status_clear(1500)
             logger.debug("Translation copied to clipboard")
 
     def _position_near_cursor(self) -> None:
@@ -511,26 +637,46 @@ class TranslationPopup(QWidget):
         """Handle key press events."""
         # Escape closes the popup
         if event.key() == Qt.Key.Key_Escape:
-            self._close_popup()
+            self.dismiss()
         else:
             super().keyPressEvent(event)
 
     def focusOutEvent(self, event) -> None:
-        """Handle focus loss — hide popup if configured."""
+        """Handle focus loss — close popup if configured."""
         if self.settings.ui.hide_on_focus_loss:
-            self._close_popup()
+            self.dismiss()
+            event.accept()
         else:
             super().focusOutEvent(event)
 
+    def hideEvent(self, event) -> None:
+        """Treat macOS tool-window auto-hide as a dismissed popup."""
+        super().hideEvent(event)
+        if (
+            self.settings.ui.hide_on_focus_loss
+            and not self._dismiss_emitted
+            and not self._closing
+            and (self._is_translating or bool(self._source_text))
+        ):
+            QTimer.singleShot(0, self.dismiss)
+
     def closeEvent(self, event) -> None:
         """Handle window close."""
-        self._close_popup()
-        super().closeEvent(event)
-
-    def _close_popup(self) -> None:
-        """Close the popup and clean up."""
-        should_emit_closed = self.isVisible() or self._is_translating
+        self._closing = True
+        self._status_clear_timer.stop()
+        self._stop_outside_click_monitor()
+        should_emit_closed = (
+            not self._dismiss_emitted
+            and (self.isVisible() or self._is_translating or bool(self._source_text))
+        )
         self._is_translating = False
-        self.hide()
+        self._source_text = ""
+        self._translated_text = ""
+        self.translation_text.clear()
+        self.source_text_label.clear()
+        self.status_label.setText("")
+        self.clearFocus()
         if should_emit_closed:
+            self._dismiss_emitted = True
             self.closed.emit()
+        event.accept()

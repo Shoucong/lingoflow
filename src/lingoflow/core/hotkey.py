@@ -1,404 +1,469 @@
 """
-Global hotkey manager for LingoFlow.
+Native macOS global hotkey manager.
 
-Handles system-wide keyboard shortcuts using pynput.
+LingoFlow is currently macOS-first, so hotkeys are handled through Quartz event
+taps. The tap consumes the trigger key and waits for required modifiers to be
+released before dispatching the app action, which avoids leaking Option-modified
+keystrokes into the foreground app.
 """
 
-import platform
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Dict, Optional, Set
+from typing import Callable, Dict, Optional
 
-from pynput import keyboard
-from pynput.keyboard import Key, KeyCode
+import Quartz
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-IS_MACOS = platform.system() == "Darwin"
-
-# ==========================================================
-# Data Types
-# ==========================================================
 
 class HotkeyAction(Enum):
-    """Predifined hotkey actions."""
+    """Predefined hotkey actions."""
+
     TRANSLATE = "translate"
     OCR = "ocr"
     PRONOUNCE = "pronounce"
     WORD_LOOKUP = "word_lookup"
 
+
 @dataclass
 class Hotkey:
-    """Represents a registered hotkey."""
+    """A registered macOS hotkey."""
 
     action: HotkeyAction
-    keys: frozenset
+    key_code: int
+    modifiers: int
     key_string: str
     callback: Callable[[], None]
     description: str = ""
-    # Track if currently held to prevent repeat-span
-    is_pressed: bool = False
 
 
-# =============================================================================
-# macOS Virtual Key Code Mapping
-# =============================================================================
-
-# On macOS, Option+letter produces special characters (e.g., Option+D = ∂)
-# We need to map virtual key codes to match letters regardless of modifiers
-# These are macOS virtual key codes for letter keys
-MACOS_VK_TO_LETTER = {
-    0: "a", 1: "s", 2: "d", 3: "f", 4: "h", 5: "g", 6: "z", 7: "x",
-    8: "c", 9: "v", 11: "b", 12: "q", 13: "w", 14: "e", 15: "r",
-    16: "y", 17: "t", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
-    23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
-    31: "o", 32: "u", 34: "i", 35: "p", 37: "l", 38: "j", 40: "k",
-    41: ";", 43: ",", 45: "n", 46: "m", 47: ".", 50: "`",
+KEY_CODES = {
+    "a": 0,
+    "s": 1,
+    "d": 2,
+    "f": 3,
+    "h": 4,
+    "g": 5,
+    "z": 6,
+    "x": 7,
+    "c": 8,
+    "v": 9,
+    "b": 11,
+    "q": 12,
+    "w": 13,
+    "e": 14,
+    "r": 15,
+    "y": 16,
+    "t": 17,
+    "1": 18,
+    "2": 19,
+    "3": 20,
+    "4": 21,
+    "6": 22,
+    "5": 23,
+    "=": 24,
+    "9": 25,
+    "7": 26,
+    "-": 27,
+    "8": 28,
+    "0": 29,
+    "]": 30,
+    "o": 31,
+    "u": 32,
+    "[": 33,
+    "i": 34,
+    "p": 35,
+    "l": 37,
+    "j": 38,
+    "'": 39,
+    "k": 40,
+    ";": 41,
+    "\\": 42,
+    ",": 43,
+    "/": 44,
+    "n": 45,
+    "m": 46,
+    ".": 47,
+    "`": 50,
+    "space": 49,
+    "tab": 48,
+    "return": 36,
+    "enter": 36,
+    "escape": 53,
+    "esc": 53,
 }
 
-LETTER_TO_MACOS_VK = {v: k for k, v in MACOS_VK_TO_LETTER.items()}
+MODIFIER_FLAGS = {
+    "alt": Quartz.kCGEventFlagMaskAlternate,
+    "option": Quartz.kCGEventFlagMaskAlternate,
+    "cmd": Quartz.kCGEventFlagMaskCommand,
+    "command": Quartz.kCGEventFlagMaskCommand,
+    "ctrl": Quartz.kCGEventFlagMaskControl,
+    "control": Quartz.kCGEventFlagMaskControl,
+    "shift": Quartz.kCGEventFlagMaskShift,
+}
 
+MODIFIER_DISPLAY = {
+    Quartz.kCGEventFlagMaskAlternate: "Option",
+    Quartz.kCGEventFlagMaskCommand: "Cmd",
+    Quartz.kCGEventFlagMaskControl: "Ctrl",
+    Quartz.kCGEventFlagMaskShift: "Shift",
+}
 
-# ==========================================================
-# Hotkey Manager
-# ==========================================================
 
 class HotkeyManager:
-    """
-    Global hotkey manager using pynput.
-
-    Uses pynput's native hotkey parsing for robust cross-platform support. 
-
-    Example: 
-        manager = HotkeyManager()
-
-        manager.register_hotkey(
-            HotkeyAction.TRANSLATE,
-            "<alt>+d",
-            callback=on_translate_triggered,
-        )
-        manager.start()
-        # ...app runs ...
-        manager.stop()
-    """
+    """Global hotkey manager backed by a native macOS Quartz event tap."""
 
     def __init__(self, settings: Optional[AppSettings] = None):
-        """
-        Initialize the hotkey manager,
-
-        Args:
-            settings: App settings (loads from disks if not provided).
-        """
         self.settings = settings or AppSettings.load()
-        
         self._hotkeys: Dict[HotkeyAction, Hotkey] = {}
-        self._pressed_keys: Set = set()
-        self._pressed_vks: Set[int] = set()
-        self._listener: Optional[keyboard.Listener] = None
+        self._active_key_actions: Dict[int, HotkeyAction] = {}
+        self._pending_actions: Dict[HotkeyAction, Hotkey] = {}
+        self._listener_thread: Optional[threading.Thread] = None
+        self._run_loop = None
+        self._event_tap = None
+        self._run_loop_source = None
+        self._tap_callback = None
+        self._started_event = threading.Event()
         self._running = False
         self._lock = threading.RLock()
 
-        logger.info("HotkeyManager initialized.")
-    
-    # ==========================================================
-    # Public Methods
-    # ==========================================================
+        logger.info("Native macOS HotkeyManager initialized")
 
     def register(
-            self, 
-            action: HotkeyAction,
-            hotkey_str: str,
-            callback: Callable[[], None],
-            description: str = "",
+        self,
+        action: HotkeyAction,
+        hotkey_str: str,
+        callback: Callable[[], None],
+        description: str = "",
     ) -> bool:
-        """
-        Register a hotkey. 
-
-        Uses pynput's native parser for robust key handling. 
-
-        Args:
-            action: The action this hotkey triggers.
-            hotkey_str: Hotkey string like "<alt>+d".
-            callback: Function to call when hotkey is triggered.
-            description: Human-readable description.
-        
-        Returns:
-            True if registered successfully
-        """
+        """Register or replace a hotkey."""
         try:
-            # Use pynput's native parser - handles <cmd>, <ctrl>, <alt> etc
-            key_combo = keyboard.HotKey.parse(hotkey_str)
-            keys = frozenset(key_combo)
+            key_code, modifiers = self._parse_hotkey(hotkey_str)
+        except ValueError as e:
+            logger.error(f"Invalid hotkey '{hotkey_str}': {e}")
+            return False
 
-            hotkey = Hotkey(
+        with self._lock:
+            self._hotkeys[action] = Hotkey(
                 action=action,
-                keys=keys,
+                key_code=key_code,
+                modifiers=modifiers,
                 key_string=hotkey_str,
                 callback=callback,
                 description=description,
             )
 
-            with self._lock:
-                self._hotkeys[action] = hotkey
-            
-            readable = self._format_hotkey_display(hotkey_str)
-            logger.info(f"Registered hotkey: {readable} -> {action.value}")
-            return True
-        
-        except ValueError as e:
-            logger.error(f"Invalid hotkey format '{hotkey_str}': {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Failed to register hotkey '{hotkey_str}': {e}")
-            return False 
-    
-    def unregister(self, action: HotkeyAction) -> bool:
-        """
-        Unregister a hotkey. 
-
-        Args:
-            action: The action to unregister
-
-        Returns:
-            True if unregistered successfully
-        """
-        with self._lock:
-            if action in self._hotkeys:
-                del self._hotkeys[action]
-                logger.info(f"Unregistered hotkey for: {action.value}")
-                return True
-        return False
-    
-    def update_hotkey(self, action: HotkeyAction, new_hotkey_str: str) -> bool:
-        """
-        Update an existing hotkey's key combination. 
-
-        Args: 
-            action: The action to update
-            new_hotkey_str: New hotkey string
-        
-        Returns:
-            True if updated successfully
-        """
-        with self._lock:
-            if action in self._hotkeys:
-                old_hotkey = self._hotkeys[action]
-                return self.register(
-                    action, 
-                    new_hotkey_str,
-                    old_hotkey.callback,
-                    old_hotkey.description
-                )
-        return False
-    
-    def start(self) -> None:
-        """Start listening for hotkeys in background thread."""
-        if self._running:
-            logger.warning("HotkeyManager already running.")
-            return 
-    
-        self._running = True
-        self._pressed_keys.clear()
-        self._pressed_vks.clear()
-
-        self._listener = keyboard.Listener(
-            on_press=self._on_key_press,
-            on_release=self._on_key_release,
-        )
-        self._listener.start()
-
         logger.info(
-            "HotkeyManager started. "
-            "(Ensure 'Input Monitoring' permission is granted on macOS.)"
+            f"Registered hotkey: {self._format_hotkey_display(hotkey_str)} -> {action.value}"
         )
-    
-    def stop(self) -> None: 
-        """Stop listening for hotkeys."""
+        return True
+
+    def unregister(self, action: HotkeyAction) -> bool:
+        """Unregister a hotkey action."""
+        with self._lock:
+            removed = self._hotkeys.pop(action, None)
+            self._pending_actions.pop(action, None)
+            for key_code, active_action in list(self._active_key_actions.items()):
+                if active_action == action:
+                    del self._active_key_actions[key_code]
+
+        if removed:
+            logger.info(f"Unregistered hotkey for: {action.value}")
+            return True
+        return False
+
+    def update_hotkey(self, action: HotkeyAction, new_hotkey_str: str) -> bool:
+        """Update an existing hotkey while preserving its callback."""
+        with self._lock:
+            hotkey = self._hotkeys.get(action)
+            if hotkey is None:
+                return False
+
+        return self.register(action, new_hotkey_str, hotkey.callback, hotkey.description)
+
+    def start(self) -> None:
+        """Start the native event tap listener."""
+        if self._running:
+            logger.warning("HotkeyManager already running")
+            return
+
+        self._started_event.clear()
+        self._listener_thread = threading.Thread(
+            target=self._run_event_tap,
+            name="LingoFlowHotkeys",
+            daemon=True,
+        )
+        self._listener_thread.start()
+
+        if not self._started_event.wait(timeout=1.0):
+            logger.warning("Timed out waiting for native hotkey listener to start")
+
+    def stop(self) -> None:
+        """Stop the native event tap listener."""
         self._running = False
 
-        if self._listener:
-            self._listener.stop()
-            self._listener = None
-        
-        self._pressed_keys.clear()
-        self._pressed_vks.clear()
-        logger.info("HotkeyManager stopped.")
-    
+        if self._event_tap is not None:
+            Quartz.CGEventTapEnable(self._event_tap, False)
+
+        if self._run_loop is not None:
+            Quartz.CFRunLoopStop(self._run_loop)
+
+        if self._listener_thread and self._listener_thread.is_alive():
+            self._listener_thread.join(timeout=1.0)
+
+        self._listener_thread = None
+        self._run_loop = None
+        self._event_tap = None
+        self._run_loop_source = None
+        self._tap_callback = None
+        self._active_key_actions.clear()
+        self._pending_actions.clear()
+        logger.info("HotkeyManager stopped")
+
     def is_running(self) -> bool:
-        """Check if the manager is currently listening."""
+        """Return whether the native listener is running."""
         return self._running
 
     def get_registered_hotkeys(self) -> Dict[HotkeyAction, str]:
-        """
-        Get all registered hotkeyts as readable strings. 
-
-        Returns: 
-            Dict mapping action to hotkey display string. 
-        """
+        """Return registered hotkeys as display strings."""
         with self._lock:
             return {
                 action: self._format_hotkey_display(hotkey.key_string)
                 for action, hotkey in self._hotkeys.items()
             }
-    
+
     def update_settings(self, settings: AppSettings) -> None:
-        """
-        Update the settings reference.
+        """Update hotkey settings."""
+        self.settings = settings
+        was_running = self._running
+        if was_running:
+            self.stop()
 
-        Args:
-            settings: New app settings.
-        """
-        self.settings = settings    
-
-        # Update translate hotkey if regisited
         if HotkeyAction.TRANSLATE in self._hotkeys:
             self.update_hotkey(HotkeyAction.TRANSLATE, settings.hotkeys.translate)
-        
-        # Update OCR hotkey if registered
         if HotkeyAction.OCR in self._hotkeys:
             self.update_hotkey(HotkeyAction.OCR, settings.hotkeys.ocr)
-        
-        logger.info("Hotkey settting updated.")
-    
-    # ==========================================================
-    # Private Methods
-    # ==========================================================
 
-    def _on_key_press(self, key) -> None:
-        """Handle key press event."""
-        canonical_key = self._listener.canonical(key)
-        self._pressed_keys.add(canonical_key)
+        if was_running:
+            self.start()
 
-        # Update: on Macos, we should check virtual key codes to prevent ∂ß etc. 
-        if IS_MACOS and isinstance(key, KeyCode) and key.vk is not None:
-            self._pressed_vks.add(key.vk)
+        logger.info("Hotkey settings updated")
 
-        self._check_hotkeys()
-    
-    def _on_key_release(self, key) -> None:
-        """Handle key release event."""
-        canonical_key = self._listener.canonical(key)
-        self._pressed_keys.discard(canonical_key)   
+    def _run_event_tap(self) -> None:
+        """Create and run the Quartz event tap on its own run loop."""
+        missing_permissions = []
+        if (
+            hasattr(Quartz, "CGPreflightListenEventAccess")
+            and not Quartz.CGPreflightListenEventAccess()
+        ):
+            missing_permissions.append("Input Monitoring")
+        if (
+            hasattr(Quartz, "CGPreflightPostEventAccess")
+            and not Quartz.CGPreflightPostEventAccess()
+        ):
+            missing_permissions.append("Accessibility")
 
-        # Clear virtual key code
-        if IS_MACOS and isinstance(key, KeyCode) and key.vk is not None:
-            self._pressed_vks.discard(key.vk)
+        if missing_permissions:
+            self._running = False
+            self._started_event.set()
+            logger.error(
+                "Native hotkeys unavailable. Missing permission(s): "
+                f"{', '.join(missing_permissions)}."
+            )
+            return
 
-        # Reset 'is_pressed' for hotkeys containing this key
+        mask = (
+            Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown)
+            | Quartz.CGEventMaskBit(Quartz.kCGEventKeyUp)
+            | Quartz.CGEventMaskBit(Quartz.kCGEventFlagsChanged)
+        )
+
+        self._tap_callback = self._handle_event
+        self._event_tap = Quartz.CGEventTapCreate(
+            Quartz.kCGSessionEventTap,
+            Quartz.kCGHeadInsertEventTap,
+            Quartz.kCGEventTapOptionDefault,
+            mask,
+            self._tap_callback,
+            None,
+        )
+
+        if self._event_tap is None:
+            self._running = False
+            self._started_event.set()
+            logger.error(
+                "Could not create native hotkey event tap. "
+                "Grant Accessibility and Input Monitoring permissions, then restart LingoFlow."
+            )
+            return
+
+        self._run_loop = Quartz.CFRunLoopGetCurrent()
+        self._run_loop_source = Quartz.CFMachPortCreateRunLoopSource(None, self._event_tap, 0)
+        Quartz.CFRunLoopAddSource(
+            self._run_loop,
+            self._run_loop_source,
+            Quartz.kCFRunLoopCommonModes,
+        )
+        Quartz.CGEventTapEnable(self._event_tap, True)
+        self._running = True
+        self._started_event.set()
+
+        logger.info("Native macOS hotkey listener started")
+        Quartz.CFRunLoopRun()
+
+        if self._run_loop and self._run_loop_source:
+            Quartz.CFRunLoopRemoveSource(
+                self._run_loop,
+                self._run_loop_source,
+                Quartz.kCFRunLoopCommonModes,
+            )
+        self._running = False
+
+    def _handle_event(self, proxy, event_type, event, refcon):
+        """Handle keyboard events from Quartz."""
+        if event_type in (
+            Quartz.kCGEventTapDisabledByTimeout,
+            Quartz.kCGEventTapDisabledByUserInput,
+        ):
+            if self._event_tap is not None:
+                Quartz.CGEventTapEnable(self._event_tap, True)
+            return event
+
+        if event_type == Quartz.kCGEventFlagsChanged:
+            self._dispatch_ready_pending_actions(Quartz.CGEventGetFlags(event))
+            return event
+
+        if event_type not in (Quartz.kCGEventKeyDown, Quartz.kCGEventKeyUp):
+            return event
+
+        key_code = Quartz.CGEventGetIntegerValueField(event, Quartz.kCGKeyboardEventKeycode)
+        flags = Quartz.CGEventGetFlags(event)
+
+        if event_type == Quartz.kCGEventKeyDown:
+            return None if self._handle_key_down(key_code, flags) else event
+
+        return None if self._handle_key_up(key_code, flags) else event
+
+    def _handle_key_down(self, key_code: int, flags: int) -> bool:
+        """Return True when the key event should be consumed."""
         with self._lock:
+            if key_code in self._active_key_actions:
+                return True
+
             for hotkey in self._hotkeys.values():
-                if canonical_key in hotkey.keys:
-                    hotkey.is_pressed = False
-                # Also check vitural key code
-                if IS_MACOS and isinstance(key, KeyCode) and key.vk is not None:
-                    if self._vk_matches_any_key(key.vk, hotkey.keys):
-                        hotkey.is_pressed = False
-    
-    def _check_hotkeys(self) -> None: 
-        """Check if any registered hotkey is pressed."""
-        with self._lock:
-            for action, hotkey in self._hotkeys.items():
-                if self._hotkey_matches(hotkey.keys):
-                    # Prevent repeat triggering while held
-                    if not hotkey.is_pressed:
-                        hotkey.is_pressed = True
-                        logger.debug(f"Hotkey triggered: {hotkey.key_string}: {action.value}")
-
-                        threading.Thread(
-                            target=self._safe_callback,
-                            args=(hotkey.callback, action),
-                            daemon=True,
-                        ).start()
-    
-    def _hotkey_matches(self, required_keys: frozenset) -> bool:
-        """
-        Check if required keys are currently pressed.
-        
-        On macOS, uses virtual key codes to handle Option+letter combinations.
-        """
-        for required_key in required_keys:
-            if required_key in self._pressed_keys:
-                # Direct match (works for modifiers and regular keys)
-                continue
-            elif IS_MACOS and isinstance(required_key, KeyCode):
-                # On macOS, check if the virtual key code matches
-                if required_key.char and required_key.char.lower() in LETTER_TO_MACOS_VK:
-                    expected_vk = LETTER_TO_MACOS_VK[required_key.char.lower()]
-                    if expected_vk in self._pressed_vks:
-                        continue
-                # Also check by vk directly
-                if required_key.vk is not None and required_key.vk in self._pressed_vks:
-                    continue
-            # Key not matched
-            return False
-        return True
-    
-    def _vk_matches_any_key(self, vk: int, keys: frozenset) -> bool:
-        """Check if a virtual key code matches any key in the set."""
-        for key in keys:
-            if isinstance(key, KeyCode):
-                if key.vk == vk:
+                if hotkey.key_code == key_code and self._modifiers_match(flags, hotkey.modifiers):
+                    self._active_key_actions[key_code] = hotkey.action
                     return True
-                if key.char and key.char.lower() in LETTER_TO_MACOS_VK:
-                    if LETTER_TO_MACOS_VK[key.char.lower()] == vk:
-                        return True
+
         return False
-    
-    def _safe_callback(self, callback: Callable, action: HotkeyAction) -> None:
-        """Execute callback safely with error handling."""
-        try: 
+
+    def _handle_key_up(self, key_code: int, flags: int) -> bool:
+        """Return True when the key event should be consumed."""
+        with self._lock:
+            action = self._active_key_actions.pop(key_code, None)
+            if action is None:
+                return False
+
+            hotkey = self._hotkeys.get(action)
+            if hotkey is None:
+                return True
+
+            if self._modifiers_released(flags, hotkey.modifiers):
+                self._dispatch(hotkey)
+            else:
+                self._pending_actions[action] = hotkey
+            return True
+
+    def _dispatch_ready_pending_actions(self, flags: int) -> None:
+        """Dispatch actions whose modifiers have been released."""
+        ready = []
+        with self._lock:
+            for action, hotkey in list(self._pending_actions.items()):
+                if self._modifiers_released(flags, hotkey.modifiers):
+                    ready.append(hotkey)
+                    del self._pending_actions[action]
+
+        for hotkey in ready:
+            self._dispatch(hotkey)
+
+    def _dispatch(self, hotkey: Hotkey) -> None:
+        """Run a hotkey callback outside the event tap callback."""
+        logger.debug(f"Hotkey triggered: {hotkey.key_string}: {hotkey.action.value}")
+        threading.Thread(
+            target=self._safe_callback,
+            args=(hotkey.callback, hotkey.action),
+            daemon=True,
+        ).start()
+
+    def _safe_callback(self, callback: Callable[[], None], action: HotkeyAction) -> None:
+        """Execute a callback with logging."""
+        try:
             callback()
         except Exception as e:
             logger.error(f"Error in hotkey callback for {action.value}: {e}")
-    
-    def _format_hotkey_display(self, hotkey_str: str) -> str:
-        """
-        Format hotkey string for display. 
 
-        Converts "<alt>+d" to "Alt + D" for UI display. 
-        """
-        # Simple formatting for common cases
-        display = hotkey_str
-        replacements = [
-            ("<alt>", "Alt"),
-            ("<ctrl>", "Ctrl"),
-            ("<cmd>", "Cmd"),
-            ("<shift>", "Shift"),
-            ("<space>", "Space"),
-            ("<enter>", "Enter"),
+    def _parse_hotkey(self, hotkey_str: str) -> tuple[int, int]:
+        """Parse '<alt>+d' style settings into a macOS key code and modifier mask."""
+        tokens = [token.strip().lower() for token in hotkey_str.split("+") if token.strip()]
+        if not tokens:
+            raise ValueError("empty hotkey")
+
+        modifiers = 0
+        key_code = None
+        for token in tokens:
+            token = token.removeprefix("<").removesuffix(">")
+            if token in MODIFIER_FLAGS:
+                modifiers |= MODIFIER_FLAGS[token]
+            elif token in KEY_CODES:
+                if key_code is not None:
+                    raise ValueError("hotkey can contain only one non-modifier key")
+                key_code = KEY_CODES[token]
+            else:
+                raise ValueError(f"unsupported key token '{token}'")
+
+        if key_code is None:
+            raise ValueError("hotkey must include a non-modifier key")
+        if modifiers == 0:
+            raise ValueError("hotkey must include at least one modifier")
+
+        return key_code, modifiers
+
+    def _modifiers_match(self, flags: int, required_modifiers: int) -> bool:
+        """Return whether the required modifiers are currently held."""
+        return (flags & required_modifiers) == required_modifiers
+
+    def _modifiers_released(self, flags: int, required_modifiers: int) -> bool:
+        """Return whether all modifiers needed by a hotkey have been released."""
+        return (flags & required_modifiers) == 0
+
+    def _format_hotkey_display(self, hotkey_str: str) -> str:
+        """Format '<alt>+d' as 'Option+D' for menus and settings."""
+        try:
+            key_code, modifiers = self._parse_hotkey(hotkey_str)
+        except ValueError:
+            return hotkey_str
+
+        parts = [
+            label
+            for flag, label in MODIFIER_DISPLAY.items()
+            if modifiers & flag
         ]
-        for old, new in replacements:
-            display = display.replace(old, new)
-        
-        # Capitialize letter keys
-        parts = display.split("+")
-        parts = [p.capitalize() if len(p)==1 else p for p in parts]
+        key = next((name for name, code in KEY_CODES.items() if code == key_code), str(key_code))
+        parts.append(key.upper() if len(key) == 1 else key.capitalize())
         return "+".join(parts)
 
-    # ==========================================================
-    # Convenience Function
-    # ==========================================================
 
 def create_default_hotkey_manager(
-    on_translate: Callable[[], None], 
-    on_ocr: Callable[[], None], 
+    on_translate: Callable[[], None],
+    on_ocr: Callable[[], None],
     settings: Optional[AppSettings] = None,
 ) -> HotkeyManager:
-    """
-    Create a hotkey manager with default bindings. 
-
-    Args:
-        on_translate: Callback for translate hotkey. 
-        on_ocr: Callback for OCR hotkey
-        settings: App settings (optional)
-    
-    Returns:
-        Configured HotkeyManager ready to start. 
-    """
+    """Create the app's default hotkey manager."""
     settings = settings or AppSettings.load()
     manager = HotkeyManager(settings=settings)
 
@@ -408,7 +473,6 @@ def create_default_hotkey_manager(
         on_translate,
         description="Translate selected text",
     )
-
     manager.register(
         HotkeyAction.OCR,
         settings.hotkeys.ocr,

@@ -2,13 +2,11 @@
 OCR service for LingoFlow. 
 
 Handles screen capture and text extraction. 
-- macOS: Uses Apple Vision framework
-- Windows: Placeholder for future implementation, perhaps using Tesseract OCR
+Uses Apple Vision and macOS screencapture.
 """
 
 import subprocess
 import tempfile
-import platform
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple, List
@@ -20,15 +18,12 @@ from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-if platform.system() == "Darwin":
-    try:
-        import Vision
-        from Cocoa import NSURL
-        VISION_AVAILABLE = True
-    except ImportError:
-        logger.warning("PyObjc not installed. Run: pip install pyobjc-framework-Vision")
-        VISION_AVAILABLE = False
-else:
+try:
+    import Vision
+    from Cocoa import NSURL
+    VISION_AVAILABLE = True
+except ImportError:
+    logger.warning("PyObjc not installed. Run: pip install pyobjc-framework-Vision")
     VISION_AVAILABLE = False
 
 
@@ -84,11 +79,7 @@ class VisionError(OCRError):
 
 class OCRService:
     """
-    Screen capture and OCR text extraction service
-
-    Platform support:
-    - macOS: Native Apple Vision 
-    - Windows: Implement in future
+    macOS screen capture and OCR text extraction service.
 
     Example: 
         ocr = OCRService()
@@ -101,7 +92,7 @@ class OCRService:
         result = ocr.extract_text(Path("/path/to/image.png"))
     """
     
-    # Language mapping from Teseract codes -> Apple Vision 
+    # Language mapping from app settings codes to Apple Vision identifiers.
     LANGUAGE_MAP = {
         "eng": ["en-US"],
         "chi_sim": ["zh-Hans"],
@@ -129,14 +120,13 @@ class OCRService:
         self.settings = settings or AppSettings.load()
         self._temp_dir = Path(tempfile.gettempdir()) / "lingoflow"
         self._temp_dir.mkdir(exist_ok=True)
-        self._system = platform.system()
 
         # Verify OCR backend availability
         self._verify_ocr_backend()
 
         logger.info(
-            f"OCRService initialized on {self._system}"
-            f"language: {self.settings.ocr.language}"
+            "OCRService initialized "
+            f"(language: {self.settings.ocr.language})"
         )
 
     #==========================================================
@@ -147,7 +137,7 @@ class OCRService:
         """
         Extract text from an image file. 
 
-        Uses Apple Vision on macOS
+        Uses Apple Vision.
 
         Args:
             image_path: Path to the image_file
@@ -165,21 +155,10 @@ class OCRService:
             )
         
         try:
-            if self._system == "Darwin":
-                return self._extract_text_apple_vision(image_path)
-            elif self._system == "Linux":
-                return self._extract_text_linux(image_path)
-            elif self._system =="Windows":
-                return self._extract_text_windows(image_path)
-            else:
-                return OCRResult(
-                    text="",
-                    success=False,
-                    error_message=f"Unsupported platform: {self._system}",
-                )
+            return self._extract_text_apple_vision(image_path)
         except Exception as e:
             logger.error(f"OCR extraction failed: {e}")
-            return OCRResult(text="", success=False, error_message=e)
+            return OCRResult(text="", success=False, error_message=str(e))
     
     def capture_screen_region(self, region: CaptureRegion) -> Path:
         """
@@ -198,16 +177,9 @@ class OCRService:
 
         logger.debug(f"Capturing region: {region}")
 
-        try: 
-            if self._system == "Darwin":
-                self._capture_macos(region, output_path)
-            elif self._system == "Linux":
-                self._capture_linux(region, output_path)
-            elif self._system == "Windows":
-                self._capture_windows(region, output_path)
-            else:
-                raise ScreenCaptureError(f"Unsupported platform: {self._system}")
-            
+        try:
+            self._capture_macos(region, output_path)
+
             if not output_path.exists():
                 raise ScreenCaptureError(f"Screenshot file was not created")
         
@@ -226,19 +198,18 @@ class OCRService:
             Path to captured image, or None if canceled
         """
         output_path = self._temp_dir / "capture.png"
+        try:
+            if output_path.exists():
+                output_path.unlink()
+        except OSError as e:
+            logger.warning(f"Could not remove previous capture file: {e}")
 
         logger.info("Starting interactive screen capture")
 
         try:
-            if self._system == "Darwin": 
-                return self._capture_interactive_macos(output_path)
-            elif self._system == "Linux":
-                return self._capture_interactive_linux(output_path)
-            elif self._system == "Windows":
-                return self._capture_interactive_windows(output_path)
-            else:
-                logger.error(f"Unsupported platform: {self._system}")
-                return None
+            return self._capture_interactive_macos(output_path)
+        except ScreenCaptureError:
+            raise
         except Exception as e:
             logger.error(f"Interactive capture failed: {e}")
             return None
@@ -277,12 +248,7 @@ class OCRService:
         Returns: 
             List of language codes
         """
-        if self._system == "Darwin":
-            # apple vision supports natively
-            return list(self.LANGUAGE_MAP.keys())
-        else:
-            # TODO: Query Tesseract for available languages
-            return []
+        return list(self.LANGUAGE_MAP.keys())
     
     def update_settings(self, settings: AppSettings) -> None:
         """Update service with new settings"""
@@ -298,8 +264,7 @@ class OCRService:
         """
         Extract text using Apple's Vision framework.
         
-        Provides excellent accuracy for CJK (Chinese, Japanese, Korean) text
-        without requiring Tesseract installation.
+        Provides strong accuracy for CJK (Chinese, Japanese, Korean) text.
         """
         if not VISION_AVAILABLE:
             return OCRResult(
@@ -404,93 +369,79 @@ class OCRService:
         """
         Capture screen region on macOS using screencapture.
         """
-        subprocess.run(
-            [
-                "screencapture",
-                "-x",
-                "-R", f"{region.x}, {region.y}, {region.width}, {region.height}",
-                str(output_path)
-            ],
-            check=True,
-        )
+        try:
+            result = subprocess.run(
+                [
+                    "screencapture",
+                    "-x",
+                    "-R", f"{region.x}, {region.y}, {region.width}, {region.height}",
+                    str(output_path)
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10.0,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise ScreenCaptureError(
+                "Screen capture timed out. Check macOS Screen Recording permission."
+            ) from e
+
+        if result.returncode != 0:
+            raise ScreenCaptureError(self._format_macos_capture_error(result.stderr))
 
     def _capture_interactive_macos(self, output_path: Path) -> Optional[Path]:
         """
         Interactive screen capture on macOS. 
         """
-        subprocess.run(
-            ["screencapture", "-i", "-s", "-x", str(output_path)]
-        )
+        try:
+            result = subprocess.run(
+                ["screencapture", "-i", "-s", "-x", str(output_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=120.0,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise ScreenCaptureError("Screen capture timed out.") from e
 
         if output_path.exists():
             logger.info(f"Interactive capture saved: {output_path}")
             return output_path
-        else:
-            logger.info(f"Interactive capture cancelled by user")
-    
-    #==========================================================
-    # Linux
-    #==========================================================
-    def _extract_text_linux(self, image_path: Path) -> OCRResult:
-        """Extract text on Linux. TODO: Implement with Tesseract."""
-        # TODO: Implement Tesseract-based OCR for Linux
-        return OCRResult(
-            text="",
-            success=False,
-            error_message="Linux OCR not yet implemented",
-        )
 
-    def _capture_linux(self, region: CaptureRegion, output_path: Path) -> None:
-        """Capture screen region on Linux. TODO: Implement."""
-        # TODO: Implement with gnome-screenshot or scrot
-        raise ScreenCaptureError("Linux screen capture not yet implemented")
+        stderr = result.stderr.strip() if result.stderr else ""
+        if result.returncode != 0 and stderr:
+            raise ScreenCaptureError(self._format_macos_capture_error(stderr))
 
-    def _capture_interactive_linux(self, output_path: Path) -> Optional[Path]:
-        """Interactive capture on Linux. TODO: Implement."""
-        # TODO: Implement with gnome-screenshot or scrot
-        logger.error("Linux interactive capture not yet implemented")
+        logger.info("Interactive capture cancelled by user")
         return None
     
-    # =============================================================================
-    # Windows: Placeholder Implementation
-    # =============================================================================
-
-    def _extract_text_windows(self, image_path: Path) -> OCRResult:
-        """Extract text on Windows. TODO: Implement with Tesseract or Windows OCR."""
-        # TODO: Implement with Tesseract or Windows.Media.Ocr
-        return OCRResult(
-            text="",
-            success=False,
-            error_message="Windows OCR not yet implemented",
-        )
-
-    def _capture_windows(self, region: CaptureRegion, output_path: Path) -> None:
-        """Capture screen region on Windows. TODO: Implement."""
-        # TODO: Implement with PowerShell or pyautogui
-        raise ScreenCaptureError("Windows screen capture not yet implemented")
-
-    def _capture_interactive_windows(self, output_path: Path) -> Optional[Path]:
-        """Interactive capture on Windows. TODO: Implement."""
-        # TODO: Implement with Snipping Tool or similar
-        logger.error("Windows interactive capture not yet implemented")
-        return None
-
     #==========================================================
     # Utility Methods
     #==========================================================
 
     def _verify_ocr_backend(self) -> None:
-        """Verify OCR backend is avaiable for current platform"""
-        if self._system == "Darwin":
-            if VISION_AVAILABLE:
-                logger.debug("Apple Vision framework avaiable")
-            else:
-                logger.warning(
-                    "Apple Vision not available. "
-                    "Install PyObjC: pip install pyobjc-framework-Vision"
-                )
+        """Verify Apple Vision is available."""
+        if VISION_AVAILABLE:
+            logger.debug("Apple Vision framework available")
         else:
-            logger.info(f"OCR not yet implemented for {self._system}")
+            logger.warning(
+                "Apple Vision not available. "
+                "Install PyObjC: pip install pyobjc-framework-Vision"
+            )
+
+    def _format_macos_capture_error(self, stderr: str) -> str:
+        """Return a user-facing macOS screen capture error."""
+        detail = stderr.strip() if stderr else "Unknown screencapture error"
+        lower_detail = detail.lower()
+
+        if "not authorized" in lower_detail or "permission" in lower_detail:
+            return (
+                "Screen capture is not authorized. "
+                "Grant Screen Recording permission to LingoFlow, then restart the app."
+            )
+
+        return f"Screen capture failed: {detail}"
         
     def _preprocess_image(self, image: Image.Image) -> Image.Image:
         """
@@ -522,7 +473,5 @@ class OCRService:
             )
             image = image.resize(new_size, Image.Resampling.LANCZOS)
             logger.debug(f"Scaled image to {new_size}")
-        
-        return image
 
-        
+        return image

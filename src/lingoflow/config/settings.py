@@ -102,11 +102,19 @@ class OCRSettings(BaseModel):
 
     language: str = Field(
         default="eng+chi_sim",
-        description="Tesseract language codes (e.g., 'eng', 'chi_sim', 'eng+chi_sim')",
+        description="OCR language code (e.g., 'eng', 'chi_sim', 'eng+chi_sim')",
     )
     enhance_image: bool = Field(
         default=True, 
         description="Apply image enhancement before OCR",
+    )
+
+class OnboardingSettings(BaseModel):
+    """First-run onboarding state."""
+
+    completed: bool = Field(
+        default=False,
+        description="Whether the first-run setup has completed successfully.",
     )
 
 # ===========================================================
@@ -125,6 +133,7 @@ class AppSettings(BaseModel):
     translation: TranslationSettings = Field(default_factory=TranslationSettings)
     ui: UISettings = Field(default_factory=UISettings)
     ocr: OCRSettings = Field(default_factory=OCRSettings)
+    onboarding: OnboardingSettings = Field(default_factory=OnboardingSettings)
 
     #=========================================================
     # Persistence Methods

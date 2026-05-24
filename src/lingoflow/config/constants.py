@@ -4,13 +4,17 @@ Application-wide constants.
 All magic strings, default values, and configuration constants live here. 
 """
 
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 # ===========================================================
 # Application Metadata
 # ===========================================================
 APP_NAME = "LingoFlow"
-APP_VERSION = "1.0.0"
+try:
+    APP_VERSION = version("lingoflow")
+except PackageNotFoundError:
+    APP_VERSION = "0.1.0"
 APP_AUTHOR = "Shoucong Jiao"
 
 # ===========================================================

@@ -44,6 +44,10 @@ def check_dependencies() -> bool:
     """
     logger = get_logger(__name__)
     all_good = True
+
+    if platform.system() != "Darwin":
+        logger.error("LingoFlow currently requires macOS.")
+        all_good = False
     
     # Check PyQt6
     try:
@@ -53,12 +57,12 @@ def check_dependencies() -> bool:
         logger.error("PyQt6 not found. Install with: pip install PyQt6")
         all_good = False
     
-    # Check pynput
+    # Check Quartz native event tap support
     try:
-        from pynput import keyboard
-        logger.debug("pynput: OK")
+        import Quartz
+        logger.debug("Quartz: OK")
     except ImportError:
-        logger.error("pynput not found. Install with: pip install pynput")
+        logger.error("Quartz not found. Install with: pip install pyobjc-framework-Quartz")
         all_good = False
     
     # Check httpx
@@ -136,9 +140,6 @@ def main() -> NoReturn:
     
     # Configure macOS
     configure_macos()
-    
-    # Show permission help on first run (macOS)
-    show_permission_help()
     
     # Create Qt application
     app = QApplication(sys.argv)
