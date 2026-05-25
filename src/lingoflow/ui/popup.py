@@ -98,6 +98,11 @@ class TranslationPopup(QWidget):
         self._status_clear_timer = QTimer(self)
         self._status_clear_timer.setSingleShot(True)
         self._status_clear_timer.timeout.connect(self._clear_status)
+        self._outside_click_monitor_timer = QTimer(self)
+        self._outside_click_monitor_timer.setSingleShot(True)
+        self._outside_click_monitor_timer.timeout.connect(
+            self._install_outside_click_monitor
+        )
         
         self._setup_window()
         self._setup_ui()
@@ -430,6 +435,7 @@ class TranslationPopup(QWidget):
 
     def _on_chunk_received(self, chunk: str) -> None:
         """Handle incoming translation chunk."""
+        self._restore_if_translating()
         self._translated_text += chunk
         self.translation_text.insertPlainText(chunk)
         
@@ -496,6 +502,13 @@ class TranslationPopup(QWidget):
         if platform.system() != "Darwin":
             return
 
+        self._outside_click_monitor_timer.start(350)
+
+    def _install_outside_click_monitor(self) -> None:
+        """Install native outside-click monitors after show-time events settle."""
+        if self._closing or not self.isVisible():
+            return
+
         try:
             from AppKit import (
                 NSEvent,
@@ -532,11 +545,11 @@ class TranslationPopup(QWidget):
                 return False
 
         def global_handler(event) -> None:
-            if is_outside_popup():
+            if is_outside_popup() and not self._is_translating:
                 self.outside_clicked.emit()
 
         def local_handler(event):
-            if is_outside_popup():
+            if is_outside_popup() and not self._is_translating:
                 self.outside_clicked.emit()
             return event
 
@@ -558,6 +571,7 @@ class TranslationPopup(QWidget):
 
     def _stop_outside_click_monitor(self) -> None:
         """Remove native outside-click monitors."""
+        self._outside_click_monitor_timer.stop()
         if not self._macos_event_monitors:
             return
 
@@ -643,7 +657,7 @@ class TranslationPopup(QWidget):
 
     def focusOutEvent(self, event) -> None:
         """Handle focus loss — close popup if configured."""
-        if self.settings.ui.hide_on_focus_loss:
+        if self.settings.ui.hide_on_focus_loss and not self._is_translating:
             self.dismiss()
             event.accept()
         else:
@@ -656,14 +670,25 @@ class TranslationPopup(QWidget):
             self.settings.ui.hide_on_focus_loss
             and not self._dismiss_emitted
             and not self._closing
-            and (self._is_translating or bool(self._source_text))
+            and bool(self._source_text)
         ):
-            QTimer.singleShot(0, self.dismiss)
+            if self._is_translating:
+                QTimer.singleShot(0, self._restore_if_translating)
+            else:
+                QTimer.singleShot(0, self.dismiss)
+
+    def _restore_if_translating(self) -> None:
+        """Keep an active translation visible through transient macOS focus churn."""
+        if self._is_translating and not self._closing and not self.isVisible():
+            self.show()
+            self.raise_()
+            self._start_outside_click_monitor()
 
     def closeEvent(self, event) -> None:
         """Handle window close."""
         self._closing = True
         self._status_clear_timer.stop()
+        self._outside_click_monitor_timer.stop()
         self._stop_outside_click_monitor()
         should_emit_closed = (
             not self._dismiss_emitted

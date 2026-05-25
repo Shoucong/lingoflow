@@ -8,11 +8,13 @@ This is the central hub that connects:
 - Settings dialog (configuration)
 """
 
-import threading
 import platform
+import shlex
+import sys
+import threading
 from typing import Optional
 
-from PyQt6.QtCore import pyqtSignal, QObject, QTimer
+from PyQt6.QtCore import pyqtSignal, QObject, QProcess, QTimer
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtWidgets import (
     QApplication,
@@ -92,6 +94,7 @@ class MainController(QObject):
         self.popup: Optional[TranslationPopup] = None
         self.tray_icon: Optional[QSystemTrayIcon] = None
         self._settings_dialog: Optional[SettingsDialog] = None
+        self._onboarding_dialog: Optional[OnboardingDialog] = None
         
         # State
         self._is_translating = False
@@ -594,6 +597,11 @@ class MainController(QObject):
 
     def handle_external_launch(self) -> None:
         """Handle a second launch while this instance is already running."""
+        if self._onboarding_dialog:
+            self._activate_app_for_dialog()
+            self._onboarding_dialog.show_for_user()
+            return
+
         if self._settings_dialog_open:
             self._raise_dialog(self._settings_dialog)
             return
@@ -677,13 +685,28 @@ class MainController(QObject):
         if not self.permission_service:
             return
 
+        if self._onboarding_dialog:
+            self._activate_app_for_dialog()
+            self._onboarding_dialog.show_for_user()
+            return
+
         permissions_ready = self.permission_service.required_permissions_ready()
         if not force and self.settings.onboarding.completed and permissions_ready:
             return
 
         dialog = OnboardingDialog(self.permission_service)
-        dialog.exec()
+        self._onboarding_dialog = dialog
+        dialog.finished.connect(lambda _: self._on_onboarding_finished(dialog))
+        dialog.restart_requested.connect(self._restart_app)
+        self._activate_app_for_dialog()
+        dialog.show_for_user()
 
+    def _on_onboarding_finished(self, dialog: OnboardingDialog) -> None:
+        """Persist first-run setup state after the setup window closes."""
+        if dialog is not self._onboarding_dialog:
+            return
+
+        self._onboarding_dialog = None
         if dialog.completed_successfully:
             self.settings.onboarding.completed = True
             try:
@@ -691,6 +714,10 @@ class MainController(QObject):
             except Exception as e:
                 logger.warning(f"Could not save onboarding state: {e}")
             logger.info("Onboarding completed")
+            if not self.hotkey_manager.is_running():
+                self._start_hotkeys()
+
+        dialog.deleteLater()
 
     def _show_about(self) -> None:
         """Show about dialog."""
@@ -707,6 +734,27 @@ class MainController(QObject):
             f"<p>• {self._format_hotkey('ocr')} - OCR screenshot</p>"
         )
 
+    def _restart_app(self) -> None:
+        """Best-effort restart after macOS privacy permission changes."""
+        logger.info("Restarting application after permission setup")
+        if platform.system() == "Darwin":
+            try:
+                from Foundation import NSBundle
+
+                bundle_path = str(NSBundle.mainBundle().bundlePath())
+                if bundle_path.endswith(".app"):
+                    command = f"sleep 0.8; /usr/bin/open {shlex.quote(bundle_path)}"
+                    QProcess.startDetached("/bin/sh", ["-c", command])
+            except Exception as e:
+                logger.warning(f"Could not schedule app relaunch: {e}")
+        elif sys.argv:
+            command = "sleep 0.8; " + " ".join(
+                shlex.quote(arg) for arg in [sys.executable, *sys.argv]
+            )
+            QProcess.startDetached("/bin/sh", ["-c", command])
+
+        self._quit()
+
     def _quit(self) -> None:
         """Quit the application."""
         logger.info("Quitting application")
@@ -721,6 +769,10 @@ class MainController(QObject):
         # Hide tray icon
         if self.tray_icon:
             self.tray_icon.hide()
+
+        if self._onboarding_dialog:
+            self._onboarding_dialog.close()
+            self._onboarding_dialog = None
         
         # Quit application
         QApplication.quit()

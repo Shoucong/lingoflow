@@ -2,7 +2,7 @@
 First-run onboarding for macOS permissions.
 """
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -28,10 +28,14 @@ logger = get_logger(__name__)
 class OnboardingDialog(QDialog):
     """Guide the user through required macOS permissions."""
 
+    restart_requested = pyqtSignal()
+
     def __init__(self, permission_service: MacOSPermissionService, parent=None):
         super().__init__(parent)
         self.permission_service = permission_service
         self.completed_successfully = False
+        self._pending_permission_request = False
+        self._restart_required = False
         self._rows: dict[str, dict[str, QLabel | QPushButton]] = {}
 
         self._setup_window()
@@ -42,7 +46,8 @@ class OnboardingDialog(QDialog):
         """Configure dialog window."""
         self.setWindowTitle("Set up LingoFlow")
         self.setMinimumWidth(620)
-        self.setModal(True)
+        self.setModal(False)
+        self.setWindowModality(Qt.WindowModality.NonModal)
 
     def _setup_ui(self) -> None:
         """Build dialog UI."""
@@ -65,12 +70,14 @@ class OnboardingDialog(QDialog):
         self.permission_grid.setVerticalSpacing(10)
         layout.addLayout(self.permission_grid)
 
-        note = QLabel(
-            "After changing permissions in System Settings, restart LingoFlow if macOS asks you to."
+        self.restart_note = QLabel(
+            "After changing macOS permissions, restart LingoFlow. Recheck can still "
+            "show stale results until the restarted app receives the new permission state."
         )
-        note.setWordWrap(True)
-        note.setStyleSheet("color: gray;")
-        layout.addWidget(note)
+        self.restart_note.setWordWrap(True)
+        self.restart_note.setStyleSheet("color: #9a6500;")
+        self.restart_note.setVisible(False)
+        layout.addWidget(self.restart_note)
 
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
@@ -83,6 +90,11 @@ class OnboardingDialog(QDialog):
         button_layout.addWidget(self.recheck_btn)
 
         button_layout.addStretch()
+
+        self.restart_btn = QPushButton("Restart LingoFlow")
+        self.restart_btn.clicked.connect(self.restart_requested.emit)
+        self.restart_btn.setVisible(False)
+        button_layout.addWidget(self.restart_btn)
 
         self.skip_btn = QPushButton("Continue Later")
         self.skip_btn.clicked.connect(self.reject)
@@ -105,7 +117,20 @@ class OnboardingDialog(QDialog):
             self._update_row(check)
 
         ready = all(check.is_ready for check in checks)
-        self.continue_btn.setText("Continue" if ready else "Continue Anyway")
+        if self._restart_required:
+            self.recheck_btn.setText("Recheck after restart")
+            self.recheck_btn.setEnabled(False)
+            self.restart_btn.setVisible(True)
+            self.restart_note.setVisible(True)
+            self.continue_btn.setText("Restart Required")
+            self.continue_btn.setEnabled(False)
+        else:
+            self.recheck_btn.setText("Recheck")
+            self.recheck_btn.setEnabled(True)
+            self.restart_btn.setVisible(False)
+            self.restart_note.setVisible(False)
+            self.continue_btn.setText("Continue" if ready else "Continue Anyway")
+            self.continue_btn.setEnabled(True)
 
     def _create_row(self, row: int, check: PermissionCheck) -> None:
         """Create one permission row."""
@@ -122,7 +147,9 @@ class OnboardingDialog(QDialog):
         request_btn.clicked.connect(lambda _, key=check.key: self._request_permission(key))
 
         settings_btn = QPushButton("Open Settings")
-        settings_btn.clicked.connect(lambda _, url=check.settings_url: self.permission_service.open_settings(url))
+        settings_btn.clicked.connect(
+            lambda _, key=check.key, url=check.settings_url: self._open_settings(key, url)
+        )
 
         self.permission_grid.addWidget(status_label, row, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.permission_grid.addWidget(name_label, row, 1, alignment=Qt.AlignmentFlag.AlignTop)
@@ -162,9 +189,16 @@ class OnboardingDialog(QDialog):
 
     def _request_permission(self, key: str) -> None:
         """Ask macOS for a permission prompt where supported."""
+        self._mark_restart_required()
+        self._pending_permission_request = True
         self.hide()
         QApplication.processEvents()
+        self._hide_app_for_system_prompt()
 
+        QTimer.singleShot(250, lambda: self._perform_permission_request(key))
+
+    def _perform_permission_request(self, key: str) -> None:
+        """Request permission after Qt has hidden the onboarding window."""
         if key == "accessibility":
             self.permission_service.request_accessibility()
         elif key == "input_monitoring":
@@ -172,10 +206,46 @@ class OnboardingDialog(QDialog):
         elif key == "screen_recording":
             self.permission_service.request_screen_recording()
 
-        QTimer.singleShot(1500, self._show_after_permission_request)
+        QTimer.singleShot(3000, self._refresh_after_permission_request)
 
-    def _show_after_permission_request(self) -> None:
-        """Bring setup back after macOS has had a chance to show its prompt."""
+    def _open_settings(self, key: str, url: str) -> None:
+        """Open System Settings for manual permission changes."""
+        self._mark_restart_required()
+        self.hide()
+        QApplication.processEvents()
+        self._hide_app_for_system_prompt()
+        QTimer.singleShot(250, lambda: self.permission_service.open_settings(url))
+        logger.info(f"Opened macOS permission settings for {key}")
+
+    def _mark_restart_required(self) -> None:
+        """Switch setup into the post-permission-change restart state."""
+        self._restart_required = True
+        self.restart_note.setVisible(True)
+        self.restart_btn.setVisible(True)
+        self.recheck_btn.setText("Recheck after restart")
+        self.recheck_btn.setEnabled(False)
+        self.continue_btn.setText("Restart Required")
+        self.continue_btn.setEnabled(False)
+
+    def _hide_app_for_system_prompt(self) -> None:
+        """Let macOS permission prompts and System Settings take focus."""
+        try:
+            from AppKit import NSApplication
+
+            NSApplication.sharedApplication().hide_(None)
+        except Exception as e:
+            logger.debug(f"Could not hide app before permission prompt: {e}")
+
+    def _refresh_after_permission_request(self) -> None:
+        """Refresh setup quietly without stealing focus from macOS prompts."""
+        if not self._pending_permission_request:
+            return
+
+        self._refresh_checks()
+
+    def show_for_user(self) -> None:
+        """Show setup when the user explicitly opens or returns to it."""
+        self._pending_permission_request = False
         self._refresh_checks()
         self.show()
         self.raise_()
