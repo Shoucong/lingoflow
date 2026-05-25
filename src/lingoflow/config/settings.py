@@ -13,6 +13,7 @@ from lingoflow.config.constants import (
     CONFIG_FILE,
     DEFAULT_MODEL,
     GENERAL_MODEL,
+    LEGACY_CONFIG_FILE,
     DEFAULT_OCR_HOTKEY,
     DEFAULT_OLLAMA_HOST,
     DEFAULT_SOURCE_LANG,
@@ -20,6 +21,7 @@ from lingoflow.config.constants import (
     DEFAULT_TRANSLATE_HOTKEY,
     SUPPORTED_LANGUAGES,
 )
+from lingoflow.utils.logger import get_logger
 
 # ===========================================================
 # Nested Settings Models
@@ -146,14 +148,33 @@ class AppSettings(BaseModel):
 
         Returns default settings if file doesn't exist or is invalid. 
         """
-        if CONFIG_FILE.exists():
+        config_path = CONFIG_FILE if CONFIG_FILE.exists() else None
+        if config_path is None and LEGACY_CONFIG_FILE.exists():
+            config_path = LEGACY_CONFIG_FILE
+
+        if config_path:
             try:
-                json_content = CONFIG_FILE.read_text(encoding="utf-8")
-                return cls.model_validate_json(json_content)
+                json_content = config_path.read_text(encoding="utf-8")
+                settings = cls.model_validate_json(json_content)
             except Exception as e:
-                # Log this once we have logger
-                print(f"Warning: Could not load settings, using defaults. Error: {e}")
+                logger = get_logger(__name__)
+                logger.warning(
+                    f"Could not load settings from {config_path}, using defaults: {e}"
+                )
                 return cls()
+
+            if config_path == LEGACY_CONFIG_FILE and not CONFIG_FILE.exists():
+                try:
+                    settings.save()
+                    logger = get_logger(__name__)
+                    logger.info(
+                        f"Migrated settings from {LEGACY_CONFIG_FILE} to {CONFIG_FILE}"
+                    )
+                except Exception as e:
+                    logger = get_logger(__name__)
+                    logger.warning(f"Could not migrate settings to {CONFIG_FILE}: {e}")
+
+            return settings
         return cls()
     
     def save(self) -> None:

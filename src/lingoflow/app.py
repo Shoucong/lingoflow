@@ -14,7 +14,12 @@ os.environ["QT_LOGGING_RULES"] = "qt.gui.icc=false"
 
 from PyQt6.QtWidgets import QApplication
 
-from lingoflow.config.constants import APP_NAME, APP_VERSION
+from lingoflow.config.constants import (
+    APP_NAME,
+    APP_VERSION,
+    SINGLE_INSTANCE_LOCK,
+    SINGLE_INSTANCE_SOCKET,
+)
 from lingoflow.utils.logger import setup_logging, get_logger
 
 
@@ -152,18 +157,32 @@ def main() -> NoReturn:
     
     # Don't quit when last window closes (we're a tray app)
     app.setQuitOnLastWindowClosed(False)
+
+    from lingoflow.infrastructure.single_instance import SingleInstanceGuard
+
+    single_instance = SingleInstanceGuard(
+        str(SINGLE_INSTANCE_LOCK),
+        str(SINGLE_INSTANCE_SOCKET),
+    )
+    if not single_instance.acquire():
+        single_instance.notify_existing_instance()
+        logger.info("Another LingoFlow instance is already running; exiting")
+        sys.exit(0)
+    single_instance.listen()
     
     # Import here to avoid circular imports
     from lingoflow.ui.main_window import MainController
     
     # Create main controller
     controller = MainController()
+    single_instance.activate_requested.connect(controller.handle_external_launch)
     controller.start()
     
     logger.info("Application started, entering event loop")
     
     # Run the event loop
     exit_code = app.exec()
+    single_instance.release()
     
     logger.info(f"Application exiting with code {exit_code}")
     sys.exit(exit_code)

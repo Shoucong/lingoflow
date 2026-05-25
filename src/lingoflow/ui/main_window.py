@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.config.constants import APP_NAME, APP_VERSION
+from lingoflow.config.constants import APP_ICON_FILE, APP_NAME, APP_VERSION
 from lingoflow.core.hotkey import HotkeyManager, HotkeyAction
 from lingoflow.core.translator import TranslationService
 from lingoflow.core.ocr import OCRService, OCRResult, ScreenCaptureError
@@ -126,11 +126,12 @@ class MainController(QObject):
         """Set up the system tray icon and menu."""
         self.tray_icon = QSystemTrayIcon()
         
-        # Set icon (using a text-based icon for now)
-        # TODO: Replace with actual icon file
-        icon = QApplication.style().standardIcon(
-            QApplication.style().StandardPixmap.SP_ComputerIcon
-        )
+        icon = QIcon(str(APP_ICON_FILE))
+        if icon.isNull():
+            logger.warning(f"Could not load app icon: {APP_ICON_FILE}")
+            icon = QApplication.style().standardIcon(
+                QApplication.style().StandardPixmap.SP_ComputerIcon
+            )
         self.tray_icon.setIcon(icon)
         self.tray_icon.setToolTip(f"{APP_NAME} - Ready")
         
@@ -590,6 +591,18 @@ class MainController(QObject):
     def _show_error_dialog(self, title: str, message: str) -> None:
         """Show an error dialog."""
         QMessageBox.critical(None, title, message)
+
+    def handle_external_launch(self) -> None:
+        """Handle a second launch while this instance is already running."""
+        if self._settings_dialog_open:
+            self._raise_dialog(self._settings_dialog)
+            return
+
+        self._activate_app_for_dialog()
+        self._show_notification(
+            f"{APP_NAME} is already running",
+            "Use the menu bar icon to translate, run OCR, or open settings.",
+        )
 
     # -------------------------------------------------------------------------
     # Menu Actions

@@ -14,12 +14,14 @@ ROOT_DIR = Path(SPECPATH).resolve().parents[1]
 ENTRYPOINT = ROOT_DIR / "packaging" / "macos" / "lingoflow_entry.py"
 ENTITLEMENTS = ROOT_DIR / "packaging" / "macos" / "entitlements.plist"
 ICON_PATH = ROOT_DIR / "assets" / "LingoFlow.icns"
+ASSETS_DIR = ROOT_DIR / "assets"
 
 hiddenimports = [
     "ApplicationServices",
     "AppKit",
     "Cocoa",
     "Foundation",
+    "PyQt6.QtNetwork",
     "Quartz",
     "Vision",
     "objc",
@@ -30,7 +32,7 @@ a = Analysis(
     [str(ENTRYPOINT)],
     pathex=[str(ROOT_DIR / "src")],
     binaries=[],
-    datas=[],
+    datas=[(str(ASSETS_DIR), "assets")] if ASSETS_DIR.exists() else [],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -112,9 +114,6 @@ app = BUNDLE(
         "LSApplicationCategoryType": "public.app-category.productivity",
         "LSMinimumSystemVersion": "12.0",
         "LSUIElement": True,
-        "NSAppleEventsUsageDescription": (
-            "LingoFlow uses System Events to copy selected text for translation."
-        ),
         "NSHighResolutionCapable": True,
         "NSHumanReadableCopyright": "Copyright (c) 2026 Shoucong Jiao",
     },

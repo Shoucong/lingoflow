@@ -37,6 +37,9 @@ open dist/LingoFlow.app
 
 The app bundle is configured as a menu bar app, so it should not show a Dock icon when launched from Finder.
 
+Settings are stored in `~/Library/Application Support/LingoFlow/settings.json`.
+Logs are written to `~/Library/Logs/LingoFlow/lingoflow.log`.
+
 ## License
 
 MIT

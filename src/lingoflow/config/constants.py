@@ -4,6 +4,7 @@ Application-wide constants.
 All magic strings, default values, and configuration constants live here. 
 """
 
+import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -16,15 +17,34 @@ try:
 except PackageNotFoundError:
     APP_VERSION = "0.1.0"
 APP_AUTHOR = "Shoucong Jiao"
+BUNDLE_IDENTIFIER = "com.shoucong.lingoflow"
 
 # ===========================================================
 # Paths
 # ===========================================================
-# User config directory
-CONFIG_DIR = Path.home() / ".config" / "lingoflow"
+# Native macOS app directories. Keep the legacy path only for one-time
+# migration from earlier terminal-focused builds.
+APP_SUPPORT_DIR = Path.home() / "Library" / "Application Support" / APP_NAME
+CONFIG_DIR = APP_SUPPORT_DIR
 CONFIG_FILE = CONFIG_DIR / "settings.json"
-LOG_DIR = CONFIG_DIR / "logs"
+LOG_DIR = Path.home() / "Library" / "Logs" / APP_NAME
 LOG_FILE = LOG_DIR / "lingoflow.log"
+SINGLE_INSTANCE_LOCK = APP_SUPPORT_DIR / f"{BUNDLE_IDENTIFIER}.lock"
+SINGLE_INSTANCE_SOCKET = APP_SUPPORT_DIR / f"{BUNDLE_IDENTIFIER}.socket"
+LEGACY_CONFIG_DIR = Path.home() / ".config" / "lingoflow"
+LEGACY_CONFIG_FILE = LEGACY_CONFIG_DIR / "settings.json"
+
+
+def resource_path(*parts: str) -> Path:
+    """Return a resource path in source checkout or PyInstaller bundle."""
+    bundled_root = getattr(sys, "_MEIPASS", None)
+    if bundled_root:
+        return Path(bundled_root).joinpath(*parts)
+    return Path(__file__).resolve().parents[3].joinpath(*parts)
+
+
+ASSETS_DIR = resource_path("assets")
+APP_ICON_FILE = ASSETS_DIR / "LingoFlow.icns"
 
 # ===========================================================
 # Ollama Defaults
