@@ -1,7 +1,7 @@
 """
 Application-wide constants.
 
-All magic strings, default values, and configuration constants live here. 
+All magic strings, default values, and configuration constants live here.
 """
 
 import sys

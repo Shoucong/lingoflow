@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 # Data Classes
 # ===========================================================
 
+
 @dataclass
 class OllamaResponse:
     """Represents a complete (non-streaming) response from Ollama"""
@@ -35,12 +36,14 @@ class OllamaResponse:
     total_duration: Optional[int] = None
     eval_count: Optional[int] = None
 
+
 @dataclass
 class OllamaStreamChunk:
-    """Represents a single chunk from a streaming response. """
+    """Represents a single chunk from a streaming response."""
 
     content: str
     done: bool
+
 
 @dataclass
 class OllamaModel:
@@ -50,33 +53,40 @@ class OllamaModel:
     size: int
     modified_at: str
 
+
 # ===========================================================
 # Exceptions
 # ===========================================================
+
 
 class OllamaError(Exception):
     """Base exception for Ollama-related errors."""
 
     pass
 
+
 class OllamaConnectionError(OllamaError):
     """Failed to connect to Ollama server."""
 
     pass
+
 
 class OllamaModelError(OllamaError):
     """Model-related error (not found, failed to load, etc)."""
 
     pass
 
+
 class OllamaTimeoutError(OllamaError):
-    """Request Timed out."""
+    """Request timed out."""
 
     pass
+
 
 # ===========================================================
 # Ollama Client
 # ===========================================================
+
 
 class OllamaClient:
     """
@@ -185,9 +195,7 @@ class OllamaClient:
                                 logger.debug("Streaming complete.")
 
                         except json.JSONDecodeError:
-                            logger.error(
-                                f"Failed to parse stream chunk ({len(line)} chars)"
-                            )
+                            logger.error(f"Failed to parse stream chunk ({len(line)} chars)")
                             continue
         except (OllamaConnectionError, OllamaTimeoutError, OllamaModelError, OllamaError):
             raise
@@ -341,10 +349,8 @@ class OllamaClient:
             raise OllamaTimeoutError("Request to Ollama timed out.") from error
 
         logger.error(f"Ollama connection failed: {error}")
-        raise OllamaConnectionError(
-            f"Cannot connect to Ollama at {self.host}. "
-            "Make sure Ollama is running."
-        ) from error
+        message = f"Cannot connect to Ollama at {self.host}. Make sure Ollama is running."
+        raise OllamaConnectionError(message) from error
 
     def _new_client(self) -> httpx.Client:
         """Create an HTTP client, allowing tests to inject a mock transport."""

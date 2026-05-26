@@ -503,7 +503,7 @@ class MainController(QObject):
             f"<hr>"
             f"<p><b>Hotkeys:</b></p>"
             f"<p>• {self._format_hotkey('translate')} - Translate selected text</p>"
-            f"<p>• {self._format_hotkey('ocr')} - OCR screenshot</p>"
+            f"<p>• {self._format_hotkey('ocr')} - OCR screenshot</p>",
         )
 
     def _restart_app(self) -> None:

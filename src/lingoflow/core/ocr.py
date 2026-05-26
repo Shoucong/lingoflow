@@ -1,14 +1,14 @@
 """
-OCR service for LingoFlow. 
+OCR service for LingoFlow.
 
-Handles screen capture and text extraction. 
+Handles screen capture and text extraction.
 Uses Apple Vision and macOS screencapture.
 """
 
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 from uuid import uuid4
 
 from PIL import Image, ImageEnhance, ImageFilter
@@ -22,18 +22,20 @@ logger = get_logger(__name__)
 try:
     import Vision
     from Cocoa import NSURL
+
     VISION_AVAILABLE = True
 except ImportError:
     logger.warning("PyObjc not installed. Run: pip install pyobjc-framework-Vision")
     VISION_AVAILABLE = False
 
 
-#==========================================================
+# ==========================================================
 # Data Types
-#==========================================================
+# ==========================================================
+
 
 @dataclass
-class CaptureRegion: 
+class CaptureRegion:
     """Represents a screen region to capture"""
 
     x: int
@@ -41,48 +43,55 @@ class CaptureRegion:
     width: int
     height: int
 
-    def to_tuple(self) -> Tuple[int, int ,int ,int]:
+    def to_tuple(self) -> Tuple[int, int, int, int]:
         """Return as (x,y,width,height) tuple"""
         return (self.x, self.y, self.width, self.height)
+
 
 @dataclass
 class OCRResult:
     """Result of an OCR operation."""
 
-    text:str
+    text: str
     confidence: Optional[float] = None
     source_image_path: Optional[str] = None
     success: bool = True
     error_message: Optional[str] = None
 
 
-#==========================================================
+# ==========================================================
 # Exceptions
-#==========================================================
+# ==========================================================
+
 
 class OCRError(Exception):
     """Base exception for OCR operations."""
+
     pass
+
 
 class ScreenCaptureError(OCRError):
     """Failed to capture screen region"""
+
     pass
+
 
 class VisionError(OCRError):
     """Apple Vision framework error."""
+
     pass
 
 
-#==========================================================
-# OCT Service
-#==========================================================
+# ==========================================================
+# OCR Service
+# ==========================================================
 
 
 class OCRService:
     """
     macOS screen capture and OCR text extraction service.
 
-    Example: 
+    Example:
         ocr = OCRService()
 
         # Capture and extract in one step
@@ -92,7 +101,7 @@ class OCRService:
         # Or extract from existing image
         result = ocr.extract_text(Path("/path/to/image.png"))
     """
-    
+
     # Language mapping from app settings codes to Apple Vision identifiers.
     LANGUAGE_MAP = {
         "eng": ["en-US"],
@@ -127,25 +136,22 @@ class OCRService:
         # Verify OCR backend availability
         self._verify_ocr_backend()
 
-        logger.info(
-            "OCRService initialized "
-            f"(language: {self.settings.ocr.language})"
-        )
+        logger.info("OCRService initialized " f"(language: {self.settings.ocr.language})")
 
-    #==========================================================
+    # ==========================================================
     # Public Methods
-    #==========================================================
+    # ==========================================================
 
-    def extract_text(self, image_path: Path) -> OCRResult: 
+    def extract_text(self, image_path: Path) -> OCRResult:
         """
-        Extract text from an image file. 
+        Extract text from an image file.
 
         Uses Apple Vision.
 
         Args:
-            image_path: Path to the image_file
-        
-        Returns: 
+            image_path: Path to the image file
+
+        Returns:
             OCRResult with extracted text
         """
         logger.debug("Extracting text from image")
@@ -156,23 +162,23 @@ class OCRService:
                 success=False,
                 error_message=f"Image file not found: {image_path}",
             )
-        
+
         try:
             return self._extract_text_apple_vision(image_path)
         except Exception as e:
             logger.error(f"OCR extraction failed: {e}")
             return OCRResult(text="", success=False, error_message=str(e))
-    
+
     def capture_screen_region(self, region: CaptureRegion) -> Path:
         """
-        Capture a region of the screen. 
+        Capture a region of the screen.
 
         Args:
             region: Screen region to capture
-        
+
         Returns:
-            Path to the captured image file 
-        
+            Path to the captured image file
+
         Raises:
             ScreenCaptureError: if capture fails
         """
@@ -184,22 +190,22 @@ class OCRService:
             self._capture_macos(region, output_path)
 
             if not output_path.exists():
-                raise ScreenCaptureError(f"Screenshot file was not created")
+                raise ScreenCaptureError("Screenshot file was not created")
 
             self._secure_capture_file(output_path)
-        
+
             logger.info("Screen captured to managed OCR cache")
             return output_path
-        
+
         except Exception as e:
             logger.error(f"Screen capture failed: {e}")
             raise ScreenCaptureError(f"Failed to capture screen: {e}") from e
-        
+
     def capture_interactive(self) -> Optional[Path]:
         """
-        Let user interactively select a screen region to capture. 
+        Let user interactively select a screen region to capture.
 
-        Returns: 
+        Returns:
             Path to captured image, or None if canceled
         """
         output_path = self._new_capture_path()
@@ -212,19 +218,19 @@ class OCRService:
         except Exception as e:
             logger.error(f"Interactive capture failed: {e}")
             return None
-    
+
     def capture_and_extract(self, region: Optional[CaptureRegion] = None) -> OCRResult:
         """
-        Capture screen region and extract text in one step. 
+        Capture screen region and extract text in one step.
 
         Args:
             region: Specific region to capture (interactive if None)
-        
-        Returns: 
+
+        Returns:
             OCRResult with extracted text
         """
         try:
-            if region: 
+            if region:
                 image_path = self.capture_screen_region(region)
             else:
                 image_path = self.capture_interactive()
@@ -234,7 +240,7 @@ class OCRService:
                         success=False,
                         error_message="Screen capture cancelled",
                     )
-            
+
             result = self.extract_text(image_path)
             if self.cleanup_capture(image_path):
                 result.source_image_path = None
@@ -242,16 +248,16 @@ class OCRService:
 
         except ScreenCaptureError as e:
             return OCRResult(text="", success=False, error_message=str(e))
-    
+
     def get_available_languages(self) -> List[str]:
         """
-        Get list of avaiable OCR languages.
+        Get list of available OCR languages.
 
-        Returns: 
+        Returns:
             List of language codes
         """
         return list(self.LANGUAGE_MAP.keys())
-    
+
     def update_settings(self, settings: AppSettings) -> None:
         """Update service with new settings"""
         self.settings = settings
@@ -283,54 +289,55 @@ class OCRService:
         """Remove old managed captures when capture retention is disabled."""
         for capture_path in self._capture_dir.glob("capture-*.png"):
             self.cleanup_capture(capture_path)
-    
 
-    #==========================================================
+    # ==========================================================
     # macOS implementation
-    #==========================================================
+    # ==========================================================
 
     def _extract_text_apple_vision(self, image_path: Path) -> OCRResult:
         """
         Extract text using Apple's Vision framework.
-        
+
         Provides strong accuracy for CJK (Chinese, Japanese, Korean) text.
         """
         if not VISION_AVAILABLE:
             return OCRResult(
                 text="",
                 success=False,
-                error_message="Apple Vision not available. Install: pip install pyobjc-framework-Vision",
+                error_message=(
+                    "Apple Vision not available. " "Install: pip install pyobjc-framework-Vision"
+                ),
             )
 
         try:
             # Create URL for the image
             input_url = NSURL.fileURLWithPath_(str(image_path))
-            
+
             # Create request handler
             request_handler = Vision.VNImageRequestHandler.alloc().initWithURL_options_(
                 input_url, None
             )
-            
+
             # Create text recognition request
             request = Vision.VNRecognizeTextRequest.alloc().init()
-            
+
             # Configure for accuracy (vs speed)
             request.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelAccurate)
             request.setUsesLanguageCorrection_(True)
-            
+
             # Set recognition languages
             apple_languages = self._get_apple_languages()
             request.setRecognitionLanguages_(apple_languages)
-            
+
             logger.debug(f"Vision request with languages: {apple_languages}")
-            
+
             # Perform OCR
             success, error = request_handler.performRequests_error_([request], None)
-            
+
             if not success:
                 error_msg = str(error) if error else "Unknown Vision error"
                 raise VisionError(f"Vision request failed: {error_msg}")
-            
+
             # Extract results
             results = request.results()
             if not results:
@@ -341,11 +348,11 @@ class OCRService:
                     source_image_path=str(image_path),
                     success=True,
                 )
-            
+
             # Collect text and confidence from all observations
             extracted_lines = []
             total_confidence = 0.0
-            
+
             for observation in results:
                 # Get the best candidate for each detected text block
                 candidates = observation.topCandidates_(1)
@@ -353,15 +360,14 @@ class OCRService:
                     candidate = candidates[0]
                     extracted_lines.append(candidate.string())
                     total_confidence += candidate.confidence()
-            
+
             text = "\n".join(extracted_lines)
             avg_confidence = total_confidence / len(results) if results else 0.0
-            
+
             logger.info(
-                f"Apple Vision extracted {len(text)} chars "
-                f"(confidence: {avg_confidence:.2%})"
+                f"Apple Vision extracted {len(text)} chars " f"(confidence: {avg_confidence:.2%})"
             )
-            
+
             return OCRResult(
                 text=text,
                 confidence=avg_confidence,
@@ -374,12 +380,12 @@ class OCRService:
         except Exception as e:
             logger.error(f"Apple Vision error: {e}")
             return OCRResult(text="", success=False, error_message=str(e))
-    
+
     def _get_apple_languages(self) -> List[str]:
         """
-        Get Apple Vision language identifiers from settings. 
+        Get Apple Vision language identifiers from settings.
 
-        Falls back to English + Chinese if language not mapped. 
+        Falls back to English + Chinese if language not mapped.
         """
         lang = self.settings.ocr.language
 
@@ -389,11 +395,11 @@ class OCRService:
         # default
         logger.warning(f"Unknown languages '{lang}', defaulting to en-US + zh-Hans")
         return ["en-US", "zh-Hans"]
-    
-    #==========================================================
+
+    # ==========================================================
     # macOS: Screen Capture
-    #==========================================================
-    
+    # ==========================================================
+
     def _capture_macos(self, region: CaptureRegion, output_path: Path) -> None:
         """
         Capture screen region on macOS using screencapture.
@@ -403,8 +409,9 @@ class OCRService:
                 [
                     "screencapture",
                     "-x",
-                    "-R", f"{region.x}, {region.y}, {region.width}, {region.height}",
-                    str(output_path)
+                    "-R",
+                    f"{region.x}, {region.y}, {region.width}, {region.height}",
+                    str(output_path),
                 ],
                 capture_output=True,
                 text=True,
@@ -421,7 +428,7 @@ class OCRService:
 
     def _capture_interactive_macos(self, output_path: Path) -> Optional[Path]:
         """
-        Interactive screen capture on macOS. 
+        Interactive screen capture on macOS.
         """
         try:
             result = subprocess.run(
@@ -445,10 +452,10 @@ class OCRService:
 
         logger.info("Interactive capture cancelled by user")
         return None
-    
-    #==========================================================
+
+    # ==========================================================
     # Utility Methods
-    #==========================================================
+    # ==========================================================
 
     def _verify_ocr_backend(self) -> None:
         """Verify Apple Vision is available."""
@@ -456,8 +463,7 @@ class OCRService:
             logger.debug("Apple Vision framework available")
         else:
             logger.warning(
-                "Apple Vision not available. "
-                "Install PyObjC: pip install pyobjc-framework-Vision"
+                "Apple Vision not available. " "Install PyObjC: pip install pyobjc-framework-Vision"
             )
 
     def _format_macos_capture_error(self, stderr: str) -> str:
@@ -502,27 +508,27 @@ class OCRService:
             )
         except OSError:
             return False
-        
+
     def _preprocess_image(self, image: Image.Image) -> Image.Image:
         """
         Preprocess image for better OCR accuracy.
-        
+
         Note: Apple Vision typically doesn't need preprocessing,
         but this can be useful for low-quality images.
         """
         logger.debug("Preprocessing image for OCR")
-        
+
         # Convert to grayscale
         if image.mode != "L":
             image = image.convert("L")
-        
+
         # Enhance contrast
         enhancer = ImageEnhance.Contrast(image)
         image = enhancer.enhance(1.5)
-        
+
         # Sharpen
         image = image.filter(ImageFilter.SHARPEN)
-        
+
         # Scale up small images
         min_dimension = min(image.size)
         if min_dimension < 300:

@@ -75,12 +75,10 @@ class MacOSPermissionService:
     def check_accessibility(self) -> PermissionCheck:
         """Check Accessibility permission, used for copying selected text."""
         try:
-            from ApplicationServices import AXIsProcessTrustedWithOptions
             import Quartz
+            from ApplicationServices import AXIsProcessTrustedWithOptions
 
-            ax_granted = bool(
-                AXIsProcessTrustedWithOptions({"AXTrustedCheckOptionPrompt": False})
-            )
+            ax_granted = bool(AXIsProcessTrustedWithOptions({"AXTrustedCheckOptionPrompt": False}))
             post_granted = (
                 bool(Quartz.CGPreflightPostEventAccess())
                 if hasattr(Quartz, "CGPreflightPostEventAccess")
@@ -122,8 +120,8 @@ class MacOSPermissionService:
     def request_accessibility(self) -> None:
         """Ask macOS to show the Accessibility trust prompt when possible."""
         try:
-            from ApplicationServices import AXIsProcessTrustedWithOptions
             import Quartz
+            from ApplicationServices import AXIsProcessTrustedWithOptions
 
             AXIsProcessTrustedWithOptions({"AXTrustedCheckOptionPrompt": True})
             if hasattr(Quartz, "CGRequestPostEventAccess"):

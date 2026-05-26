@@ -1,7 +1,7 @@
 """
-Handles translation service for LingoFlow. 
+Handles translation service for LingoFlow.
 
-Wraps the Ollama client with translation-specific logic. 
+Wraps the Ollama client with translation-specific logic.
 """
 
 from collections.abc import Iterator
@@ -11,10 +11,9 @@ from typing import Callable, Optional
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.infrastructure.ollama_client import (
-    OllamaClient, 
+    OllamaClient,
     OllamaConnectionError,
     OllamaError,
-    OllamaStreamChunk,
 )
 from lingoflow.utils.logger import get_logger
 
@@ -24,19 +23,21 @@ logger = get_logger(__name__)
 # Data Types
 # ==========================================================
 
+
 class TranslationStatus(Enum):
     """Status of a translation operation."""
-    
+
     PENDING = "pending"
     STREAMING = "streaming"
     COMPLETED = "completed"
     ERROR = "error"
     CANCELLED = "cancelled"
 
+
 @dataclass
 class TranslationResult:
     """Complete result of a translation."""
-    
+
     source_text: str
     translated_text: str
     source_language: str
@@ -44,18 +45,21 @@ class TranslationResult:
     status: TranslationStatus
     error_message: Optional[str] = None
 
+
 # ==========================================================
 # Prompt Templates
 # ==========================================================
 
-TRANSLATION_SYSTEM_PROMPT = """You are a professional translator. Your task is to translate text accurately while preserving the original meaning, tone, and style.
-
-Rules:
-1. Translate the text naturally, not word-by-word
-2. Preserve formatting (line breaks, punctuation) when appropriate
-3. Keep proper nouns, brand names, and technical terms as-is when appropriate
-4. Output ONLY the translation, no explanations or notes
-5. If the source text is already in the target language, return it unchanged"""
+TRANSLATION_SYSTEM_PROMPT = (
+    "You are a professional translator. Your task is to translate text accurately "
+    "while preserving the original meaning, tone, and style.\n\n"
+    "Rules:\n"
+    "1. Translate the text naturally, not word-by-word\n"
+    "2. Preserve formatting (line breaks, punctuation) when appropriate\n"
+    "3. Keep proper nouns, brand names, and technical terms as-is when appropriate\n"
+    "4. Output ONLY the translation, no explanations or notes\n"
+    "5. If the source text is already in the target language, return it unchanged"
+)
 
 TRANSLATION_USER_PROMPT = """Translate the following text from {source_lang} to {target_lang}:
 
@@ -65,18 +69,19 @@ TRANSLATION_USER_PROMPT_AUTO = """Translate the following text to {target_lang}:
 
 {text}"""
 
-# Word Looup feature prompts
-WORD_LOOKUP_SYSTEM_PROMPT = """You are a precise dictionary assistant specialized in fuzzy lookups. The user will provide an approximate spelling, a definition, or both.
-
-Your Goal: Identify the word the user is thinking of.
-
-Rules:
-1. Provide EXACTLY 3 distinct suggestions, ranked by likelihood.
-2. If the input is vague, provide the 3 most common guesses.
-3. Format each entry strictly as:
-   [Word] ([Part of Speech]): [Brief Definition]
-4. Do not include introductory text, conversational fillers, or explanations.
-5. Output ONLY the list."""
+# Word lookup feature prompts
+WORD_LOOKUP_SYSTEM_PROMPT = (
+    "You are a precise dictionary assistant specialized in fuzzy lookups. The user "
+    "will provide an approximate spelling, a definition, or both.\n\n"
+    "Your Goal: Identify the word the user is thinking of.\n\n"
+    "Rules:\n"
+    "1. Provide EXACTLY 3 distinct suggestions, ranked by likelihood.\n"
+    "2. If the input is vague, provide the 3 most common guesses.\n"
+    "3. Format each entry strictly as:\n"
+    "   [Word] ([Part of Speech]): [Brief Definition]\n"
+    "4. Do not include introductory text, conversational fillers, or explanations.\n"
+    "5. Output ONLY the list."
+)
 
 WORD_LOOKUP_USER_PROMPT = """Find the word based on these clues:
 - Approximate Spelling: {attempt}
@@ -89,19 +94,20 @@ Output the list now:"""
 # Translation Service
 # ==========================================================
 
+
 class TranslationService:
     """
     Handles prompt construction, language options, and provides both
-    streaming and non-streaming translation methods. 
+    streaming and non-streaming translation methods.
 
     Examples:
         service = TranslationService()
 
         # Streaming (for UI)
-        for chunk in service.translate_steam("Hello world", "Chinese(Simplified)")
+        for chunk in service.translate_stream("Hello world", "Chinese(Simplified)")
             print(chunk, end="", flush=True)
-        
-        # Non-streaming 
+
+        # Non-streaming
         result = service.translate("Hello world", "Chinese(Simplified)")
         print(result.translated_text)
     """
@@ -109,7 +115,7 @@ class TranslationService:
     def __init__(self, settings: Optional[AppSettings] = None):
         """
         Initialize the translation service.
-        
+
         Args:
             settings: App settings (loads from disk if not provided)
         """
@@ -117,14 +123,14 @@ class TranslationService:
         self.client = OllamaClient(host=self.settings.ollama.host)
         self._cancelled = False
 
-        logger.info(f"TranslationService initialized with mode: {self.settings.ollama.model}")
-    
+        logger.info(f"TranslationService initialized with model: {self.settings.ollama.model}")
+
     # =========================================================
     # Public Methods
     # =========================================================
 
     def translate_stream(
-        self, 
+        self,
         text: str,
         target_language: Optional[str] = None,
         source_language: Optional[str] = None,
@@ -132,16 +138,16 @@ class TranslationService:
         cancel_check: Optional[Callable[[], bool]] = None,
     ) -> Iterator[str]:
         """
-        Translate text with streaming output. 
+        Translate text with streaming output.
 
         Args:
             text: Text to translate
-            target_language: Target language (uses settins default if None)
+            target_language: Target language (uses settings default if None)
             source_language: Source language ("auto" or specific language)
             on_chunk: Optional callback for each chunk (for UI updates in future)
-        
+
         Yields:
-            Translation text chunks as they arrive 
+            Translation text chunks as they arrive
         """
         self._cancelled = False
 
@@ -177,37 +183,37 @@ class TranslationService:
         except OllamaConnectionError as e:
             logger.error(f"Ollama connection error during translation: {e}")
             raise
-        except OllamaError as e: 
+        except OllamaError as e:
             logger.error(f"Ollama error during translation: {e}")
             raise
-    
+
     def translate(
-        self, 
+        self,
         text: str,
         target_language: Optional[str] = None,
         source_language: Optional[str] = None,
     ) -> TranslationResult:
         """
-        Translate text and return complete result. 
+        Translate text and return complete result.
 
-        For UI use. 
+        For UI use.
 
-        Args: 
+        Args:
             text: Text to translate
-            target_language: Target language (uses settins default if None)
+            target_language: Target language (uses settings default if None)
             source_language: Source language ("auto" or specific language)
-        
-        Returns: 
-            TranslationalResult with complete translation
+
+        Returns:
+            TranslationResult with complete translation
         """
         target_lang = target_language or self.settings.translation.target_language
         source_lang = source_language or self.settings.translation.source_language
-        try: 
+        try:
             # Collect all chunks
             translated_parts = []
             for chunk in self.translate_stream(text, target_lang, source_lang):
                 translated_parts.append(chunk)
-            
+
             translated_text = "".join(translated_parts)
 
             return TranslationResult(
@@ -226,28 +232,23 @@ class TranslationService:
                 status=TranslationStatus.ERROR,
                 error_message=str(e),
             )
-    
+
     def cancel(self) -> None:
         """Cancel an ongoing streaming translation."""
         self._cancelled = True
         logger.debug("Translation cancellation requested.")
-    
-    def lookup_word(
-        self, 
-        attempt: str, 
-        meaning: str, 
-        language: str = "English"
-    ) -> Iterator[str]:
+
+    def lookup_word(self, attempt: str, meaning: str, language: str = "English") -> Iterator[str]:
         """
-        Help  user find a word they're trying to remember. 
+        Help the user find a word they're trying to remember.
 
         This is the 'fuzzy word lookup' feature
 
         Args:
-            attempt: What the suer is trying to spell
+            attempt: What the user is trying to spell
             meaning: Description of what the word means
             language: Language of the word
-        
+
         Yields:
             Response chunks with word suggestions
         """
@@ -257,9 +258,9 @@ class TranslationService:
             language=language,
         )
 
-        logger.info(f"Word Lookup using mode: {self.settings.ollama.general_model}")
+        logger.info(f"Word lookup using model: {self.settings.ollama.general_model}")
         if self.settings.privacy.allow_content_logging:
-            logger.info(f"Word Lookup: '{attempt}' meaning '{meaning}'")
+            logger.info(f"Word lookup: '{attempt}' meaning '{meaning}'")
         else:
             logger.info(
                 "Word lookup requested "
@@ -267,40 +268,41 @@ class TranslationService:
                 f"language: {language})"
             )
 
+        # For lookup, use the general model to get broader vocabulary knowledge.
         for chunk in self.client.chat_stream(
             message=user_prompt,
-            model=self.settings.ollama.general_model, # for lookup, we use a general model to get better knowledge
+            model=self.settings.ollama.general_model,
             system_prompt=WORD_LOOKUP_SYSTEM_PROMPT,
         ):
             if chunk.content:
                 yield chunk.content
-    
+
     # =========================================================
     # Utility Methods
     # =========================================================
 
     def is_available(self) -> bool:
-        """Check if the translation service is avaiable."""
+        """Check if the translation service is available."""
         return self.client.is_available()
-    
+
     def get_available_models(self) -> list[str]:
         """Get list of available Ollama models."""
         try:
             models = self.client.list_models()
             return [m.name for m in models]
-        except OllamaError: 
+        except OllamaError:
             return []
-    
+
     def update_settings(self, settings: AppSettings) -> None:
         """
-        Update service with new settings. 
+        Update service with new settings.
 
-        Called when suer changes settings in the UI. 
+        Called when the user changes settings in the UI.
         """
         self.settings = settings
         self.client = OllamaClient(host=settings.ollama.host)
         logger.info(f"Settings updated, model: {settings.ollama.model}")
-    
+
     # =========================================================
     # Private Methods
     # =========================================================
@@ -310,12 +312,12 @@ class TranslationService:
         if self.settings.translation.custom_prompt:
             return self.settings.translation.custom_prompt
         return TRANSLATION_SYSTEM_PROMPT
-    
+
     def _build_user_prompt(
-            self, 
-            text: str,
-            source_lang: str,
-            target_lang: str,
+        self,
+        text: str,
+        source_lang: str,
+        target_lang: str,
     ) -> str:
         """Build the user prompt for translation."""
         if source_lang.lower() == "auto":

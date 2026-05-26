@@ -184,7 +184,9 @@ class OnboardingDialog(QDialog):
             status_label.setStyleSheet("color: #b26a00; font-weight: 600;")
 
         purpose_label.setText(f"{check.purpose}\n{check.detail}")
-        request_btn.setVisible(check.key in {"accessibility", "input_monitoring", "screen_recording"})
+        request_btn.setVisible(
+            check.key in {"accessibility", "input_monitoring", "screen_recording"}
+        )
         request_btn.setEnabled(check.state != PermissionState.GRANTED)
 
     def _request_permission(self, key: str) -> None:

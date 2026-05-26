@@ -8,8 +8,8 @@ Quartz, reading the copied text, and restoring the original pasteboard.
 import time
 from typing import Any, Optional
 
-from AppKit import NSPasteboard, NSPasteboardItem, NSString, NSPasteboardTypeString
 import Quartz
+from AppKit import NSPasteboard, NSPasteboardItem, NSPasteboardTypeString, NSString
 
 from lingoflow.utils.logger import get_logger
 
@@ -111,7 +111,10 @@ class ClipboardManager:
     def _simulate_copy(self) -> bool:
         """Simulate Cmd+C from this app process using Quartz key events."""
         try:
-            if hasattr(Quartz, "CGPreflightPostEventAccess") and not Quartz.CGPreflightPostEventAccess():
+            if (
+                hasattr(Quartz, "CGPreflightPostEventAccess")
+                and not Quartz.CGPreflightPostEventAccess()
+            ):
                 logger.warning(
                     "Cannot post Cmd+C. "
                     "Grant Accessibility permission to LingoFlow, then restart the app."

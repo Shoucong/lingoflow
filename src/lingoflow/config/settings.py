@@ -1,8 +1,9 @@
 """
-Settings models using Pydantic. 
+Settings models using Pydantic.
 
-Provides type-safe configuration with automatic validation, serialization, and default values. 
+Provides type-safe configuration with automatic validation, serialization, and default values.
 """
+
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -10,18 +11,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from lingoflow.config.constants import (
     CONFIG_BACKUP_FILE,
-    CONFIG_DIR, 
+    CONFIG_DIR,
     CONFIG_FILE,
     DEFAULT_MODEL,
-    GENERAL_MODEL,
-    LEGACY_CONFIG_FILE,
     DEFAULT_OCR_HOTKEY,
     DEFAULT_OLLAMA_HOST,
     DEFAULT_SOURCE_LANG,
     DEFAULT_TARGET_LANG,
     DEFAULT_TRANSLATE_HOTKEY,
-    SUPPORTED_OCR_LANGUAGES,
+    GENERAL_MODEL,
+    LEGACY_CONFIG_FILE,
     SUPPORTED_LANGUAGES,
+    SUPPORTED_OCR_LANGUAGES,
 )
 from lingoflow.utils.logger import get_logger
 
@@ -31,10 +32,59 @@ from lingoflow.utils.logger import get_logger
 
 HOTKEY_MODIFIERS = {"alt", "option", "cmd", "command", "ctrl", "control", "shift"}
 HOTKEY_KEYS = {
-    "a", "s", "d", "f", "h", "g", "z", "x", "c", "v", "b", "q", "w", "e", "r",
-    "y", "t", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "=", "-", "]",
-    "o", "u", "[", "i", "p", "l", "j", "'", "k", ";", "\\", ",", "/", "n",
-    "m", ".", "`", "space", "tab", "return", "enter", "escape", "esc",
+    "a",
+    "s",
+    "d",
+    "f",
+    "h",
+    "g",
+    "z",
+    "x",
+    "c",
+    "v",
+    "b",
+    "q",
+    "w",
+    "e",
+    "r",
+    "y",
+    "t",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "=",
+    "-",
+    "]",
+    "o",
+    "u",
+    "[",
+    "i",
+    "p",
+    "l",
+    "j",
+    "'",
+    "k",
+    ";",
+    "\\",
+    ",",
+    "/",
+    "n",
+    "m",
+    ".",
+    "`",
+    "space",
+    "tab",
+    "return",
+    "enter",
+    "escape",
+    "esc",
 }
 
 
@@ -67,17 +117,18 @@ def _normalize_hotkey(value: str) -> str:
 
 
 class OllamaSettings(SettingsModel):
-    """Ollama connection settings. """
+    """Ollama connection settings."""
+
     host: str = Field(
-        default=DEFAULT_OLLAMA_HOST, 
+        default=DEFAULT_OLLAMA_HOST,
         description="Ollama server URL",
     )
     model: str = Field(
-        default = DEFAULT_MODEL, 
+        default=DEFAULT_MODEL,
         description="Default model for translations",
     )
     general_model: str = Field(
-        default= GENERAL_MODEL,
+        default=GENERAL_MODEL,
         description="Model for general purpose tasks",
     )
 
@@ -88,7 +139,9 @@ class OllamaSettings(SettingsModel):
         host = value.strip().rstrip("/")
         parsed = urlparse(host)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValueError("Ollama host must be an http(s) URL, for example http://localhost:11434")
+            raise ValueError(
+                "Ollama host must be an http(s) URL, for example http://localhost:11434"
+            )
         return host
 
     @field_validator("model", "general_model")
@@ -102,14 +155,14 @@ class OllamaSettings(SettingsModel):
 
 
 class HotkeySettings(SettingsModel):
-    """Global hotkey settings. """
+    """Global hotkey settings."""
 
     translate: str = Field(
-        default=DEFAULT_TRANSLATE_HOTKEY, 
+        default=DEFAULT_TRANSLATE_HOTKEY,
         description="Hotkey for triggering translation",
     )
     ocr: str = Field(
-        default=DEFAULT_OCR_HOTKEY, 
+        default=DEFAULT_OCR_HOTKEY,
         description="Hotkey for triggering OCR",
     )
 
@@ -129,13 +182,13 @@ class HotkeySettings(SettingsModel):
 
 class TranslationSettings(SettingsModel):
     """Translation behavior settings."""
-    
+
     source_language: str = Field(
-        default = DEFAULT_SOURCE_LANG,
+        default=DEFAULT_SOURCE_LANG,
         description="Default source language for translations",
     )
     target_language: str = Field(
-        default = DEFAULT_TARGET_LANG,
+        default=DEFAULT_TARGET_LANG,
         description="Default target language for translations",
     )
     # For future: custom prompt templates
@@ -163,19 +216,19 @@ class TranslationSettings(SettingsModel):
 
 class UISettings(SettingsModel):
     """User interface settings."""
-    
+
     theme: str = Field(
-        default = "system",
+        default="system",
         description="UI theme: 'light', 'dark', or 'system'",
     )
     popup_opacity: float = Field(
         default=0.95,
         ge=0.5,
         le=1.0,
-        description="Popup window opacity", 
+        description="Popup window opacity",
     )
     font_size: int = Field(
-        default=14, 
+        default=14,
         ge=10,
         le=24,
         description="Font size in popup",
@@ -200,14 +253,14 @@ class UISettings(SettingsModel):
 
 
 class OCRSettings(SettingsModel):
-    """OCT-Specific settings."""
+    """OCR-specific settings."""
 
     language: str = Field(
         default="eng+chi_sim",
         description="OCR language code (e.g., 'eng', 'chi_sim', 'eng+chi_sim')",
     )
     enhance_image: bool = Field(
-        default=True, 
+        default=True,
         description="Apply image enhancement before OCR",
     )
 
@@ -228,6 +281,7 @@ class OnboardingSettings(SettingsModel):
         description="Whether the first-run setup has completed successfully.",
     )
 
+
 class PrivacySettings(SettingsModel):
     """Privacy and troubleshooting settings."""
 
@@ -240,15 +294,17 @@ class PrivacySettings(SettingsModel):
         description="Keep OCR screenshot files after recognition for troubleshooting.",
     )
 
+
 # ===========================================================
 # Main Settings Model
 # ===========================================================
+
 
 class AppSettings(SettingsModel):
     """
     Main Application settings.
 
-    All settings are grouped into logical sections for clarity. 
+    All settings are grouped into logical sections for clarity.
     """
 
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
@@ -259,16 +315,16 @@ class AppSettings(SettingsModel):
     onboarding: OnboardingSettings = Field(default_factory=OnboardingSettings)
     privacy: PrivacySettings = Field(default_factory=PrivacySettings)
 
-    #=========================================================
+    # =========================================================
     # Persistence Methods
-    #=========================================================
+    # =========================================================
 
     @classmethod
     def load(cls) -> "AppSettings":
         """
         Load settings from config file.
 
-        Returns default settings if file doesn't exist or is invalid. 
+        Returns default settings if file doesn't exist or is invalid.
         """
         config_path = CONFIG_FILE if CONFIG_FILE.exists() else None
         if config_path is None and LEGACY_CONFIG_FILE.exists():
@@ -279,9 +335,7 @@ class AppSettings(SettingsModel):
                 settings = cls._load_file(config_path)
             except Exception as e:
                 logger = get_logger(__name__)
-                logger.warning(
-                    f"Could not load settings from {config_path}, using defaults: {e}"
-                )
+                logger.warning(f"Could not load settings from {config_path}, using defaults: {e}")
                 backup_settings = cls._load_backup_after_failure()
                 if backup_settings:
                     return backup_settings
@@ -291,16 +345,14 @@ class AppSettings(SettingsModel):
                 try:
                     settings.save()
                     logger = get_logger(__name__)
-                    logger.info(
-                        f"Migrated settings from {LEGACY_CONFIG_FILE} to {CONFIG_FILE}"
-                    )
+                    logger.info(f"Migrated settings from {LEGACY_CONFIG_FILE} to {CONFIG_FILE}")
                 except Exception as e:
                     logger = get_logger(__name__)
                     logger.warning(f"Could not migrate settings to {CONFIG_FILE}: {e}")
 
             return settings
         return cls()
-    
+
     def save(self) -> None:
         """Save current settings to config file atomically."""
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -321,15 +373,15 @@ class AppSettings(SettingsModel):
 
         temp_file.replace(CONFIG_FILE)
 
-    #=========================================================
+    # =========================================================
     # Utility Methods
-    #=========================================================
+    # =========================================================
 
     @staticmethod
     def get_supported_languages() -> list[str]:
         """Return list of supported languages."""
         return SUPPORTED_LANGUAGES
-    
+
     def reset_to_defaults(self) -> "AppSettings":
         """Reset all settings to defaults and save."""
         default_settings = AppSettings()

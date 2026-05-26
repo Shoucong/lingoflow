@@ -1,8 +1,8 @@
 """
-Logging configuration for LingoFlow. 
+Logging configuration for LingoFlow.
 
-Provides a centralized logger setup with both console and file output. 
-Usage: 
+Provides a centralized logger setup with both console and file output.
+Usage:
     from lingoflow.utils.logger import get_logger
 
     logger = get_logger(__name__)
@@ -12,7 +12,6 @@ Usage:
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
 
 from lingoflow.config.constants import APP_NAME, LOG_DIR, LOG_FILE
 
@@ -23,8 +22,8 @@ from lingoflow.config.constants import APP_NAME, LOG_DIR, LOG_FILE
 DEFAULT_LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-MAX_LOG_SIZE = 5 * 1024 * 1024 # 5MB
-BACKUP_COUNT = 3 # Keep 3 old log files
+MAX_LOG_SIZE = 5 * 1024 * 1024  # 5MB
+BACKUP_COUNT = 3  # Keep 3 old log files
 
 # Track if logging has been initialized
 _initialized = False
@@ -33,13 +32,14 @@ _initialized = False
 # Setup Functions
 # ==========================================================
 
+
 def setup_logging(level: int = DEFAULT_LOG_LEVEL, console: bool = True) -> None:
     """
     Initialize the logging system.
 
-    Shoud be called once at application startup. 
+    Should be called once at application startup.
 
-    Args: 
+    Args:
         level (int): Logging level (e.g., logging.DEBUG, logging.INFO)
         console (bool): Whether to also output to console
     """
@@ -47,11 +47,11 @@ def setup_logging(level: int = DEFAULT_LOG_LEVEL, console: bool = True) -> None:
 
     if _initialized:
         return
-    
+
     # Get root logger for the app
     root_logger = logging.getLogger(APP_NAME.lower())
     root_logger.setLevel(level)
-    
+
     # Prevent propagation to avoid duplicate logs
     root_logger.propagate = False
 
@@ -69,7 +69,7 @@ def setup_logging(level: int = DEFAULT_LOG_LEVEL, console: bool = True) -> None:
             LOG_FILE,
             maxBytes=MAX_LOG_SIZE,
             backupCount=BACKUP_COUNT,
-            encoding='utf-8',
+            encoding="utf-8",
         )
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
@@ -85,29 +85,30 @@ def setup_logging(level: int = DEFAULT_LOG_LEVEL, console: bool = True) -> None:
         root_logger.addHandler(console_handler)
     elif file_logging_error:
         root_logger.addHandler(logging.NullHandler())
-    
+
     _initialized = True
     if file_logging_error:
         root_logger.warning(f"File logging disabled: {file_logging_error}")
     root_logger.debug("Logging initialized")
 
+
 def get_logger(name: str) -> logging.Logger:
     """
-    Get a logger instance for a module. 
+    Get a logger instance for a module.
 
-    Args: 
+    Args:
         name: Usually __name__ of the calling module
-    
+
     Returns:
         Configured logger instance
-    
-    Example: 
+
+    Example:
         logger = get_logger(__name__)
         logger.info("Something happened")
     """
     if not _initialized:
         setup_logging()
-    
+
     # Create child logger under our app's namespace
     # This ensures all our loggers inherit the same configuration
     if name.startswith("lingoflow"):
@@ -115,12 +116,13 @@ def get_logger(name: str) -> logging.Logger:
     else:
         # Add our prefix for consistency
         logger_name = f"{APP_NAME.lower()}.{name}"
-    
+
     return logging.getLogger(logger_name)
+
 
 def set_log_level(level: int) -> None:
     """
-    Change the log level at runtime. 
+    Change the log level at runtime.
 
     Args:
         level: New logging level (e.g., logging.DEBUG)
@@ -130,6 +132,7 @@ def set_log_level(level: int) -> None:
     for handler in root_logger.handlers:
         handler.setLevel(level)
 
+
 # ===========================================================
 # Convenience Functions
 # ==========================================================
@@ -137,10 +140,12 @@ def enable_debug() -> None:
     """Enable debug logging."""
     set_log_level(logging.DEBUG)
 
+
 def disable_console() -> None:
     """Remove console handler, keep only file logging."""
     root_logger = logging.getLogger(APP_NAME.lower())
     root_logger.handlers = [
-        h for h in root_logger.handlers
+        h
+        for h in root_logger.handlers
         if not isinstance(h, logging.StreamHandler) or h.stream != sys.stdout
     ]

@@ -448,11 +448,7 @@ class HotkeyManager:
         except ValueError:
             return hotkey_str
 
-        parts = [
-            label
-            for flag, label in MODIFIER_DISPLAY.items()
-            if modifiers & flag
-        ]
+        parts = [label for flag, label in MODIFIER_DISPLAY.items() if modifiers & flag]
         key = next((name for name, code in KEY_CODES.items() if code == key_code), str(key_code))
         parts.append(key.upper() if len(key) == 1 else key.capitalize())
         return "+".join(parts)

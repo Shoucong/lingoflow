@@ -4,34 +4,32 @@ Settings dialog for LingoFlow.
 Provides UI for configuring all app settings.
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
+from pydantic import ValidationError
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTabWidget,
-    QWidget,
-    QLabel,
-    QLineEdit,
-    QComboBox,
     QCheckBox,
-    QSlider,
-    QSpinBox,
-    QPushButton,
+    QComboBox,
+    QDialog,
     QFormLayout,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QMessageBox,
-    QFrame,
+    QPushButton,
+    QSlider,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from pydantic import ValidationError
 
-from lingoflow.config.settings import AppSettings
 from lingoflow.config.constants import SUPPORTED_LANGUAGES
-from lingoflow.config.settings import OllamaSettings
-from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
+from lingoflow.config.settings import AppSettings, OllamaSettings
 from lingoflow.infrastructure.ollama_client import OllamaClient, OllamaError
+from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,14 +38,14 @@ logger = get_logger(__name__)
 class SettingsDialog(QDialog):
     """
     Settings configuration dialog.
-    
+
     Organized into tabs:
     - General: Ollama connection, model selection
     - Translation: Source/target language defaults
     - Hotkeys: Keyboard shortcut configuration
     - Appearance: UI theme, font size, opacity
     - OCR: OCR language settings
-    
+
     Emits:
         settings_changed: When settings are saved
     """
@@ -58,19 +56,19 @@ class SettingsDialog(QDialog):
 
     def __init__(self, settings: Optional[AppSettings] = None, parent=None):
         super().__init__(parent)
-        
+
         self.settings = settings or AppSettings.load()
         self._available_models: List[str] = []
         self._network_tasks = TaskRunner()
         self._active_connection_task_id: Optional[int] = None
         self._active_models_task_id: Optional[int] = None
-        
+
         self._setup_window()
         self._setup_ui()
         self._load_settings()
         self.connection_test_finished.connect(self._on_connection_test_finished)
         self.models_refresh_finished.connect(self._on_models_refresh_finished)
-        
+
         logger.debug("SettingsDialog initialized")
 
     # =============================================================================
@@ -89,34 +87,34 @@ class SettingsDialog(QDialog):
         """Build the UI."""
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
-        
+
         # Tab widget
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
-        
+
         # Create tabs
         self.tabs.addTab(self._create_general_tab(), "General")
         self.tabs.addTab(self._create_languages_tab(), "Languages")
         self.tabs.addTab(self._create_hotkeys_tab(), "Hotkeys")
         self.tabs.addTab(self._create_appearance_tab(), "Appearance")
-        
+
         # Button row
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        
+
         self.reset_btn = QPushButton("Reset to Defaults")
         self.reset_btn.clicked.connect(self._reset_to_defaults)
         button_layout.addWidget(self.reset_btn)
-        
+
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_btn)
-        
+
         self.save_btn = QPushButton("Save")
         self.save_btn.setDefault(True)
         self.save_btn.clicked.connect(self._save_settings)
         button_layout.addWidget(self.save_btn)
-        
+
         layout.addLayout(button_layout)
 
     # =============================================================================
@@ -127,42 +125,42 @@ class SettingsDialog(QDialog):
         """Create the General settings tab."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        
+
         # Ollama Connection Group
         ollama_group = QGroupBox("Ollama Connection")
         ollama_layout = QFormLayout(ollama_group)
-        
+
         # Host
         self.host_input = QLineEdit()
         self.host_input.setPlaceholderText("http://localhost:11434")
         ollama_layout.addRow("Ollama Host:", self.host_input)
-        
+
         # Test connection button
         test_layout = QHBoxLayout()
         self.test_btn = QPushButton("Test Connection")
         self.test_btn.clicked.connect(self._test_connection)
         test_layout.addWidget(self.test_btn)
-        
+
         self.connection_status = QLabel("")
         test_layout.addWidget(self.connection_status)
         test_layout.addStretch()
-        
+
         ollama_layout.addRow("", test_layout)
-        
+
         # Model selection
         model_layout = QHBoxLayout()
         self.model_combo = QComboBox()
         self.model_combo.setEditable(True)
         self.model_combo.setMinimumWidth(200)
         model_layout.addWidget(self.model_combo)
-        
+
         self.refresh_models_btn = QPushButton("Refresh")
         self.refresh_models_btn.clicked.connect(self._refresh_models)
         model_layout.addWidget(self.refresh_models_btn)
         model_layout.addStretch()
-        
+
         ollama_layout.addRow("Model:", model_layout)
-        
+
         layout.addWidget(ollama_group)
 
         privacy_group = QGroupBox("Privacy")
@@ -190,25 +188,25 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(privacy_group)
         layout.addStretch()
-        
+
         return tab
 
     def _create_languages_tab(self) -> QWidget:
         """Create language settings for translation and OCR."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        
+
         # Language Settings Group
         lang_group = QGroupBox("Translation")
         lang_layout = QFormLayout(lang_group)
-        
+
         # Source language
         self.source_lang_combo = QComboBox()
         for lang in SUPPORTED_LANGUAGES:
             display_name = "Auto-detect" if lang == "auto" else lang
             self.source_lang_combo.addItem(display_name, lang)
         lang_layout.addRow("Text Source:", self.source_lang_combo)
-        
+
         # Target language
         self.target_lang_combo = QComboBox()
         for lang in SUPPORTED_LANGUAGES:
@@ -239,9 +237,7 @@ class SettingsDialog(QDialog):
 
         # Enhance image
         self.enhance_image_check = QCheckBox("Enhance image before OCR")
-        self.enhance_image_check.setToolTip(
-            "Apply contrast and sharpening to improve accuracy"
-        )
+        self.enhance_image_check.setToolTip("Apply contrast and sharpening to improve accuracy")
         ocr_layout.addRow("", self.enhance_image_check)
 
         layout.addWidget(ocr_group)
@@ -274,23 +270,23 @@ class SettingsDialog(QDialog):
         """Create the Hotkeys settings tab."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        
+
         # Hotkeys Group
         hotkeys_group = QGroupBox("Global Hotkeys")
         hotkeys_layout = QFormLayout(hotkeys_group)
-        
+
         # Translate hotkey
         self.translate_hotkey_input = QLineEdit()
         self.translate_hotkey_input.setPlaceholderText("<alt>+d")
         hotkeys_layout.addRow("Translate Selected:", self.translate_hotkey_input)
-        
+
         # OCR hotkey
         self.ocr_hotkey_input = QLineEdit()
         self.ocr_hotkey_input.setPlaceholderText("<alt>+s")
         hotkeys_layout.addRow("OCR Screenshot:", self.ocr_hotkey_input)
-        
+
         layout.addWidget(hotkeys_group)
-        
+
         # Help text
         help_label = QLabel(
             "Hotkey format: <alt>+d, <cmd>+<shift>+t, etc.\n"
@@ -300,30 +296,30 @@ class SettingsDialog(QDialog):
         help_label.setStyleSheet("color: gray; font-size: 11px;")
         help_label.setWordWrap(True)
         layout.addWidget(help_label)
-        
+
         layout.addStretch()
-        
+
         return tab
 
     def _create_appearance_tab(self) -> QWidget:
         """Create the Appearance settings tab."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        
+
         # Theme Group
         theme_group = QGroupBox("Theme")
         theme_layout = QFormLayout(theme_group)
-        
+
         self.theme_combo = QComboBox()
         self.theme_combo.addItems(["System", "Light", "Dark"])
         theme_layout.addRow("Theme:", self.theme_combo)
-        
+
         layout.addWidget(theme_group)
-        
+
         # Popup Group
         popup_group = QGroupBox("Popup Window")
         popup_layout = QFormLayout(popup_group)
-        
+
         # Font size
         font_size_layout = QHBoxLayout()
         self.font_size_spin = QSpinBox()
@@ -332,7 +328,7 @@ class SettingsDialog(QDialog):
         font_size_layout.addWidget(self.font_size_spin)
         font_size_layout.addStretch()
         popup_layout.addRow("Font Size:", font_size_layout)
-        
+
         # Opacity
         opacity_layout = QHBoxLayout()
         self.opacity_slider = QSlider(Qt.Orientation.Horizontal)
@@ -340,22 +336,20 @@ class SettingsDialog(QDialog):
         self.opacity_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.opacity_slider.setTickInterval(10)
         opacity_layout.addWidget(self.opacity_slider)
-        
+
         self.opacity_label = QLabel("95%")
         self.opacity_label.setMinimumWidth(40)
-        self.opacity_slider.valueChanged.connect(
-            lambda v: self.opacity_label.setText(f"{v}%")
-        )
+        self.opacity_slider.valueChanged.connect(lambda v: self.opacity_label.setText(f"{v}%"))
         opacity_layout.addWidget(self.opacity_label)
         popup_layout.addRow("Opacity:", opacity_layout)
-        
+
         # Show source text
         self.show_source_check = QCheckBox("Show source text in popup")
         popup_layout.addRow("", self.show_source_check)
-        
+
         layout.addWidget(popup_group)
         layout.addStretch()
-        
+
         return tab
 
     # =============================================================================
@@ -365,33 +359,33 @@ class SettingsDialog(QDialog):
     def _load_settings(self) -> None:
         """Load current settings into UI."""
         s = self.settings
-        
+
         # General
         self.host_input.setText(s.ollama.host)
         self.model_combo.setCurrentText(s.ollama.model)
-        
+
         # Translation
         source_index = self.source_lang_combo.findData(s.translation.source_language)
         if source_index >= 0:
             self.source_lang_combo.setCurrentIndex(source_index)
-        
+
         target_index = self.target_lang_combo.findData(s.translation.target_language)
         if target_index >= 0:
             self.target_lang_combo.setCurrentIndex(target_index)
-        
+
         # Hotkeys
         self.translate_hotkey_input.setText(s.hotkeys.translate)
         self.ocr_hotkey_input.setText(s.hotkeys.ocr)
-        
+
         # Appearance
         theme_index = self.theme_combo.findText(s.ui.theme.capitalize())
         if theme_index >= 0:
             self.theme_combo.setCurrentIndex(theme_index)
-        
+
         self.font_size_spin.setValue(s.ui.font_size)
         self.opacity_slider.setValue(int(s.ui.popup_opacity * 100))
         self.show_source_check.setChecked(s.ui.show_source_text)
-        
+
         # OCR
         ocr_index = self.ocr_lang_combo.findData(s.ocr.language)
         if ocr_index >= 0:
@@ -401,7 +395,7 @@ class SettingsDialog(QDialog):
         # Privacy
         self.allow_content_logging_check.setChecked(s.privacy.allow_content_logging)
         self.keep_ocr_captures_check.setChecked(s.privacy.keep_ocr_captures)
-        
+
         logger.debug("Settings loaded into UI")
 
     def _save_settings(self) -> None:
@@ -422,7 +416,7 @@ class SettingsDialog(QDialog):
 
         self.settings = new_settings
         self.settings_changed.emit(new_settings)
-        
+
         logger.info("Settings saved")
         self.accept()
 
@@ -435,7 +429,7 @@ class SettingsDialog(QDialog):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
-        
+
         if reply == QMessageBox.StandardButton.Yes:
             self.settings = AppSettings()
             self._load_settings()
@@ -450,7 +444,7 @@ class SettingsDialog(QDialog):
         host = self._validated_host_from_input()
         if host is None:
             return
-        
+
         self.connection_status.setText("Testing...")
         self.connection_status.setStyleSheet("color: gray;")
         self._set_network_buttons_enabled(False)
@@ -510,7 +504,7 @@ class SettingsDialog(QDialog):
             lambda task: self._refresh_models_worker(task, host),
         )
         self._active_models_task_id = task.task_id
-        
+
     def _refresh_models_worker(self, task: BackgroundTask, host: str) -> None:
         """Fetch available models in the background."""
         try:
@@ -638,7 +632,7 @@ class SettingsDialog(QDialog):
             lines.append(f"{location}: {message}" if location else message)
         return "\n".join(lines)
 
-    def closeEvent(self, event) -> None:
+    def closeEvent(self, event) -> None:  # noqa: N802
         """Cancel outstanding settings workers on close."""
         self._network_tasks.cancel_all()
         super().closeEvent(event)

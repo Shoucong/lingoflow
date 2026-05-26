@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QIODevice, QLockFile, pyqtSignal
+from PyQt6.QtCore import QIODevice, QLockFile, QObject, pyqtSignal
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 
 from lingoflow.utils.logger import get_logger
@@ -94,9 +94,7 @@ class SingleInstanceGuard(QObject):
         self._server = self._create_server()
 
         if self._server.listen(self._server_name):
-            self._logger.info(
-                f"Recovered stale single-instance server: {self._server_name}"
-            )
+            self._logger.info(f"Recovered stale single-instance server: {self._server_name}")
             return True
 
         self._logger.warning(
