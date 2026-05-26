@@ -6,13 +6,14 @@ Uses Apple Vision and macOS screencapture.
 """
 
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple, List
+from uuid import uuid4
 
 from PIL import Image, ImageEnhance, ImageFilter
 
+from lingoflow.config.constants import OCR_CAPTURE_DIR
 from lingoflow.config.settings import AppSettings
 from lingoflow.utils.logger import get_logger
 
@@ -118,8 +119,10 @@ class OCRService:
             settings: App settings (loads from disk if not provided)
         """
         self.settings = settings or AppSettings.load()
-        self._temp_dir = Path(tempfile.gettempdir()) / "lingoflow"
-        self._temp_dir.mkdir(exist_ok=True)
+        self._capture_dir = OCR_CAPTURE_DIR
+        self._prepare_capture_dir()
+        if not self.settings.privacy.keep_ocr_captures:
+            self.cleanup_stale_captures()
 
         # Verify OCR backend availability
         self._verify_ocr_backend()
@@ -145,7 +148,7 @@ class OCRService:
         Returns: 
             OCRResult with extracted text
         """
-        logger.debug(f"Extracting text from: {image_path}")
+        logger.debug("Extracting text from image")
 
         if not image_path.exists():
             return OCRResult(
@@ -173,7 +176,7 @@ class OCRService:
         Raises:
             ScreenCaptureError: if capture fails
         """
-        output_path = self._temp_dir / "capture.png"
+        output_path = self._new_capture_path()
 
         logger.debug(f"Capturing region: {region}")
 
@@ -182,8 +185,10 @@ class OCRService:
 
             if not output_path.exists():
                 raise ScreenCaptureError(f"Screenshot file was not created")
+
+            self._secure_capture_file(output_path)
         
-            logger.info(f"Screen captured: {output_path}")
+            logger.info("Screen captured to managed OCR cache")
             return output_path
         
         except Exception as e:
@@ -197,13 +202,7 @@ class OCRService:
         Returns: 
             Path to captured image, or None if canceled
         """
-        output_path = self._temp_dir / "capture.png"
-        try:
-            if output_path.exists():
-                output_path.unlink()
-        except OSError as e:
-            logger.warning(f"Could not remove previous capture file: {e}")
-
+        output_path = self._new_capture_path()
         logger.info("Starting interactive screen capture")
 
         try:
@@ -236,7 +235,10 @@ class OCRService:
                         error_message="Screen capture cancelled",
                     )
             
-            return self.extract_text(image_path)
+            result = self.extract_text(image_path)
+            if self.cleanup_capture(image_path):
+                result.source_image_path = None
+            return result
 
         except ScreenCaptureError as e:
             return OCRResult(text="", success=False, error_message=str(e))
@@ -253,7 +255,34 @@ class OCRService:
     def update_settings(self, settings: AppSettings) -> None:
         """Update service with new settings"""
         self.settings = settings
+        if not self.settings.privacy.keep_ocr_captures:
+            self.cleanup_stale_captures()
         logger.info(f"OCR settings updated, language: {settings.ocr.language}")
+
+    def cleanup_capture(self, image_path: Path | str) -> bool:
+        """Delete a managed OCR capture unless troubleshooting retention is enabled."""
+        if self.settings.privacy.keep_ocr_captures:
+            logger.debug("Keeping OCR capture for troubleshooting")
+            return False
+
+        path = Path(image_path)
+        if not self._is_managed_capture_path(path):
+            logger.debug("Refusing to delete unmanaged OCR path")
+            return False
+
+        try:
+            if path.exists():
+                path.unlink()
+                logger.debug("Deleted OCR capture")
+                return True
+        except OSError as e:
+            logger.warning(f"Could not delete OCR capture {path}: {e}")
+        return False
+
+    def cleanup_stale_captures(self) -> None:
+        """Remove old managed captures when capture retention is disabled."""
+        for capture_path in self._capture_dir.glob("capture-*.png"):
+            self.cleanup_capture(capture_path)
     
 
     #==========================================================
@@ -406,7 +435,8 @@ class OCRService:
             raise ScreenCaptureError("Screen capture timed out.") from e
 
         if output_path.exists():
-            logger.info(f"Interactive capture saved: {output_path}")
+            self._secure_capture_file(output_path)
+            logger.info("Interactive capture saved to managed OCR cache")
             return output_path
 
         stderr = result.stderr.strip() if result.stderr else ""
@@ -442,6 +472,36 @@ class OCRService:
             )
 
         return f"Screen capture failed: {detail}"
+
+    def _prepare_capture_dir(self) -> None:
+        """Create a private app cache folder for OCR screenshots."""
+        self._capture_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self._capture_dir.chmod(0o700)
+        except OSError as e:
+            logger.warning(f"Could not set OCR capture directory permissions: {e}")
+
+    def _new_capture_path(self) -> Path:
+        """Return a unique managed OCR capture path."""
+        return self._capture_dir / f"capture-{uuid4().hex}.png"
+
+    def _secure_capture_file(self, image_path: Path) -> None:
+        """Restrict capture file permissions where the filesystem supports it."""
+        try:
+            image_path.chmod(0o600)
+        except OSError as e:
+            logger.warning(f"Could not set OCR capture file permissions: {e}")
+
+    def _is_managed_capture_path(self, image_path: Path) -> bool:
+        """Return whether a path belongs to the managed OCR capture directory."""
+        try:
+            return (
+                image_path.resolve().is_relative_to(self._capture_dir.resolve())
+                and image_path.name.startswith("capture-")
+                and image_path.suffix == ".png"
+            )
+        except OSError:
+            return False
         
     def _preprocess_image(self, image: Image.Image) -> Image.Image:
         """

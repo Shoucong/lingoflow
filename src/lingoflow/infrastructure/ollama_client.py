@@ -5,7 +5,7 @@ Handles all communication with the local Ollama server.
 """
 
 import json
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Optional
 
@@ -63,10 +63,12 @@ class OllamaConnectionError(OllamaError):
 
     pass
 
-class OllamaModelERROR(OllamaError):
+class OllamaModelError(OllamaError):
     """Model-realted error (not found, failed to load, etc)."""
 
     pass
+
+OllamaModelERROR = OllamaModelError
 
 class OllamaTimeoutError(OllamaError):
     """Request Timed out."""
@@ -119,6 +121,7 @@ class OllamaClient:
         message: str,
         model: str,
         system_prompt: Optional[str] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
     ) -> Iterator[OllamaStreamChunk]:
         """
         Send a chat message and stream the response. 
@@ -155,9 +158,13 @@ class OllamaClient:
         try:
             with httpx.Client(timeout=self._timeout) as client:
                 with client.stream("POST", url, json=payload) as response:
-                    response.raise_for_status()
+                    self._raise_for_status(response, model=model)
 
                     for line in response.iter_lines():
+                        if cancel_check and cancel_check():
+                            logger.info("Streaming chat cancelled")
+                            break
+
                         if not line:
                             continue
 
@@ -172,23 +179,15 @@ class OllamaClient:
                             if done:
                                 logger.debug("Streaming complete.")
                         
-                        except json.JSONDecodeError as e:
-                            logger.error(f"Failed to parse chunk: {line[:100]}...")
+                        except json.JSONDecodeError:
+                            logger.error(
+                                f"Failed to parse stream chunk ({len(line)} chars)"
+                            )
                             continue
-        except httpx.ConnectError as e:
-            logger.error("Connection failed: {e}")
-            raise OllamaConnectionError(
-                f"Cannot connect to Ollama at {self.host}"
-                "Make sure Ollama is running."
-            ) from e
-        except httpx.TimeoutException as e: 
-            logger.error(f"Request timed out: {e}")
-            raise OllamaTimeoutError("Request to Ollama timed out.") from e
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error: {e.response.status_code}")
-            if e.response.status_code == 404:
-                raise OllamaModelERROR(f"Model '{model}' not found.") from e
-            raise OllamaError(f"Ollama API error: {e.response.status_code}") from e
+        except (OllamaConnectionError, OllamaTimeoutError, OllamaModelError, OllamaError):
+            raise
+        except httpx.RequestError as e:
+            self._raise_request_error(e)
 
     def chat(
         self,
@@ -227,8 +226,11 @@ class OllamaClient:
         try: 
             with httpx.Client(timeout=self._timeout) as client:
                 response = client.post(url, json=payload)
-                response.raise_for_status()
-                data = response.json()
+                self._raise_for_status(response, model=model)
+                try:
+                    data = response.json()
+                except ValueError as e:
+                    raise OllamaError("Ollama returned an invalid JSON response.") from e
 
                 return OllamaResponse(
                     content=data.get("message", {}).get("content", ""),
@@ -238,18 +240,10 @@ class OllamaClient:
                     eval_count=data.get("eval_count"),
                 )
             
-        except httpx.ConnectError as e:
-            logger.error(f"Connection failed: {e}")
-            raise OllamaConnectionError(
-                f"Cannot connect to Ollama at {self.host}"
-                "Make sure Ollama is running."
-            ) from e
-        except httpx.TimeoutException as e: 
-            logger.error(f"Request timed out: {e}")
-            raise OllamaTimeoutError("Request to Ollama timed out.") from e
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error: {e.response.status_code}")
-            raise OllamaError(f"Ollama API error: {e.response.status_code}") from e
+        except (OllamaConnectionError, OllamaTimeoutError, OllamaModelError, OllamaError):
+            raise
+        except httpx.RequestError as e:
+            self._raise_request_error(e)
 
     def list_models(self) -> list[OllamaModel]:
         """
@@ -267,8 +261,11 @@ class OllamaClient:
         try: 
             with httpx.Client(timeout=self._timeout) as client:
                 response = client.get(url)
-                response.raise_for_status()
-                data = response.json()
+                self._raise_for_status(response)
+                try:
+                    data = response.json()
+                except ValueError as e:
+                    raise OllamaError("Ollama returned an invalid JSON response.") from e
 
                 models = [
                     OllamaModel(
@@ -281,12 +278,10 @@ class OllamaClient:
 
                 logger.info(f"Found {len(models)} avaiable models")
                 return models
-        except httpx.ConnectError as e:
-            logger.error(f"Connection failed: {e}")
-            raise OllamaConnectionError(
-                f"Cannot connect to Ollama at {self.host}."
-                "Make sure Ollama is running"
-            ) from e
+        except (OllamaConnectionError, OllamaTimeoutError, OllamaModelError, OllamaError):
+            raise
+        except httpx.RequestError as e:
+            self._raise_request_error(e)
 
     def is_available(self) -> bool:
         """
@@ -318,3 +313,30 @@ class OllamaClient:
             return model in model_names
         except OllamaError:
             return False
+
+    def _raise_for_status(
+        self,
+        response: httpx.Response,
+        model: Optional[str] = None,
+    ) -> None:
+        """Map HTTP status errors to app-level exceptions."""
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            logger.error(f"Ollama HTTP error: {status}")
+            if status == 404 and model:
+                raise OllamaModelError(f"Model '{model}' not found.") from e
+            raise OllamaError(f"Ollama API error: {status}") from e
+
+    def _raise_request_error(self, error: httpx.RequestError) -> None:
+        """Map transport failures to app-level exceptions."""
+        if isinstance(error, httpx.TimeoutException):
+            logger.error(f"Ollama request timed out: {error}")
+            raise OllamaTimeoutError("Request to Ollama timed out.") from error
+
+        logger.error(f"Ollama connection failed: {error}")
+        raise OllamaConnectionError(
+            f"Cannot connect to Ollama at {self.host}. "
+            "Make sure Ollama is running."
+        ) from error

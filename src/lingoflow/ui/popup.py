@@ -386,7 +386,10 @@ class TranslationPopup(QWidget):
         self.raise_()
         self._start_outside_click_monitor()
         
-        logger.debug(f"Popup shown with text: {source_text[:50]}...")
+        if self.settings.privacy.allow_content_logging:
+            logger.debug(f"Popup shown with text: {source_text[:80]}...")
+        else:
+            logger.debug(f"Popup shown with source text ({len(source_text)} chars)")
 
     def append_translation(self, chunk: str) -> None:
         """

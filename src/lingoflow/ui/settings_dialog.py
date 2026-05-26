@@ -25,9 +25,12 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFrame,
 )
+from pydantic import ValidationError
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.config.constants import SUPPORTED_LANGUAGES
+from lingoflow.config.settings import OllamaSettings
+from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.infrastructure.ollama_client import OllamaClient, OllamaError
 from lingoflow.utils.logger import get_logger
 
@@ -50,16 +53,23 @@ class SettingsDialog(QDialog):
     """
 
     settings_changed = pyqtSignal(AppSettings)
+    connection_test_finished = pyqtSignal(int, bool, str)
+    models_refresh_finished = pyqtSignal(int, object, str)
 
     def __init__(self, settings: Optional[AppSettings] = None, parent=None):
         super().__init__(parent)
         
         self.settings = settings or AppSettings.load()
         self._available_models: List[str] = []
+        self._network_tasks = TaskRunner()
+        self._active_connection_task_id: Optional[int] = None
+        self._active_models_task_id: Optional[int] = None
         
         self._setup_window()
         self._setup_ui()
         self._load_settings()
+        self.connection_test_finished.connect(self._on_connection_test_finished)
+        self.models_refresh_finished.connect(self._on_models_refresh_finished)
         
         logger.debug("SettingsDialog initialized")
 
@@ -72,7 +82,8 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("LingoFlow Settings")
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
-        self.setModal(True)
+        self.setModal(False)
+        self.setWindowModality(Qt.WindowModality.NonModal)
 
     def _setup_ui(self) -> None:
         """Build the UI."""
@@ -153,6 +164,31 @@ class SettingsDialog(QDialog):
         ollama_layout.addRow("Model:", model_layout)
         
         layout.addWidget(ollama_group)
+
+        privacy_group = QGroupBox("Privacy")
+        privacy_layout = QFormLayout(privacy_group)
+
+        self.allow_content_logging_check = QCheckBox("Include selected/OCR text in logs")
+        self.allow_content_logging_check.setToolTip(
+            "Off by default. Enable only while debugging because logs may include private text."
+        )
+        privacy_layout.addRow("", self.allow_content_logging_check)
+
+        self.keep_ocr_captures_check = QCheckBox("Keep OCR screenshots for troubleshooting")
+        self.keep_ocr_captures_check.setToolTip(
+            "Off by default. When disabled, captured screenshots are deleted after OCR."
+        )
+        privacy_layout.addRow("", self.keep_ocr_captures_check)
+
+        privacy_note = QLabel(
+            "For normal use, leave both options off so reading content stays out of logs "
+            "and temporary screenshots are cleaned up."
+        )
+        privacy_note.setStyleSheet("color: gray; font-size: 11px;")
+        privacy_note.setWordWrap(True)
+        privacy_layout.addRow("", privacy_note)
+
+        layout.addWidget(privacy_group)
         layout.addStretch()
         
         return tab
@@ -361,45 +397,31 @@ class SettingsDialog(QDialog):
         if ocr_index >= 0:
             self.ocr_lang_combo.setCurrentIndex(ocr_index)
         self.enhance_image_check.setChecked(s.ocr.enhance_image)
+
+        # Privacy
+        self.allow_content_logging_check.setChecked(s.privacy.allow_content_logging)
+        self.keep_ocr_captures_check.setChecked(s.privacy.keep_ocr_captures)
         
         logger.debug("Settings loaded into UI")
 
     def _save_settings(self) -> None:
         """Save UI values to settings."""
-        s = self.settings
-        
-        # General
-        s.ollama.host = self.host_input.text().strip() or s.ollama.host
-        s.ollama.model = self.model_combo.currentText().strip() or s.ollama.model
-        
-        # Translation
-        s.translation.source_language = self.source_lang_combo.currentData()
-        s.translation.target_language = self.target_lang_combo.currentData()
-        
-        # Hotkeys
-        translate_hotkey = self.translate_hotkey_input.text().strip()
-        if translate_hotkey:
-            s.hotkeys.translate = translate_hotkey
-        
-        ocr_hotkey = self.ocr_hotkey_input.text().strip()
-        if ocr_hotkey:
-            s.hotkeys.ocr = ocr_hotkey
-        
-        # Appearance
-        s.ui.theme = self.theme_combo.currentText().lower()
-        s.ui.font_size = self.font_size_spin.value()
-        s.ui.popup_opacity = self.opacity_slider.value() / 100.0
-        s.ui.show_source_text = self.show_source_check.isChecked()
-        
-        # OCR
-        s.ocr.language = self.ocr_lang_combo.currentData()
-        s.ocr.enhance_image = self.enhance_image_check.isChecked()
-        
-        # Persist to disk
-        s.save()
-        
-        # Emit signal
-        self.settings_changed.emit(s)
+        new_settings = self._build_settings_from_ui()
+        if new_settings is None:
+            return
+
+        try:
+            new_settings.save()
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Settings Error",
+                f"Could not save settings:\n\n{e}",
+            )
+            return
+
+        self.settings = new_settings
+        self.settings_changed.emit(new_settings)
         
         logger.info("Settings saved")
         self.accept()
@@ -425,61 +447,198 @@ class SettingsDialog(QDialog):
 
     def _test_connection(self) -> None:
         """Test the Ollama connection."""
-        host = self.host_input.text().strip() or self.settings.ollama.host
+        host = self._validated_host_from_input()
+        if host is None:
+            return
         
         self.connection_status.setText("Testing...")
         self.connection_status.setStyleSheet("color: gray;")
-        self.test_btn.setEnabled(False)
-        
-        # Use QTimer to not block UI
-        from PyQt6.QtCore import QTimer
-        QTimer.singleShot(100, lambda: self._do_test_connection(host))
+        self._set_network_buttons_enabled(False)
 
-    def _do_test_connection(self, host: str) -> None:
+        task = self._network_tasks.start(
+            "settings-connection-test",
+            lambda task: self._connection_test_worker(task, host),
+        )
+        self._active_connection_task_id = task.task_id
+
+    def _connection_test_worker(self, task: BackgroundTask, host: str) -> None:
         """Perform the actual connection test."""
+        available = False
+        message = "Not available"
         try:
             client = OllamaClient(host=host)
-            if client.is_available():
-                self.connection_status.setText("✓ Connected")
-                self.connection_status.setStyleSheet("color: green;")
-                # Also refresh models
-                self._refresh_models()
-            else:
-                self.connection_status.setText("✗ Not available")
-                self.connection_status.setStyleSheet("color: red;")
+            available = client.is_available()
+            message = "Connected" if available else "Not available"
         except Exception as e:
-            self.connection_status.setText(f"✗ Error: {e}")
+            message = str(e)
+
+        if not task.is_cancelled():
+            self.connection_test_finished.emit(task.task_id, available, message)
+
+    def _on_connection_test_finished(
+        self,
+        task_id: int,
+        available: bool,
+        message: str,
+    ) -> None:
+        """Handle connection test completion on the UI thread."""
+        if task_id != self._active_connection_task_id:
+            return
+
+        self._active_connection_task_id = None
+        if available:
+            self.connection_status.setText("✓ Connected")
+            self.connection_status.setStyleSheet("color: green;")
+            self._refresh_models()
+        else:
+            self.connection_status.setText(f"✗ {message}")
             self.connection_status.setStyleSheet("color: red;")
-        finally:
-            self.test_btn.setEnabled(True)
+            self._set_network_buttons_enabled(True)
 
     def _refresh_models(self) -> None:
         """Refresh the list of available models."""
-        host = self.host_input.text().strip() or self.settings.ollama.host
+        host = self._validated_host_from_input()
+        if host is None:
+            return
+
+        self.connection_status.setText("Refreshing models...")
+        self.connection_status.setStyleSheet("color: gray;")
+        self._set_network_buttons_enabled(False)
+
+        task = self._network_tasks.start(
+            "settings-refresh-models",
+            lambda task: self._refresh_models_worker(task, host),
+        )
+        self._active_models_task_id = task.task_id
         
+    def _refresh_models_worker(self, task: BackgroundTask, host: str) -> None:
+        """Fetch available models in the background."""
         try:
             client = OllamaClient(host=host)
             models = client.list_models()
-            
-            current_model = self.model_combo.currentText()
-            self.model_combo.clear()
-            
-            for model in models:
-                self.model_combo.addItem(model.name)
-            
-            # Restore previous selection if still available
-            index = self.model_combo.findText(current_model)
-            if index >= 0:
-                self.model_combo.setCurrentIndex(index)
-            elif self.model_combo.count() > 0:
-                self.model_combo.setCurrentIndex(0)
-            
-            logger.debug(f"Refreshed models: {[m.name for m in models]}")
-            
+            model_names = [model.name for model in models]
+            if not task.is_cancelled():
+                self.models_refresh_finished.emit(task.task_id, model_names, "")
         except OllamaError as e:
-            logger.warning(f"Failed to refresh models: {e}")
+            if not task.is_cancelled():
+                self.models_refresh_finished.emit(task.task_id, [], str(e))
+        except Exception as e:
+            if not task.is_cancelled():
+                self.models_refresh_finished.emit(task.task_id, [], str(e))
+
+    def _on_models_refresh_finished(
+        self,
+        task_id: int,
+        model_names: object,
+        error_message: str,
+    ) -> None:
+        """Handle model refresh completion on the UI thread."""
+        if task_id != self._active_models_task_id:
+            return
+
+        self._active_models_task_id = None
+        self._set_network_buttons_enabled(True)
+
+        if error_message:
+            self.connection_status.setText("✗ Model refresh failed")
+            self.connection_status.setStyleSheet("color: red;")
+            logger.warning(f"Failed to refresh models: {error_message}")
             QMessageBox.warning(
                 self,
                 "Error",
-                f"Failed to fetch models: {e}\n\nMake sure Ollama is running.",
+                f"Failed to fetch models: {error_message}\n\nMake sure Ollama is running.",
             )
+            return
+
+        current_model = self.model_combo.currentText()
+        self.model_combo.clear()
+
+        for model_name in model_names:
+            self.model_combo.addItem(model_name)
+
+        index = self.model_combo.findText(current_model)
+        if index >= 0:
+            self.model_combo.setCurrentIndex(index)
+        elif self.model_combo.count() > 0:
+            self.model_combo.setCurrentIndex(0)
+
+        self.connection_status.setText(f"✓ {self.model_combo.count()} models")
+        self.connection_status.setStyleSheet("color: green;")
+        logger.debug(f"Refreshed models: {list(model_names)}")
+
+    def _set_network_buttons_enabled(self, enabled: bool) -> None:
+        """Enable or disable buttons that touch Ollama."""
+        self.test_btn.setEnabled(enabled)
+        self.refresh_models_btn.setEnabled(enabled)
+
+    def _validated_host_from_input(self) -> Optional[str]:
+        """Return a validated host from the UI, or show an error."""
+        host = self.host_input.text().strip() or self.settings.ollama.host
+        try:
+            return OllamaSettings(
+                host=host,
+                model=self.model_combo.currentText().strip() or self.settings.ollama.model,
+                general_model=self.settings.ollama.general_model,
+            ).host
+        except ValidationError as e:
+            QMessageBox.warning(
+                self,
+                "Invalid Ollama Host",
+                self._format_validation_error(e),
+            )
+            return None
+
+    def _build_settings_from_ui(self) -> Optional[AppSettings]:
+        """Create a validated settings object from current UI values."""
+        data = self.settings.model_dump()
+
+        data["ollama"]["host"] = self.host_input.text().strip() or self.settings.ollama.host
+        data["ollama"]["model"] = (
+            self.model_combo.currentText().strip() or self.settings.ollama.model
+        )
+
+        data["translation"]["source_language"] = self.source_lang_combo.currentData()
+        data["translation"]["target_language"] = self.target_lang_combo.currentData()
+
+        translate_hotkey = self.translate_hotkey_input.text().strip()
+        if translate_hotkey:
+            data["hotkeys"]["translate"] = translate_hotkey
+
+        ocr_hotkey = self.ocr_hotkey_input.text().strip()
+        if ocr_hotkey:
+            data["hotkeys"]["ocr"] = ocr_hotkey
+
+        data["ui"]["theme"] = self.theme_combo.currentText().lower()
+        data["ui"]["font_size"] = self.font_size_spin.value()
+        data["ui"]["popup_opacity"] = self.opacity_slider.value() / 100.0
+        data["ui"]["show_source_text"] = self.show_source_check.isChecked()
+
+        data["ocr"]["language"] = self.ocr_lang_combo.currentData()
+        data["ocr"]["enhance_image"] = self.enhance_image_check.isChecked()
+
+        data["privacy"]["allow_content_logging"] = self.allow_content_logging_check.isChecked()
+        data["privacy"]["keep_ocr_captures"] = self.keep_ocr_captures_check.isChecked()
+
+        try:
+            return AppSettings.model_validate(data)
+        except ValidationError as e:
+            QMessageBox.warning(
+                self,
+                "Invalid Settings",
+                self._format_validation_error(e),
+            )
+            return None
+
+    def _format_validation_error(self, error: ValidationError) -> str:
+        """Format validation errors for a compact user-facing dialog."""
+        lines = []
+        for item in error.errors():
+            location = " > ".join(str(part) for part in item.get("loc", ()))
+            message = item.get("msg", "Invalid value")
+            lines.append(f"{location}: {message}" if location else message)
+        return "\n".join(lines)
+
+    def closeEvent(self, event) -> None:
+        """Cancel outstanding settings workers on close."""
+        self._network_tasks.cancel_all()
+        super().closeEvent(event)

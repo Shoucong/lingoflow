@@ -27,8 +27,11 @@ BUNDLE_IDENTIFIER = "com.shoucong.lingoflow"
 APP_SUPPORT_DIR = Path.home() / "Library" / "Application Support" / APP_NAME
 CONFIG_DIR = APP_SUPPORT_DIR
 CONFIG_FILE = CONFIG_DIR / "settings.json"
+CONFIG_BACKUP_FILE = CONFIG_DIR / "settings.backup.json"
 LOG_DIR = Path.home() / "Library" / "Logs" / APP_NAME
 LOG_FILE = LOG_DIR / "lingoflow.log"
+CACHE_DIR = Path.home() / "Library" / "Caches" / APP_NAME
+OCR_CAPTURE_DIR = CACHE_DIR / "OCR Captures"
 SINGLE_INSTANCE_LOCK = APP_SUPPORT_DIR / f"{BUNDLE_IDENTIFIER}.lock"
 SINGLE_INSTANCE_SOCKET = APP_SUPPORT_DIR / f"{BUNDLE_IDENTIFIER}.socket"
 LEGACY_CONFIG_DIR = Path.home() / ".config" / "lingoflow"
@@ -75,6 +78,22 @@ SUPPORTED_LANGUAGES = [
     "Korean",
     "Thai",
     "Vietnamese",
+]
+
+SUPPORTED_OCR_LANGUAGES = [
+    "eng",
+    "chi_sim",
+    "chi_tra",
+    "jpn",
+    "kor",
+    "fra",
+    "deu",
+    "spa",
+    "por",
+    "ita",
+    "rus",
+    "eng+chi_sim",
+    "eng+jpn",
 ]
 
 # ===========================================================

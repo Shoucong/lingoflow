@@ -129,6 +129,7 @@ class TranslationService:
         target_language: Optional[str] = None,
         source_language: Optional[str] = None,
         on_chunk: Optional[Callable[[str], None]] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
     ) -> Iterator[str]:
         """
         Translate text with streaming output. 
@@ -155,13 +156,17 @@ class TranslationService:
         logger.info(f"Starting translation: {source_lang} -> {target_lang}")
         logger.debug(f"Source text length: {len(text)} chars")
 
+        def should_cancel() -> bool:
+            return self._cancelled or bool(cancel_check and cancel_check())
+
         try:
             for chunk in self.client.chat_stream(
                 message=user_prompt,
                 model=self.settings.ollama.model,
                 system_prompt=system_prompt,
+                cancel_check=should_cancel,
             ):
-                if self._cancelled:
+                if should_cancel():
                     logger.info("Translation cancelled")
                     break
 
@@ -253,7 +258,14 @@ class TranslationService:
         )
 
         logger.info(f"Word Lookup using mode: {self.settings.ollama.general_model}")
-        logger.info(f"Word Lookup: '{attempt}' meaning '{meaning}'")
+        if self.settings.privacy.allow_content_logging:
+            logger.info(f"Word Lookup: '{attempt}' meaning '{meaning}'")
+        else:
+            logger.info(
+                "Word lookup requested "
+                f"(attempt: {len(attempt)} chars, meaning: {len(meaning)} chars, "
+                f"language: {language})"
+            )
 
         for chunk in self.client.chat_stream(
             message=user_prompt,

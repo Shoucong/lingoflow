@@ -3,12 +3,13 @@ Settings models using Pydantic.
 
 Provides type-safe configuration with automatic validation, serialization, and default values. 
 """
-from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from lingoflow.config.constants import (
+    CONFIG_BACKUP_FILE,
     CONFIG_DIR, 
     CONFIG_FILE,
     DEFAULT_MODEL,
@@ -19,6 +20,7 @@ from lingoflow.config.constants import (
     DEFAULT_SOURCE_LANG,
     DEFAULT_TARGET_LANG,
     DEFAULT_TRANSLATE_HOTKEY,
+    SUPPORTED_OCR_LANGUAGES,
     SUPPORTED_LANGUAGES,
 )
 from lingoflow.utils.logger import get_logger
@@ -27,7 +29,44 @@ from lingoflow.utils.logger import get_logger
 # Nested Settings Models
 # ===========================================================
 
-class OllamaSettings(BaseModel):
+HOTKEY_MODIFIERS = {"alt", "option", "cmd", "command", "ctrl", "control", "shift"}
+HOTKEY_KEYS = {
+    "a", "s", "d", "f", "h", "g", "z", "x", "c", "v", "b", "q", "w", "e", "r",
+    "y", "t", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "=", "-", "]",
+    "o", "u", "[", "i", "p", "l", "j", "'", "k", ";", "\\", ",", "/", "n",
+    "m", ".", "`", "space", "tab", "return", "enter", "escape", "esc",
+}
+
+
+class SettingsModel(BaseModel):
+    """Base model for persisted settings."""
+
+    model_config = ConfigDict(validate_assignment=True, extra="ignore")
+
+
+def _normalize_hotkey(value: str) -> str:
+    """Validate and normalize a '<alt>+d' style hotkey."""
+    hotkey = value.strip().lower()
+    tokens = [token.strip().removeprefix("<").removesuffix(">") for token in hotkey.split("+")]
+    tokens = [token for token in tokens if token]
+
+    if not tokens:
+        raise ValueError("hotkey cannot be empty")
+
+    modifier_count = sum(token in HOTKEY_MODIFIERS for token in tokens)
+    key_tokens = [token for token in tokens if token not in HOTKEY_MODIFIERS]
+
+    if modifier_count == 0:
+        raise ValueError("hotkey must include at least one modifier")
+    if len(key_tokens) != 1:
+        raise ValueError("hotkey must include exactly one non-modifier key")
+    if key_tokens[0] not in HOTKEY_KEYS:
+        raise ValueError(f"unsupported hotkey key '{key_tokens[0]}'")
+
+    return value.strip()
+
+
+class OllamaSettings(SettingsModel):
     """Ollama connection settings. """
     host: str = Field(
         default=DEFAULT_OLLAMA_HOST, 
@@ -42,7 +81,27 @@ class OllamaSettings(BaseModel):
         description="Model for general purpose tasks",
     )
 
-class HotkeySettings(BaseModel):
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, value: str) -> str:
+        """Validate Ollama host URL."""
+        host = value.strip().rstrip("/")
+        parsed = urlparse(host)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("Ollama host must be an http(s) URL, for example http://localhost:11434")
+        return host
+
+    @field_validator("model", "general_model")
+    @classmethod
+    def validate_model_name(cls, value: str) -> str:
+        """Validate model names are not blank."""
+        model = value.strip()
+        if not model:
+            raise ValueError("model name cannot be empty")
+        return model
+
+
+class HotkeySettings(SettingsModel):
     """Global hotkey settings. """
 
     translate: str = Field(
@@ -54,7 +113,21 @@ class HotkeySettings(BaseModel):
         description="Hotkey for triggering OCR",
     )
 
-class TranslationSettings(BaseModel):
+    @field_validator("translate", "ocr")
+    @classmethod
+    def validate_hotkey(cls, value: str) -> str:
+        """Validate hotkey syntax."""
+        return _normalize_hotkey(value)
+
+    @model_validator(mode="after")
+    def validate_distinct_hotkeys(self) -> "HotkeySettings":
+        """Require separate shortcuts for translation and OCR."""
+        if self.translate.strip().lower() == self.ocr.strip().lower():
+            raise ValueError("Translate and OCR hotkeys must be different")
+        return self
+
+
+class TranslationSettings(SettingsModel):
     """Translation behavior settings."""
     
     source_language: str = Field(
@@ -71,7 +144,24 @@ class TranslationSettings(BaseModel):
         description="Custom prompt template for translations",
     )
 
-class UISettings(BaseModel):
+    @field_validator("source_language")
+    @classmethod
+    def validate_source_language(cls, value: str) -> str:
+        """Validate source language."""
+        if value not in SUPPORTED_LANGUAGES:
+            raise ValueError(f"unsupported source language '{value}'")
+        return value
+
+    @field_validator("target_language")
+    @classmethod
+    def validate_target_language(cls, value: str) -> str:
+        """Validate target language."""
+        if value == "auto" or value not in SUPPORTED_LANGUAGES:
+            raise ValueError(f"unsupported target language '{value}'")
+        return value
+
+
+class UISettings(SettingsModel):
     """User interface settings."""
     
     theme: str = Field(
@@ -99,7 +189,17 @@ class UISettings(BaseModel):
         description="Hide popup when it loses focus",
     )
 
-class OCRSettings(BaseModel):
+    @field_validator("theme")
+    @classmethod
+    def validate_theme(cls, value: str) -> str:
+        """Validate UI theme."""
+        theme = value.strip().lower()
+        if theme not in {"system", "light", "dark"}:
+            raise ValueError("theme must be system, light, or dark")
+        return theme
+
+
+class OCRSettings(SettingsModel):
     """OCT-Specific settings."""
 
     language: str = Field(
@@ -111,7 +211,16 @@ class OCRSettings(BaseModel):
         description="Apply image enhancement before OCR",
     )
 
-class OnboardingSettings(BaseModel):
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        """Validate OCR language."""
+        if value not in SUPPORTED_OCR_LANGUAGES:
+            raise ValueError(f"unsupported OCR language '{value}'")
+        return value
+
+
+class OnboardingSettings(SettingsModel):
     """First-run onboarding state."""
 
     completed: bool = Field(
@@ -119,11 +228,23 @@ class OnboardingSettings(BaseModel):
         description="Whether the first-run setup has completed successfully.",
     )
 
+class PrivacySettings(SettingsModel):
+    """Privacy and troubleshooting settings."""
+
+    allow_content_logging: bool = Field(
+        default=False,
+        description="Include selected text, OCR text, and generated content in logs.",
+    )
+    keep_ocr_captures: bool = Field(
+        default=False,
+        description="Keep OCR screenshot files after recognition for troubleshooting.",
+    )
+
 # ===========================================================
 # Main Settings Model
 # ===========================================================
 
-class AppSettings(BaseModel):
+class AppSettings(SettingsModel):
     """
     Main Application settings.
 
@@ -136,6 +257,7 @@ class AppSettings(BaseModel):
     ui: UISettings = Field(default_factory=UISettings)
     ocr: OCRSettings = Field(default_factory=OCRSettings)
     onboarding: OnboardingSettings = Field(default_factory=OnboardingSettings)
+    privacy: PrivacySettings = Field(default_factory=PrivacySettings)
 
     #=========================================================
     # Persistence Methods
@@ -154,13 +276,15 @@ class AppSettings(BaseModel):
 
         if config_path:
             try:
-                json_content = config_path.read_text(encoding="utf-8")
-                settings = cls.model_validate_json(json_content)
+                settings = cls._load_file(config_path)
             except Exception as e:
                 logger = get_logger(__name__)
                 logger.warning(
                     f"Could not load settings from {config_path}, using defaults: {e}"
                 )
+                backup_settings = cls._load_backup_after_failure()
+                if backup_settings:
+                    return backup_settings
                 return cls()
 
             if config_path == LEGACY_CONFIG_FILE and not CONFIG_FILE.exists():
@@ -178,13 +302,24 @@ class AppSettings(BaseModel):
         return cls()
     
     def save(self) -> None:
-        """Save current settings to config file."""
-        # Ensure config directory exists
+        """Save current settings to config file atomically."""
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-        # Write settings as a formatted JSON
         json_content = self.model_dump_json(indent=2)
-        CONFIG_FILE.write_text(json_content, encoding="utf-8")
+        temp_file = CONFIG_FILE.with_name(f"{CONFIG_FILE.name}.tmp")
+        temp_file.write_text(json_content, encoding="utf-8")
+
+        if CONFIG_FILE.exists():
+            try:
+                CONFIG_BACKUP_FILE.write_text(
+                    CONFIG_FILE.read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+            except OSError as e:
+                logger = get_logger(__name__)
+                logger.warning(f"Could not write settings backup: {e}")
+
+        temp_file.replace(CONFIG_FILE)
 
     #=========================================================
     # Utility Methods
@@ -200,3 +335,25 @@ class AppSettings(BaseModel):
         default_settings = AppSettings()
         default_settings.save()
         return default_settings
+
+    @classmethod
+    def _load_file(cls, path) -> "AppSettings":
+        """Load and validate settings from a JSON file."""
+        json_content = path.read_text(encoding="utf-8")
+        return cls.model_validate_json(json_content)
+
+    @classmethod
+    def _load_backup_after_failure(cls) -> Optional["AppSettings"]:
+        """Return backup settings if available and valid."""
+        if not CONFIG_BACKUP_FILE.exists():
+            return None
+
+        try:
+            settings = cls._load_file(CONFIG_BACKUP_FILE)
+            logger = get_logger(__name__)
+            logger.warning(f"Recovered settings from backup: {CONFIG_BACKUP_FILE}")
+            return settings
+        except Exception as e:
+            logger = get_logger(__name__)
+            logger.warning(f"Could not load settings backup: {e}")
+            return None
