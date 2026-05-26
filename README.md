@@ -31,11 +31,19 @@ lingoflow
 ## macOS App Bundle
 ```bash
 python -m pip install -e ".[package]"
+scripts/setup_local_signing_identity.sh
 scripts/build_macos_app.sh
 open dist/LingoFlow.app
 ```
 
 The app bundle is configured as a menu bar app, so it should not show a Dock icon when launched from Finder.
+
+To build a drag-to-Applications DMG:
+
+```bash
+scripts/build_dmg.sh
+open dist/LingoFlow.dmg
+```
 
 Settings are stored in `~/Library/Application Support/LingoFlow/settings.json`.
 Logs are written to `~/Library/Logs/LingoFlow/lingoflow.log`.
