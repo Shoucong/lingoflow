@@ -44,7 +44,7 @@ class OllamaStreamChunk:
 
 @dataclass
 class OllamaModel:
-    """Represents an avaiable Ollama model."""
+    """Represents an available Ollama model."""
 
     name: str
     size: int
@@ -65,11 +65,9 @@ class OllamaConnectionError(OllamaError):
     pass
 
 class OllamaModelError(OllamaError):
-    """Model-realted error (not found, failed to load, etc)."""
+    """Model-related error (not found, failed to load, etc)."""
 
     pass
-
-OllamaModelERROR = OllamaModelError
 
 class OllamaTimeoutError(OllamaError):
     """Request Timed out."""
@@ -254,7 +252,7 @@ class OllamaClient:
 
     def list_models(self) -> list[OllamaModel]:
         """
-        Get list of avaiable models from Ollama.
+        Get list of available models from Ollama.
 
         Returns:
             List of OllamaModel objects
@@ -263,7 +261,7 @@ class OllamaClient:
         """
         url = f"{self.host}{OLLAMA_TAGS_ENDPOINT}"
 
-        logger.debug("Fetching avaiable models")
+        logger.debug("Fetching available models")
 
         try:
             with self._new_client() as client:
@@ -283,7 +281,7 @@ class OllamaClient:
                     for m in data.get("models", [])
                 ]
 
-                logger.info(f"Found {len(models)} avaiable models")
+                logger.info(f"Found {len(models)} available models")
                 return models
         except (OllamaConnectionError, OllamaTimeoutError, OllamaModelError, OllamaError):
             raise
@@ -306,7 +304,7 @@ class OllamaClient:
 
     def check_model_exists(self, model: str) -> bool:
         """
-        Check if a specific model is avaiable .
+        Check if a specific model is available.
 
         Args:
             model: Model name to check

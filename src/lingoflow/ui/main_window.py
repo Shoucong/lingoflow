@@ -11,29 +11,28 @@ This is the central hub that connects:
 import platform
 import shlex
 import sys
-from typing import Optional
 
-from PyQt6.QtCore import pyqtSignal, QObject, QProcess, QTimer
-from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtWidgets import (
-    QApplication,
-    QSystemTrayIcon,
-    QMenu,
-    QMessageBox,
-)
+from PyQt6.QtCore import QObject, QProcess, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QMessageBox
 
+from lingoflow.config.constants import APP_NAME, APP_VERSION
 from lingoflow.config.settings import AppSettings
-from lingoflow.config.constants import APP_ICON_FILE, APP_NAME, APP_VERSION
-from lingoflow.core.hotkey import HotkeyManager, HotkeyAction
+from lingoflow.core.app_state import AppState, AppStateTracker
+from lingoflow.core.hotkey import HotkeyAction, HotkeyManager
+from lingoflow.core.ocr import OCRResult, OCRService
+from lingoflow.core.ports import ClipboardPort, HotkeyBackend, LLMProvider, OCRBackend
 from lingoflow.core.translator import TranslationService
-from lingoflow.core.ocr import OCRService, OCRResult, ScreenCaptureError
 from lingoflow.infrastructure.clipboard import ClipboardManager
 from lingoflow.infrastructure.macos_permissions import MacOSPermissionService
-from lingoflow.infrastructure.ollama_client import OllamaConnectionError, OllamaError
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
+from lingoflow.ui import messages
+from lingoflow.ui.ocr_workflow import OCRWorkflow
 from lingoflow.ui.onboarding_dialog import OnboardingDialog
 from lingoflow.ui.popup import TranslationPopup
+from lingoflow.ui.settings_coordinator import SettingsCoordinator
 from lingoflow.ui.settings_dialog import SettingsDialog
+from lingoflow.ui.translation_workflow import TranslationWorkflow
+from lingoflow.ui.tray_controller import TrayController, format_hotkey
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -67,52 +66,134 @@ class MainSignals(QObject):
 class MainController(QObject):
     """
     Main application controller.
-    
+
     Manages:
     - System tray icon and menu
     - Global hotkey handling
     - Translation workflow
     - OCR workflow
     - Settings management
-    
+
     This class coordinates all the pieces but doesn't create a visible window.
     The app lives in the system tray.
     """
 
     def __init__(self):
         super().__init__()
-        
+
         self.settings = AppSettings.load()
         self.signals = MainSignals()
-        
+
         # Core services
-        self.translator = TranslationService(self.settings)
-        self.ocr_service = OCRService(self.settings)
-        self.clipboard = ClipboardManager()
-        self.hotkey_manager = HotkeyManager(self.settings)
+        self.translator: LLMProvider = TranslationService(self.settings)
+        self.ocr_service: OCRBackend = OCRService(self.settings)
+        self.clipboard: ClipboardPort = ClipboardManager()
+        self.hotkey_manager: HotkeyBackend = HotkeyManager(self.settings)
         self.permission_service = (
             MacOSPermissionService() if MacOSPermissionService.is_supported() else None
         )
-        
+
         # UI components
-        self.popup: Optional[TranslationPopup] = None
-        self.tray_icon: Optional[QSystemTrayIcon] = None
-        self._settings_dialog: Optional[SettingsDialog] = None
-        self._onboarding_dialog: Optional[OnboardingDialog] = None
-        
+        self.tray_controller: TrayController | None = None
+        self._onboarding_dialog: OnboardingDialog | None = None
+
         # State
-        self._is_translating = False
-        self._is_processing_ocr = False
+        self._app_state = AppStateTracker()
         self._task_runner = TaskRunner()
-        self._active_translation_task: Optional[BackgroundTask] = None
-        self._active_ocr_task: Optional[BackgroundTask] = None
-        self._settings_dialog_open = False
-        
-        self._setup_signals()
         self._setup_tray()
+        self.translation_workflow = TranslationWorkflow(
+            settings=self.settings,
+            translator=self.translator,
+            clipboard=self.clipboard,
+            task_runner=self._task_runner,
+            app_state=self._app_state,
+            signals=self.signals,
+            notifier=self.tray_controller,
+            popup_factory=lambda settings: TranslationPopup(settings),
+        )
+        self.ocr_workflow = OCRWorkflow(
+            settings=self.settings,
+            ocr_service=self.ocr_service,
+            task_runner=self._task_runner,
+            app_state=self._app_state,
+            signals=self.signals,
+            notifier=self.tray_controller,
+            translation_workflow=self.translation_workflow,
+        )
+        self.settings_coordinator = SettingsCoordinator(
+            settings=self.settings,
+            on_settings_changed=self._on_settings_changed,
+            dismiss_popup=self._dismiss_popup,
+            activate_app=self._activate_app_for_dialog,
+            raise_dialog=self._raise_dialog,
+        )
+        self._setup_signals()
         self._setup_hotkeys()
-        
+
         logger.info(f"{APP_NAME} v{APP_VERSION} initialized")
+
+    @property
+    def app_state(self) -> AppState:
+        """Return the current high-level app state."""
+        return self._app_state.current
+
+    @property
+    def tray_icon(self):
+        """Return the underlying tray icon for compatibility/tests."""
+        return self.tray_controller.tray_icon if self.tray_controller else None
+
+    @property
+    def popup(self):
+        """Return the active translation popup."""
+        return self.translation_workflow.popup
+
+    @property
+    def _active_translation_task(self) -> BackgroundTask | None:
+        """Return the active translation task for compatibility/tests."""
+        return self.translation_workflow.active_task
+
+    @property
+    def _active_ocr_task(self) -> BackgroundTask | None:
+        """Return the active OCR task for compatibility/tests."""
+        return self.ocr_workflow.active_task
+
+    @property
+    def _settings_dialog(self):
+        """Return active settings dialog for compatibility/tests."""
+        return self.settings_coordinator.dialog
+
+    @property
+    def _settings_dialog_open(self) -> bool:
+        """Return whether the settings dialog is open."""
+        return self.settings_coordinator.is_open
+
+    @property
+    def _is_translating(self) -> bool:
+        """Compatibility wrapper while workflows move to AppState."""
+        return self._app_state.is_translating
+
+    @_is_translating.setter
+    def _is_translating(self, value: bool) -> None:
+        if value:
+            self._app_state.set(AppState.TRANSLATING)
+        elif self._app_state.current in {AppState.TRANSLATING, AppState.CANCELLING}:
+            self._app_state.reset()
+
+    @property
+    def _is_processing_ocr(self) -> bool:
+        """Compatibility wrapper while workflows move to AppState."""
+        return self._app_state.is_ocr_active
+
+    @_is_processing_ocr.setter
+    def _is_processing_ocr(self, value: bool) -> None:
+        if value:
+            self._app_state.set(AppState.OCR_RECOGNIZING)
+        elif self._app_state.is_ocr_active:
+            self._app_state.reset()
+
+    def _set_app_state(self, state: AppState, detail: str | None = None) -> None:
+        """Set high-level state explicitly for non-boolean workflow steps."""
+        self._app_state.set(state, detail=detail)
 
     # -------------------------------------------------------------------------
     # Setup Methods
@@ -133,68 +214,17 @@ class MainController(QObject):
 
     def _setup_tray(self) -> None:
         """Set up the system tray icon and menu."""
-        self.tray_icon = QSystemTrayIcon()
-        
-        icon = QIcon(str(APP_ICON_FILE))
-        if icon.isNull():
-            logger.warning(f"Could not load app icon: {APP_ICON_FILE}")
-            icon = QApplication.style().standardIcon(
-                QApplication.style().StandardPixmap.SP_ComputerIcon
-            )
-        self.tray_icon.setIcon(icon)
-        self.tray_icon.setToolTip(f"{APP_NAME} - Ready")
-        
-        # Create menu
-        menu = QMenu()
-        
-        # Status item (non-clickable)
-        self.status_action = QAction("● Ready", menu)
-        self.status_action.setEnabled(False)
-        menu.addAction(self.status_action)
-        
-        menu.addSeparator()
-        
-        # Translate action
-        translate_action = QAction(f"Translate Selection ({self._format_hotkey('translate')})", menu)
-        translate_action.triggered.connect(self._on_translate_requested)
-        menu.addAction(translate_action)
-        
-        # OCR action
-        ocr_action = QAction(f"OCR Screenshot ({self._format_hotkey('ocr')})", menu)
-        ocr_action.triggered.connect(self._on_ocr_requested)
-        menu.addAction(ocr_action)
-        
-        menu.addSeparator()
-        
-        # Settings
-        settings_action = QAction("Settings...", menu)
-        settings_action.triggered.connect(self._show_settings)
-        menu.addAction(settings_action)
-
-        if self.permission_service:
-            permissions_action = QAction("Setup Permissions...", menu)
-            permissions_action.triggered.connect(lambda: self._show_onboarding(force=True))
-            menu.addAction(permissions_action)
-        
-        # About
-        about_action = QAction("About", menu)
-        about_action.triggered.connect(self._show_about)
-        menu.addAction(about_action)
-        
-        menu.addSeparator()
-        
-        # Quit
-        quit_action = QAction("Quit", menu)
-        quit_action.triggered.connect(self._quit)
-        menu.addAction(quit_action)
-        
-        self.tray_icon.setContextMenu(menu)
-        
-        # On macOS, clicking the tray icon shows the context menu automatically
-        # Settings can be accessed via the menu
-        
-        self.tray_icon.show()
-        logger.debug("System tray icon created")
+        self.tray_controller = TrayController(
+            settings=self.settings,
+            on_translate=self._on_translate_requested,
+            on_ocr=self._on_ocr_requested,
+            on_settings=self._show_settings,
+            on_permissions=(
+                (lambda: self._show_onboarding(force=True)) if self.permission_service else None
+            ),
+            on_about=self._show_about,
+            on_quit=self._quit,
+        )
 
     def _setup_hotkeys(self) -> None:
         """Register global hotkeys."""
@@ -205,7 +235,7 @@ class MainController(QObject):
             self._on_hotkey_translate,
             description="Translate selected text",
         )
-        
+
         # Register OCR hotkey
         self.hotkey_manager.register(
             HotkeyAction.OCR,
@@ -222,24 +252,13 @@ class MainController(QObject):
         else:
             logger.error("Native hotkey listener did not start")
             self._show_notification(
-                "Hotkeys unavailable",
-                "Grant Accessibility and Input Monitoring permissions, then restart LingoFlow.",
+                messages.HOTKEYS_UNAVAILABLE_TITLE,
+                messages.HOTKEYS_PERMISSION_RESTART,
             )
 
     def _format_hotkey(self, action: str) -> str:
         """Format hotkey for display in menu."""
-        if action == "translate":
-            hotkey = self.settings.hotkeys.translate
-        elif action == "ocr":
-            hotkey = self.settings.hotkeys.ocr
-        else:
-            return ""
-        
-        # Simple formatting
-        display = hotkey.replace("<alt>", "⌥").replace("<cmd>", "⌘")
-        display = display.replace("<ctrl>", "⌃").replace("<shift>", "⇧")
-        display = display.replace("+", "")
-        return display.upper()
+        return format_hotkey(self.settings, action)
 
     # -------------------------------------------------------------------------
     # Hotkey Callbacks (Called from Background Thread)
@@ -263,166 +282,39 @@ class MainController(QObject):
 
     def _on_translate_requested(self) -> None:
         """Handle translation request (main thread)."""
-        if self._is_translating or self._is_processing_ocr:
-            logger.debug("Translation or OCR already in progress, ignoring")
-            return
-        
-        # Quick check if Ollama is available
-        if not self.translator.is_available():
-            self._show_notification(
-                "Ollama not running",
-                "Start Ollama with 'ollama serve'"
-            )
-            self._update_status("Ollama offline")
-            return
-        
-        # Get selected text
-        selected_text = self.clipboard.get_selected_text()
-        
-        if not selected_text or not selected_text.strip():
-            logger.debug("No text selected")
-            self._show_notification("No text selected", "Select some text and try again.")
-            return
-        
-        selected_text = selected_text.strip()
-        
-        # Limit text length to prevent very long translations
-        max_length = 5000
-        if len(selected_text) > max_length:
-            logger.warning(f"Text too long ({len(selected_text)} chars), truncating")
-            selected_text = selected_text[:max_length] + "..."
-        
-        if self.settings.privacy.allow_content_logging:
-            logger.info(f"Translating selected text: {selected_text[:80]}...")
-        else:
-            logger.info(f"Translating selected text ({len(selected_text)} chars)")
-        
-        # Show popup
-        self._ensure_popup()
-        self.popup.show_with_text(
-            selected_text,
-            source_language=self.settings.translation.source_language,
-        )
-        
-        # Start translation in background
-        self._start_translation(selected_text)
+        self.translation_workflow.translate_selection()
 
     def _on_ocr_requested(self) -> None:
         """Handle OCR request (main thread)."""
-        if self._is_translating or self._is_processing_ocr:
-            logger.debug("Translation or OCR already in progress, ignoring")
-            return
-        
-        logger.info("Starting OCR capture")
-        self._update_status("Capturing...")
-        
-        # Capture screen selection on the main thread, then perform OCR in a worker.
-        try:
-            image_path = self.ocr_service.capture_interactive()
-        except ScreenCaptureError as e:
-            logger.error(f"OCR capture failed: {e}")
-            self._show_notification("OCR Error", str(e))
-            self._update_status("Ready")
-            return
-        
-        if image_path is None:
-            logger.debug("OCR cancelled by user")
-            self._update_status("Ready")
-            return
-
-        self._is_processing_ocr = True
-        self._update_status("Recognizing...")
-
-        self._active_ocr_task = self._task_runner.create("ocr")
-        self._active_ocr_task.start(lambda task: self._ocr_worker(task, image_path))
+        self.ocr_workflow.request_ocr()
 
     def _ocr_worker(self, task: BackgroundTask, image_path) -> None:
         """Background worker for OCR text extraction."""
-        result = OCRResult(text="", success=False, error_message="OCR cancelled")
-        try:
-            if task.is_cancelled():
-                return
-            result = self.ocr_service.extract_text(image_path)
-        except Exception as e:
-            logger.error(f"OCR worker failed: {e}")
-            result = OCRResult(text="", success=False, error_message=str(e))
-        finally:
-            if self.ocr_service.cleanup_capture(image_path):
-                result.source_image_path = None
-
-        if not task.is_cancelled():
-            self.signals.ocr_finished.emit(task.task_id, result)
+        self.ocr_workflow._ocr_worker(task, image_path)
 
     def _on_ocr_finished(self, task_id: int, result: OCRResult) -> None:
         """Handle OCR completion (main thread)."""
-        if not self._is_active_ocr_task(task_id):
-            logger.debug(f"Ignoring stale OCR finish signal: {task_id}")
-            return
+        self.ocr_workflow.on_finished(task_id, result)
 
-        self._is_processing_ocr = False
-        self._active_ocr_task = None
-
-        if not result.success:
-            logger.error(f"OCR failed: {result.error_message}")
-            self._show_notification("OCR Error", result.error_message or "OCR failed.")
-            self._update_status("Ready")
-            return
-        
-        if not result.text or not result.text.strip():
-            logger.debug("No text extracted from image")
-            self._show_notification("No text found", "Could not extract text from the selected area.")
-            self._update_status("Ready")
-            return
-        
-        extracted_text = result.text.strip()
-        if self.settings.privacy.allow_content_logging:
-            logger.info(f"OCR extracted text: {extracted_text[:80]}...")
-        else:
-            logger.info(f"OCR extracted text ({len(extracted_text)} chars)")
-        
-        # Show popup with extracted text
-        self._ensure_popup()
-        self.popup.show_with_text(
-            extracted_text,
-            source_language=self.settings.translation.source_language,
-        )
-        
-        # Start translation
-        self._start_translation(extracted_text)
-    
     def _on_translation_finished(self, task_id: int) -> None:
         """Handle translation completion (main thread)."""
-        if not self._is_active_translation_task(task_id):
-            logger.debug(f"Ignoring stale translation finish signal: {task_id}")
-            return
-
-        self._is_translating = False
-        self._active_translation_task = None
-        self._update_status("Ready")
+        self.translation_workflow.on_finished(task_id)
 
     def _on_translation_chunk(self, task_id: int, chunk: str) -> None:
         """Append a translation chunk for the active task."""
-        if not self._is_active_translation_task(task_id) or not self.popup:
-            return
-        self.popup.append_translation(chunk)
+        self.translation_workflow.on_chunk(task_id, chunk)
 
     def _on_translation_cleared(self, task_id: int) -> None:
         """Clear translation output for the active task."""
-        if not self._is_active_translation_task(task_id) or not self.popup:
-            return
-        self.popup.clear_translation()
+        self.translation_workflow.on_cleared(task_id)
 
     def _on_translation_error(self, task_id: int, message: str) -> None:
         """Show a translation error for the active task."""
-        if not self._is_active_translation_task(task_id) or not self.popup:
-            return
-        self.popup.show_error(message)
+        self.translation_workflow.on_error(task_id, message)
 
     def _on_translation_completed(self, task_id: int) -> None:
         """Mark popup translation complete for the active task."""
-        if not self._is_active_translation_task(task_id) or not self.popup:
-            return
-        self.popup.finish_translation()
+        self.translation_workflow.on_completed(task_id)
 
     # -------------------------------------------------------------------------
     # Translation Logic
@@ -430,18 +322,7 @@ class MainController(QObject):
 
     def _start_translation(self, text: str) -> None:
         """Start translation in a background thread."""
-        self._is_translating = True
-        self._update_status("Translating...")
-        
-        # Notify popup
-        self.popup.start_translation()
-        
-        # Get target language from popup
-        target_lang = self.popup.get_target_language()
-
-        task = self._task_runner.create("translation")
-        self._active_translation_task = task
-        task.start(lambda task: self._translate_worker(task, text, target_lang))
+        self.translation_workflow.start_translation(text)
 
     def _translate_worker(
         self,
@@ -450,75 +331,7 @@ class MainController(QObject):
         target_language: str,
     ) -> None:
         """Background worker for translation."""
-        max_retries = 2
-        retry_count = 0
-        
-        try:
-            while retry_count <= max_retries:
-                if task.is_cancelled():
-                    logger.info("Translation cancelled")
-                    return
-                
-                try:
-                    for chunk in self.translator.translate_stream(
-                        text,
-                        target_language=target_language,
-                        cancel_check=task.is_cancelled,
-                    ):
-                        # Check if this translation was cancelled
-                        if task.is_cancelled():
-                            logger.info("Translation cancelled")
-                            return
-                        self.signals.translation_chunk.emit(task.task_id, chunk)
-                    
-                    # Finished successfully
-                    if task.is_cancelled():
-                        logger.info("Translation cancelled")
-                        return
-                    self.signals.translation_completed.emit(task.task_id)
-                    
-                    logger.info("Translation completed")
-                    break  # Success, exit retry loop
-                    
-                except OllamaConnectionError as e:
-                    if task.is_cancelled():
-                        logger.info("Translation cancelled")
-                        return
-
-                    retry_count += 1
-                    if retry_count <= max_retries:
-                        logger.warning(f"Connection failed, retrying ({retry_count}/{max_retries})...")
-                        if task.cancel_event.wait(timeout=1.0):
-                            logger.info("Translation cancelled")
-                            return
-                        self.signals.translation_cleared.emit(task.task_id)
-                    else:
-                        logger.error(f"Ollama connection error after {max_retries} retries: {e}")
-                        self.signals.translation_error.emit(
-                            task.task_id,
-                            "Cannot connect to Ollama.\n"
-                            "Make sure it's running: ollama serve",
-                        )
-        
-        except OllamaError as e:
-            if task.is_cancelled():
-                logger.info("Translation cancelled")
-                return
-
-            logger.error(f"Ollama error: {e}")
-            self.signals.translation_error.emit(task.task_id, str(e))
-        
-        except Exception as e:
-            if task.is_cancelled():
-                logger.info("Translation cancelled")
-                return
-
-            logger.error(f"Translation error: {e}")
-            self.signals.translation_error.emit(task.task_id, f"Translation failed: {e}")
-        
-        finally:
-            if not task.is_cancelled():
-                self.signals.translation_finished.emit(task.task_id)
+        self.translation_workflow._translate_worker(task, text, target_language)
 
     # -------------------------------------------------------------------------
     # UI Helpers
@@ -526,100 +339,41 @@ class MainController(QObject):
 
     def _ensure_popup(self) -> None:
         """Ensure popup window exists."""
-        if self.popup is None:
-            self.popup = TranslationPopup(self.settings)
-            self.popup.language_changed.connect(self._on_popup_language_changed)
-            self.popup.closed.connect(self._on_popup_closed)
+        self.translation_workflow.ensure_popup()
 
     def _dismiss_popup(self, reason: str) -> None:
         """Dismiss the popup even if macOS has hidden it outside Qt visibility state."""
-        if not self.popup:
-            return
-
-        logger.debug(reason)
-        try:
-            self.popup.dismiss()
-        except RuntimeError:
-            self.popup = None
+        self.translation_workflow.dismiss_popup(reason)
 
     def _is_active_translation_task(self, task_id: int) -> bool:
         """Return whether a task still owns the active translation."""
-        return (
-            self._is_translating
-            and self._active_translation_task is not None
-            and self._active_translation_task.task_id == task_id
-            and not self._active_translation_task.is_cancelled()
-        )
+        return self.translation_workflow.is_active_task(task_id)
 
     def _is_active_ocr_task(self, task_id: int) -> bool:
         """Return whether a task still owns the active OCR operation."""
-        return (
-            self._is_processing_ocr
-            and self._active_ocr_task is not None
-            and self._active_ocr_task.task_id == task_id
-            and not self._active_ocr_task.is_cancelled()
-        )
+        return self.ocr_workflow.is_active_task(task_id)
 
     def _cancel_active_translation(self, reason: str, update_status: bool = True) -> None:
         """Cancel the active translation task if one is running."""
-        if not self._is_translating:
-            return
-
-        logger.info(reason)
-        self._task_runner.cancel(self._active_translation_task)
-        self.translator.cancel()
-        self._is_translating = False
-        self._active_translation_task = None
-
-        if update_status:
-            self._update_status("Ready")
+        self.translation_workflow.cancel_active(reason, update_status=update_status)
 
     def _on_popup_closed(self) -> None:
         """Cancel translation work when the popup is dismissed."""
-        self._cancel_active_translation("Popup closed, cancelling active translation")
-        self.popup = None
+        self.translation_workflow.on_popup_closed()
 
     def _on_popup_language_changed(self, language: str) -> None:
         """Re-translate when user changes target language in popup."""
-        # Cancel any in-progress translation
-        self._cancel_active_translation(
-            "Target language changed, cancelling current translation",
-            update_status=False,
-        )
-        
-        source_text = self.popup.get_source_text()
-        if source_text:
-            # Clear previous translation and re-run (without repositioning)
-            self.popup.clear_translation()
-            self._start_translation(source_text)
+        self.translation_workflow.on_popup_language_changed(language)
 
     def _update_status(self, status: str) -> None:
         """Update tray icon status."""
-        if status == "Ready":
-            self.status_action.setText("● Ready")
-            self.tray_icon.setToolTip(f"{APP_NAME} - Ready")
-        elif status == "Translating...":
-            self.status_action.setText("◐ Translating...")
-            self.tray_icon.setToolTip(f"{APP_NAME} - Translating...")
-        elif status == "Capturing...":
-            self.status_action.setText("◐ Capturing...")
-            self.tray_icon.setToolTip(f"{APP_NAME} - Capturing...")
-        elif status == "Recognizing...":
-            self.status_action.setText("◐ Recognizing...")
-            self.tray_icon.setToolTip(f"{APP_NAME} - Recognizing text...")
-        else:
-            self.status_action.setText(f"● {status}")
-            self.tray_icon.setToolTip(f"{APP_NAME} - {status}")
+        if self.tray_controller:
+            self.tray_controller.update_status(status)
 
     def _show_notification(self, title: str, message: str) -> None:
         """Show a system notification."""
-        if self.tray_icon and self.tray_icon.isSystemTrayAvailable():
-            self.tray_icon.showMessage(
-                title,
-                message,
-                QSystemTrayIcon.MessageIcon.Information,
-                3000,  # 3 seconds
-            )
+        if self.tray_controller:
+            self.tray_controller.show_notification(title, message)
 
     def _show_error_dialog(self, title: str, message: str) -> None:
         """Show an error dialog."""
@@ -633,13 +387,13 @@ class MainController(QObject):
             return
 
         if self._settings_dialog_open:
-            self._raise_dialog(self._settings_dialog)
+            self.settings_coordinator.raise_current()
             return
 
         self._activate_app_for_dialog()
         self._show_notification(
-            f"{APP_NAME} is already running",
-            "Use the menu bar icon to translate, run OCR, or open settings.",
+            messages.already_running_title(),
+            messages.ALREADY_RUNNING_MESSAGE,
         )
 
     # -------------------------------------------------------------------------
@@ -648,32 +402,11 @@ class MainController(QObject):
 
     def _show_settings(self) -> None:
         """Show the settings dialog."""
-        # Prevent multiple dialogs from opening
-        if self._settings_dialog_open:
-            self._raise_dialog(self._settings_dialog)
-            return
-
-        self._dismiss_popup("Opening settings, closing any existing popup")
-        
-        self._settings_dialog_open = True
-
-        dialog = SettingsDialog(self.settings)
-        self._settings_dialog = dialog
-        dialog.settings_changed.connect(self._on_settings_changed)
-        dialog.finished.connect(lambda _: self._on_settings_closed(dialog))
-        self._activate_app_for_dialog()
-        QTimer.singleShot(0, lambda: self._raise_dialog(dialog))
-        QTimer.singleShot(150, lambda: self._raise_dialog(dialog))
-        dialog.show()
+        self.settings_coordinator.show()
 
     def _on_settings_closed(self, dialog: SettingsDialog) -> None:
         """Clear settings dialog state after a modeless settings window closes."""
-        if dialog is not self._settings_dialog:
-            return
-
-        self._settings_dialog = None
-        self._settings_dialog_open = False
-        dialog.deleteLater()
+        self.settings_coordinator.on_closed(dialog)
 
     def _activate_app_for_dialog(self) -> None:
         """Bring this tray app forward before showing a real dialog on macOS."""
@@ -703,17 +436,20 @@ class MainController(QObject):
 
     def _on_settings_changed(self, new_settings: AppSettings) -> None:
         """Handle settings changes."""
-        self.settings = new_settings
-        
+        settings_snapshot = new_settings.model_copy(deep=True)
+        self.settings = settings_snapshot
+        self.settings_coordinator.update_settings(settings_snapshot)
+
         # Update services
-        self.translator.update_settings(new_settings)
-        self.ocr_service.update_settings(new_settings)
-        self.hotkey_manager.update_settings(new_settings)
-        
-        # Update popup if it exists
-        if self.popup:
-            self.popup.update_settings(new_settings)
-        
+        self.translator.update_settings(settings_snapshot)
+        self.ocr_service.update_settings(settings_snapshot)
+        self.hotkey_manager.update_settings(settings_snapshot)
+        if self.tray_controller:
+            self.tray_controller.update_settings(settings_snapshot)
+
+        self.translation_workflow.apply_settings(settings_snapshot)
+        self.ocr_workflow.apply_settings(settings_snapshot)
+
         logger.info("Settings applied to all services")
 
     def _show_onboarding(self, force: bool = False) -> None:
@@ -796,22 +532,23 @@ class MainController(QObject):
         logger.info("Quitting application")
 
         # Stop any active translation
-        self._cancel_active_translation("Quitting, cancelling active translation", update_status=False)
-        self._task_runner.cancel(self._active_ocr_task)
-        self._active_ocr_task = None
-        self._is_processing_ocr = False
-        
+        self._cancel_active_translation(
+            messages.QUIT_CANCEL_TRANSLATION_REASON,
+            update_status=False,
+        )
+        self.ocr_workflow.shutdown()
+
         # Stop hotkey listener
         self.hotkey_manager.stop()
-        
+
         # Hide tray icon
-        if self.tray_icon:
-            self.tray_icon.hide()
+        if self.tray_controller:
+            self.tray_controller.hide()
 
         if self._onboarding_dialog:
             self._onboarding_dialog.close()
             self._onboarding_dialog = None
-        
+
         # Quit application
         QApplication.quit()
 
@@ -827,21 +564,21 @@ class MainController(QObject):
         # Check Ollama connection on startup
         if not self.translator.is_available():
             self._show_notification(
-                "Ollama not running",
-                "Start Ollama with 'ollama serve' for translations to work."
+                messages.OLLAMA_NOT_RUNNING_TITLE,
+                messages.OLLAMA_START_COMMAND_FOR_TRANSLATION,
             )
-            self._update_status("Ollama offline")
+            self._update_status(messages.OLLAMA_OFFLINE_STATUS)
             logger.warning("Ollama is not available at startup")
         else:
             # Verify the configured model exists
             available_models = self.translator.get_available_models()
             configured_model = self.settings.ollama.model
-            
+
             if available_models and configured_model not in available_models:
                 fallback_model = available_models[0]
                 self._show_notification(
-                    "Model not found",
-                    f"Using '{fallback_model}' for this session."
+                    messages.MODEL_NOT_FOUND_TITLE,
+                    messages.model_fallback_message(fallback_model),
                 )
                 logger.warning(
                     f"Configured model '{configured_model}' not found; "
@@ -850,6 +587,6 @@ class MainController(QObject):
                 runtime_settings = self.settings.model_copy(deep=True)
                 runtime_settings.ollama.model = fallback_model
                 self.translator.update_settings(runtime_settings)
-            
+
             self._update_status("Ready")
             logger.info("Ollama connection verified")

@@ -15,7 +15,7 @@ pytest.importorskip("pytestqt")
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.ocr import OCRResult, ScreenCaptureError
 from lingoflow.infrastructure.ollama_client import OllamaError
-from lingoflow.ui import main_window
+from lingoflow.ui import main_window, messages, tray_controller
 from lingoflow.ui.main_window import MainController
 
 
@@ -283,7 +283,7 @@ def controller_harness(monkeypatch, qapp, isolated_settings_paths) -> Controller
     monkeypatch.setattr(main_window, "ClipboardManager", lambda: clipboard)
     monkeypatch.setattr(main_window, "HotkeyManager", lambda _settings: hotkeys)
     monkeypatch.setattr(main_window, "MacOSPermissionService", UnsupportedPermissions)
-    monkeypatch.setattr(main_window, "QSystemTrayIcon", FakeTrayIcon)
+    monkeypatch.setattr(tray_controller, "QSystemTrayIcon", FakeTrayIcon)
 
     def make_popup(popup_settings: AppSettings) -> FakePopup:
         popup = FakePopup(popup_settings)
@@ -359,8 +359,8 @@ def test_translate_request_without_ollama_notifies_and_does_not_create_popup(
     harness.controller._on_translate_requested()
 
     assert harness.popup is None
-    assert harness.controller.tray_icon.messages[-1][0] == "Ollama not running"
-    assert "Ollama offline" in harness.controller.tray_icon.tooltip
+    assert harness.controller.tray_icon.messages[-1][0] == messages.OLLAMA_NOT_RUNNING_TITLE
+    assert messages.OLLAMA_OFFLINE_STATUS in harness.controller.tray_icon.tooltip
 
 
 def test_translate_request_without_selected_text_notifies(
@@ -373,8 +373,8 @@ def test_translate_request_without_selected_text_notifies(
 
     assert harness.popup is None
     assert harness.controller.tray_icon.messages[-1] == (
-        "No text selected",
-        "Select some text and try again.",
+        messages.NO_TEXT_SELECTED_TITLE,
+        messages.NO_TEXT_SELECTED_MESSAGE,
     )
 
 
@@ -437,7 +437,7 @@ def test_ocr_capture_error_notifies_without_starting_worker(
     assert harness.popup is None
     assert harness.controller._active_ocr_task is None
     assert harness.controller.tray_icon.messages[-1] == (
-        "OCR Error",
+        messages.OCR_ERROR_TITLE,
         "screen permission missing",
     )
 
@@ -454,7 +454,7 @@ def test_ocr_empty_result_notifies_and_does_not_translate(
 
     assert harness.popup is None
     assert harness.translator.requests == []
-    assert harness.controller.tray_icon.messages[-1][0] == "No text found"
+    assert harness.controller.tray_icon.messages[-1][0] == messages.NO_TEXT_FOUND_TITLE
 
 
 def test_translation_error_is_shown_in_popup(
@@ -506,12 +506,14 @@ def test_settings_changed_updates_services_hotkeys_and_popup(
 
     harness.controller._on_settings_changed(new_settings)
 
-    assert harness.controller.settings is new_settings
-    assert harness.translator.updated_settings == [new_settings]
-    assert harness.ocr.updated_settings == [new_settings]
-    assert harness.hotkeys.updated_settings == [new_settings]
+    applied_settings = harness.controller.settings
+    assert applied_settings is not new_settings
+    assert applied_settings == new_settings
+    assert harness.translator.updated_settings == [applied_settings]
+    assert harness.ocr.updated_settings == [applied_settings]
+    assert harness.hotkeys.updated_settings == [applied_settings]
     assert harness.popup is not None
-    assert harness.popup.updated_settings == [new_settings]
+    assert harness.popup.updated_settings == [applied_settings]
     assert harness.popup.target_language == "Japanese"
 
 
