@@ -1,5 +1,5 @@
 """
-Ollama API client with streaming support. 
+Ollama API client with streaming support.
 
 Handles all communication with the local Ollama server.
 """
@@ -10,11 +10,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 import httpx
+
 from lingoflow.config.constants import (
-    OLLAMA_CHAT_ENDPOINT, 
+    OLLAMA_CHAT_ENDPOINT,
     OLLAMA_CONNECT_TIMEOUT,
-    OLLAMA_READ_TIMEOUT, 
-    OLLAMA_TAGS_ENDPOINT
+    OLLAMA_READ_TIMEOUT,
+    OLLAMA_TAGS_ENDPOINT,
 )
 from lingoflow.utils.logger import get_logger
 
@@ -81,11 +82,11 @@ class OllamaTimeoutError(OllamaError):
 
 class OllamaClient:
     """
-    Client for interacting with the Ollama API. 
+    Client for interacting with the Ollama API.
 
     Supports both streaming and non-streaming requests.
 
-    Example: 
+    Example:
         client = OllamaClient()
 
         # Streaming
@@ -96,14 +97,20 @@ class OllamaClient:
         print(response.content)
     """
 
-    def __init__(self, host: str = "http://localhost:11434"):
+    def __init__(
+        self,
+        host: str = "http://localhost:11434",
+        transport: Optional[httpx.BaseTransport] = None,
+    ):
         """
-        Initialize the Ollama client. 
+        Initialize the Ollama client.
 
-        Args: 
-            host: Ollama server URL 
+        Args:
+            host: Ollama server URL
+            transport: Optional httpx transport for tests.
         """
         self.host = host.rstrip("/")
+        self._transport = transport
         self._timeout = httpx.Timeout(
             connect=OLLAMA_CONNECT_TIMEOUT,
             read=OLLAMA_READ_TIMEOUT,
@@ -124,16 +131,16 @@ class OllamaClient:
         cancel_check: Optional[Callable[[], bool]] = None,
     ) -> Iterator[OllamaStreamChunk]:
         """
-        Send a chat message and stream the response. 
+        Send a chat message and stream the response.
 
         Args:
             message: User message to send
             model: Model name to use
             system_prompt: Optional system prompt for context
-        
+
         Yields:
             OllamaStreamChunk for each piece of the response
-        
+
         Raises:
             OllamaConnectionError: if cannot connect to server
             OllamaTimeoutError: if request times out
@@ -147,16 +154,16 @@ class OllamaClient:
         messages.append({"role": "user", "content": message})
 
         payload = {
-            "model": model, 
+            "model": model,
             "messages": messages,
-            "stream": True, 
+            "stream": True,
         }
 
         logger.debug(f"Starting streaming chat with model: {model}")
         logger.debug(f"Message length: {len(message)} chars")
 
         try:
-            with httpx.Client(timeout=self._timeout) as client:
+            with self._new_client() as client:
                 with client.stream("POST", url, json=payload) as response:
                     self._raise_for_status(response, model=model)
 
@@ -175,10 +182,10 @@ class OllamaClient:
 
                             if content or done:
                                 yield OllamaStreamChunk(content=content, done=done)
-                            
+
                             if done:
                                 logger.debug("Streaming complete.")
-                        
+
                         except json.JSONDecodeError:
                             logger.error(
                                 f"Failed to parse stream chunk ({len(line)} chars)"
@@ -191,20 +198,20 @@ class OllamaClient:
 
     def chat(
         self,
-        message: str, 
-        model: str, 
+        message: str,
+        model: str,
         system_prompt: Optional[str] = None,
     ) -> OllamaResponse:
         """
-        Send a chat message and get the complete response. 
+        Send a chat message and get the complete response.
 
-        For UI use, prefer previous streaming method for better UX. 
-        
-        Args: 
-            message: User message to send 
+        For UI use, prefer previous streaming method for better UX.
+
+        Args:
+            message: User message to send
             model: Model name to use
             system_prompt: Optional system prompt for context
-        
+
         Returns:
             OllamaResponse with the complete response
         """
@@ -216,15 +223,15 @@ class OllamaClient:
         messages.append({"role": "user", "content": message})
 
         payload = {
-            "model": model, 
+            "model": model,
             "messages": messages,
-            "stream": False, 
+            "stream": False,
         }
 
         logger.debug(f"Starting non-streaming chat request to model: {model}")
 
-        try: 
-            with httpx.Client(timeout=self._timeout) as client:
+        try:
+            with self._new_client() as client:
                 response = client.post(url, json=payload)
                 self._raise_for_status(response, model=model)
                 try:
@@ -239,7 +246,7 @@ class OllamaClient:
                     total_duration=data.get("total_duration"),
                     eval_count=data.get("eval_count"),
                 )
-            
+
         except (OllamaConnectionError, OllamaTimeoutError, OllamaModelError, OllamaError):
             raise
         except httpx.RequestError as e:
@@ -247,8 +254,8 @@ class OllamaClient:
 
     def list_models(self) -> list[OllamaModel]:
         """
-        Get list of avaiable models from Ollama. 
-        
+        Get list of avaiable models from Ollama.
+
         Returns:
             List of OllamaModel objects
         Raise:
@@ -258,8 +265,8 @@ class OllamaClient:
 
         logger.debug("Fetching avaiable models")
 
-        try: 
-            with httpx.Client(timeout=self._timeout) as client:
+        try:
+            with self._new_client() as client:
                 response = client.get(url)
                 self._raise_for_status(response)
                 try:
@@ -285,13 +292,13 @@ class OllamaClient:
 
     def is_available(self) -> bool:
         """
-        Check if Ollama server is reachable. 
+        Check if Ollama server is reachable.
 
         Returns:
             True if server responds, False otherwise
         """
         try:
-            with httpx.Client(timeout=self._timeout) as client:
+            with self._new_client() as client:
                 response = client.get(f"{self.host}/api/tags")
                 return response.status_code == 200
         except Exception:
@@ -299,15 +306,15 @@ class OllamaClient:
 
     def check_model_exists(self, model: str) -> bool:
         """
-        Check if a specific model is avaiable . 
-        
+        Check if a specific model is avaiable .
+
         Args:
             model: Model name to check
-        
+
         Returns:
             True if model exists, False otherwise
         """
-        try: 
+        try:
             models = self.list_models()
             model_names = [m.name for m in models]
             return model in model_names
@@ -340,3 +347,7 @@ class OllamaClient:
             f"Cannot connect to Ollama at {self.host}. "
             "Make sure Ollama is running."
         ) from error
+
+    def _new_client(self) -> httpx.Client:
+        """Create an HTTP client, allowing tests to inject a mock transport."""
+        return httpx.Client(timeout=self._timeout, transport=self._transport)

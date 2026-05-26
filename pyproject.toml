@@ -62,9 +62,20 @@ target-version = ["py310"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true
 warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "macos: tests that exercise macOS-specific APIs",
+    "ollama: tests that require a real Ollama process",
+    "manual: tests that require user interaction or system permissions",
+]

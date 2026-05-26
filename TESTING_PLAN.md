@@ -7,6 +7,38 @@ requiring Ollama, macOS permission prompts, screen selection, or manual input by
 default. Manual end-to-end checks still matter for a macOS menu bar app, but
 they should live outside automated test collection.
 
+## Current Progress
+
+### Applied: Foundation and P0 Regression Slice
+
+- Added pytest configuration and shared isolated-path fixtures.
+- Added unit tests for settings validation, backup recovery, task lifecycle,
+  mocked Ollama transport behavior, translator prompt/result behavior, and OCR
+  capture cleanup.
+- Added lightweight UI smoke tests for Settings and popup behavior.
+- Added integration checks for app imports and packaging metadata.
+- Added `manual_tests/README.md` for release checks that require the signed app,
+  user permissions, or real screen capture.
+
+### Applied: MainController Workflow Slice
+
+- Added fake-service workflow tests for selected-text translation.
+- Covered Ollama-unavailable and no-selection user notifications.
+- Covered long-selection truncation before translation.
+- Covered OCR success, cancelled capture, capture errors, and empty OCR results.
+- Covered translation error display in the popup.
+- Covered popup-close cancellation of active translation work.
+- Covered settings propagation to translator, OCR, hotkeys, and popup.
+- Covered stale translation signal suppression.
+
+Validation command:
+
+```bash
+.venv/bin/python -m pytest
+```
+
+Current result: 52 passing tests.
+
 ## Test Strategy
 
 Use three layers:
