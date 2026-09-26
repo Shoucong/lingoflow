@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from typing import Protocol
 
@@ -152,12 +153,20 @@ class TranslationWorkflow:
             or word_script(text) is None
         ):
             return None
+        started = time.perf_counter()
         try:
             result = self._dictionary.lookup(text.strip(), self.popup.get_target_language())
         except Exception:
             logger.exception("Dictionary lookup failed")
             return None
-        return result if result is not None and result.found else None
+        found = result is not None and result.found
+        # No selected text in the log: only which path answered and how fast.
+        logger.info(
+            "trace word: %s in %.1f ms",
+            ("dictionary" if result.bilingual else "definition + model") if found else "model",
+            (time.perf_counter() - started) * 1000,
+        )
+        return result if found else None
 
     def _start_request(
         self,
