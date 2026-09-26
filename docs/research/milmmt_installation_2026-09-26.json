@@ -1,0 +1,258 @@
+{
+  "date": "2026-09-26T18:17:23.082624",
+  "implementation_revision": "74f4e7c4c8baf7b64cf0ea628d902cab5f103067",
+  "installed_app": "/Applications/LingoFlow.app",
+  "version": "0.2.1",
+  "previous_version": "0.1.0",
+  "previous_app_backup": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/installed-backups/20260926-181722/LingoFlow.app",
+  "settings_file": "/Users/shoucong/Library/Application Support/LingoFlow/settings.json",
+  "settings_backup": "/Users/shoucong/Library/Application Support/LingoFlow/settings.before-milmmt-20260926-181722.json",
+  "previous_settings_sha256": "2cef0ae5b527c4c1c1fb2ae321afb72bb7c85d29d1fad672f3dd8d448bac63a5",
+  "active_model": "hf.co/mradermacher/MiLMMT-46-4B-v1.0-GGUF:Q4_K_M",
+  "temperature": 0.0,
+  "thinking": "off",
+  "other_settings_preserved": true,
+  "codesign_verify": "passed",
+  "bundle_self_check": {
+    "version": "0.2.1",
+    "python": "3.12.12",
+    "qt_runtime": "6.11.1",
+    "qt_platform": "cocoa",
+    "frozen": true,
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "window_cycles": [
+      {
+        "cycle": 1,
+        "rss_kib": 162944,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 2,
+        "rss_kib": 169168,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 3,
+        "rss_kib": 175824,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 4,
+        "rss_kib": 183360,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 5,
+        "rss_kib": 184320,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 6,
+        "rss_kib": 184896,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 7,
+        "rss_kib": 191984,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 8,
+        "rss_kib": 199136,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 9,
+        "rss_kib": 205424,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 10,
+        "rss_kib": 207328,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 11,
+        "rss_kib": 212864,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 12,
+        "rss_kib": 218464,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 13,
+        "rss_kib": 217952,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 14,
+        "rss_kib": 219312,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 15,
+        "rss_kib": 222320,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 16,
+        "rss_kib": 229088,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 17,
+        "rss_kib": 217504,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 18,
+        "rss_kib": 223792,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 19,
+        "rss_kib": 228976,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 20,
+        "rss_kib": 235472,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 21,
+        "rss_kib": 242144,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 22,
+        "rss_kib": 248768,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 23,
+        "rss_kib": 255584,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 24,
+        "rss_kib": 261136,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 25,
+        "rss_kib": 259104,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 26,
+        "rss_kib": 259840,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 27,
+        "rss_kib": 261840,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 28,
+        "rss_kib": 260064,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 29,
+        "rss_kib": 259856,
+        "registered_monitors": 2
+      },
+      {
+        "cycle": 30,
+        "rss_kib": 266848,
+        "registered_monitors": 2
+      }
+    ],
+    "vision": {
+      "text": "LingoFlow local OCR test\nKeep value 12.5 and citation [12].",
+      "confidence": 1.0,
+      "seconds": 0.4683897079958115,
+      "remaining_capture_files": 0
+    },
+    "permission_preflight": [
+      {
+        "key": "accessibility",
+        "state": "missing"
+      },
+      {
+        "key": "input_monitoring",
+        "state": "missing"
+      },
+      {
+        "key": "screen_recording",
+        "state": "granted"
+      }
+    ],
+    "completed": true
+  },
+  "source_sha256": {
+    "src/lingoflow/diagnostics.py": "bb1c39c8859ca8c71cedc5a9b841daf3f3635e350276a457729869cb4d0be27c",
+    "src/lingoflow/__init__.py": "4407ebeff2fe1fd6f4cc52988c0e7dcfb22f07fbdf3d972dd1ac843b7ad05345",
+    "src/lingoflow/app.py": "3f37f36514b74a2a5449c4b3776acd8343aba823bc9ae88b1956db176aaf709a",
+    "src/lingoflow/ui/main_window.py": "30bf97a534a5951ad7bc8a74839963da20186cd9c77a3c87e2e0e8757efd1058",
+    "src/lingoflow/ui/translation_view.py": "a8c741cfc0e523658a2558a07b7499c19eb0680a0bbf43b0e2bf2c9553bd9887",
+    "src/lingoflow/ui/onboarding_dialog.py": "f3c4261e0f85104322d68ab0b28b26ceb36a729e601d036b359a12b25066dea8",
+    "src/lingoflow/ui/settings_coordinator.py": "d962dde76699a8531fde70a98e927ee1bcbda904eceeadc29719aa10d476647b",
+    "src/lingoflow/ui/theme.py": "554f84a06c55d2e4d30d67be9e89d57ae07350061acefd5e13342716450abd46",
+    "src/lingoflow/ui/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/lingoflow/ui/popup.py": "a369e7f41702d6ac53ab81fb807f954793e6e70ca21332d553c69c00b39711d2",
+    "src/lingoflow/ui/window_controller.py": "d3d53b47ffaaa1ca795150bdf96202a105b21112666592b093f89bb45ad78a08",
+    "src/lingoflow/ui/ocr_workflow.py": "93ac3d2f70d20de378b5bf39926806f5cadf8ae4adc17e398b2691bbafe69e04",
+    "src/lingoflow/ui/tray_controller.py": "66c3bf46b3cc435b92e45bb23a99d21d666f01cfa6851ef1ab72754b3254dfdb",
+    "src/lingoflow/ui/messages.py": "bb08eea0278dd757538dd4c781abd1c0f0b8ae63f0859d38a959ad53f1bad804",
+    "src/lingoflow/ui/translation_workflow.py": "71c9b58a7274c01beb00798defe0a9b9ce8cb4de103b922cb03322f53d531683",
+    "src/lingoflow/ui/settings_dialog.py": "7c69c668e8171ab9968bb71f23cb9ce435adfd0a04ebf224d27fc0b362c9b237",
+    "src/lingoflow/core/models.py": "8453602805353d1901115b0e03bfdfc41390580c6f94f668c6d7f7bf49e5cd7b",
+    "src/lingoflow/core/text_preparation.py": "e93d611dbf9280884dc6f6f06042c59d7ee3f25474decbf4fc47496167f33cec",
+    "src/lingoflow/core/ports.py": "9532ec5e733334ebe47245112008e75cb41aee103df16bf5a3fde1c6af026e7b",
+    "src/lingoflow/core/session.py": "f03f481ca2deff5fa465b9efe9730bde1be58f148082331cdd28ab61ad6472ff",
+    "src/lingoflow/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/lingoflow/core/translation_profiles.py": "6f5e2e04bc756e1da4fce7e6ddac2375636d8bd62b8a82c8eabeb0f5b11b28dc",
+    "src/lingoflow/core/errors.py": "6399850c33d79c5f03def8c21470c2b9ac04f6f814586a2648e980508d6e4962",
+    "src/lingoflow/core/speech.py": "1d0cac1b98c915a115cdd7ff8ac3efbfb33915c6e40f09993a39e697a478b6fa",
+    "src/lingoflow/core/app_state.py": "e2bf523d928cd45bac07e2f9c7f929628ddd9c2c1cdfba69b6c1c380edcb02dc",
+    "src/lingoflow/core/translator.py": "878572a40e5e6b3ab2ff147ef65325354941769e00ee108166605618bfe80ce2",
+    "src/lingoflow/config/constants.py": "ff2058c2ecbb6075cf0a3bcb0d7f6c60b04363e743407f72ed392ba1a575e515",
+    "src/lingoflow/config/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/lingoflow/config/settings.py": "f6c2d91aeb890023058a49872babf27859a987c9ff6978285cd456c9d13f5145",
+    "src/lingoflow/utils/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/lingoflow/utils/logger.py": "6e9866471d28fb53afaedbc2a5b9e25e087aad2fd8107b8d6d76885ff65bda74",
+    "src/lingoflow/infrastructure/tasks.py": "6fecc8ea6a5c253d21d8b6dbe9b29e19f5f7a6cc97ab6b5d8bd028ff1385463a",
+    "src/lingoflow/infrastructure/ollama_client.py": "c6f618f0b631f230ec839473c315183d82f8a2409132712c26960f6ea56bc35c",
+    "src/lingoflow/infrastructure/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/lingoflow/infrastructure/async_stream.py": "db6de4241b51108afabb4d2409731d1d3ef4489bf29e527c356e31eeae4d84d7",
+    "src/lingoflow/infrastructure/single_instance.py": "37e3e8432a778dafb68f1fb43af31840ba2d7273db38395aab3c051b9bcd5c92",
+    "src/lingoflow/infrastructure/translation_service.py": "7de7437d37e84c64a3a41ffcadfa5c78ccc1da7517108a2d716da3603c675699",
+    "src/lingoflow/infrastructure/macos/event_monitor.py": "b0004a0b80c8b77d750830e7ab2c7dd6d98ab0694faa2d295ac75577683618f7",
+    "src/lingoflow/infrastructure/macos/vision.py": "e2c5529e1ecb3242a103df80fcf5327d2e8bfccb6bd96e2c1d5dacb60b9f9369",
+    "src/lingoflow/infrastructure/macos/__init__.py": "92094bdbbc5d0a767fbdfb8403e0028c06a1aee6f0652c0da22815a527e85adb",
+    "src/lingoflow/infrastructure/macos/hotkeys.py": "135edbd376f9cbc07365a0148718e122364e8da667195162f81bb40fc6728617",
+    "src/lingoflow/infrastructure/macos/ocr.py": "f4c76945cfc761dba99d1820e5f869b23da0626bdc6a90430837c3d0e2770aed",
+    "src/lingoflow/infrastructure/macos/language.py": "92b2a7fbb270b6a680c4ccf1078a7d45263dac76065fc09aeaf3c370b3ecab65",
+    "src/lingoflow/infrastructure/macos/permissions.py": "094f900d5e16455608fed695b995c8c1151999c3bdd2b236ee258e6dd3baf05d",
+    "src/lingoflow/infrastructure/macos/screen_capture.py": "2c42f045a5636128188ee14caf0f41ad9e225b3893514612bf6a0da0dabfa475",
+    "src/lingoflow/infrastructure/macos/speech.py": "76270e302f5e57b74a47428ea0d3b043fdc9b1d0fc3fa5dc7e2543cdca071a26",
+    "src/lingoflow/infrastructure/macos/clipboard.py": "2ef031511c57730168a07e56d961950e82ec02b1a81259ae1debb33ea7a3ae41"
+  },
+  "completed": true,
+  "gui_launch": "Installed application launched; Set up LingoFlow window observed through native UI.",
+  "gui_permissions": {
+    "accessibility": "needs_setup",
+    "input_monitoring": "needs_setup",
+    "screen_recording": "granted"
+  },
+  "permission_action": "Left onboarding open for the user; no OS privacy permissions were changed.",
+  "regression_tests": {
+    "full_suite": 165,
+    "cocoa_window_suite": 59
+  }
+}

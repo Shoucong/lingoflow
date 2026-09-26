@@ -1,0 +1,17 @@
+{
+  "source_revision": "0c45c9b59425ae8b73d428867b443a5bf1865320",
+  "qt_platform": "cocoa",
+  "model": "hf.co/mradermacher/MiLMMT-46-4B-v1.0-GGUF:Q4_K_M",
+  "resident_models_before": [],
+  "close_after_http_body_sent_seconds": 0.3,
+  "first_request_output_chars_before_close": 0,
+  "close_handler_seconds": 0.019387792010093108,
+  "close_to_new_popup_seconds": 0.05301354199764319,
+  "cancelled_worker_confirmed_exited_seconds": 0.053022375010186806,
+  "second_first_text_after_close_seconds": 3.2399043749901466,
+  "second_translation": "第二次翻译请求应该会立即打开一个新的窗口。",
+  "active_requests_after": 0,
+  "completed": true,
+  "scope": "Real local Ollama and native windows; synthetic clipboard and hotkey signal. Physical global key/AX acquisition is not exercised.",
+  "provenance_note": "Cold-start run used the MiLMMT defaults during the 0.2.1 working-tree migration, before commit 8f8e932. Its recorded source_revision is the then-current HEAD, not the complete uncommitted default configuration. The run predates the later 2048-byte input cap; the short inputs did not reach either cap."
+}

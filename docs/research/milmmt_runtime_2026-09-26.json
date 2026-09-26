@@ -1,0 +1,24 @@
+{
+  "model": "hf.co/mradermacher/MiLMMT-46-4B-v1.0-GGUF:Q4_K_M",
+  "cancellation": [
+    {
+      "phase": "before_first_text",
+      "seconds": 0.023089958005584776,
+      "partial_chars": 0,
+      "active_requests_after": 0
+    },
+    {
+      "phase": "during_stream",
+      "seconds": 0.002288666000822559,
+      "partial_chars": 1,
+      "active_requests_after": 0
+    }
+  ],
+  "recovery_translation": "窗口可以调整大小。",
+  "tasks_exercised": 250,
+  "retained_active_tasks": 0,
+  "retained_diagnostics": 100,
+  "python_threads_before": 1,
+  "python_threads_after": 1,
+  "completed": true
+}
