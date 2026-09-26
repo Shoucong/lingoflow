@@ -10,6 +10,16 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
+@pytest.fixture(autouse=True)
+def english_interface():
+    """Tests start in the default English interface and never leak a language choice."""
+    from lingoflow.i18n import set_language
+
+    set_language("en")
+    yield
+    set_language("en")
+
+
 @pytest.fixture
 def isolated_settings_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]:
     """Point persisted settings at a temp directory for one test."""
@@ -46,9 +56,29 @@ def isolated_settings_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 def isolated_ocr_capture_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Point OCR captures at a temp directory for one test."""
     import lingoflow.config.constants as constants
-    import lingoflow.core.ocr as ocr_module
+    import lingoflow.infrastructure.macos.ocr as ocr_module
 
     capture_dir = tmp_path / "OCR Captures"
     monkeypatch.setattr(constants, "OCR_CAPTURE_DIR", capture_dir)
     monkeypatch.setattr(ocr_module, "OCR_CAPTURE_DIR", capture_dir)
     return capture_dir
+
+
+@pytest.fixture
+def own_popup(qapp):
+    """Close WA_DeleteOnClose popups after a test without touching deleted wrappers."""
+    from PyQt6 import sip
+
+    owned = []
+
+    def register(widget):
+        owned.append(widget)
+        return widget
+
+    yield register
+    for widget in owned:
+        if not sip.isdeleted(widget):
+            widget.dismiss()
+    from PyQt6.QtCore import QCoreApplication, QEvent
+
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)

@@ -4,18 +4,43 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from lingoflow.config.settings import AppSettings
-from lingoflow.core.hotkey import HotkeyAction
-from lingoflow.core.ocr import OCRResult
+from lingoflow.core.models import HotkeyAction, ModelChunk, ModelInfo, OCRResult
+from lingoflow.core.text_preparation import TranslationCheckpoint
+
+if TYPE_CHECKING:
+    from lingoflow.config.settings import AppSettings
+
+
+class ChatProvider(Protocol):
+    """Text generation transport injected into the translation service."""
+
+    def chat_stream(
+        self,
+        message: str,
+        model: str,
+        system_prompt: str | None = None,
+        cancel_check: Callable[[], bool] | None = None,
+        *,
+        options: dict | None = None,
+        keep_alive: int | None = None,
+        think: bool | None = None,
+        raw: bool = False,
+    ) -> Iterator[ModelChunk]: ...
+
+    def cancel(self) -> None: ...
+
+    def is_available(self) -> bool: ...
+
+    def list_models(self) -> list[ModelInfo]: ...
 
 
 @runtime_checkable
 class ClipboardPort(Protocol):
     """Reads selected text from the frontmost app."""
 
-    def get_selected_text(self) -> str:
+    def get_selected_text(self, cancel_check: Callable[[], bool] | None = None) -> str | None:
         """Return currently selected text, or an empty string."""
 
 
@@ -36,6 +61,9 @@ class LLMProvider(Protocol):
         source_language: str | None = None,
         on_chunk: Callable[[str], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
+        checkpoint: TranslationCheckpoint | None = None,
+        on_checkpoint: Callable[[TranslationCheckpoint], None] | None = None,
+        on_source_detected: Callable[[str], None] | None = None,
     ) -> Iterator[str]:
         """Yield translated text chunks."""
 
@@ -50,11 +78,18 @@ class LLMProvider(Protocol):
 class OCRBackend(Protocol):
     """OCR capture and recognition backend."""
 
-    def capture_interactive(self) -> Path | None:
+    def capture_interactive(self, cancel_check: Callable[[], bool] | None = None) -> Path | None:
         """Let the user select a screen region and return the capture path."""
 
-    def extract_text(self, image_path: Path) -> OCRResult:
+    def extract_text(
+        self,
+        image_path: Path,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> OCRResult:
         """Extract text from a captured image."""
+
+    def cancel(self) -> None:
+        """Stop active capture/recognition if supported."""
 
     def cleanup_capture(self, image_path: Path | str) -> bool:
         """Remove a managed capture path when retention is disabled."""

@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-26",
+  "status": "passed",
+  "formal_model_count": 4,
+  "formal_results": 200,
+  "results_per_model": 50,
+  "english_per_model": 25,
+  "japanese_per_model": 25,
+  "ai_drug_discovery_per_model": 8,
+  "api_failures": 0,
+  "truncated_results": 0,
+  "anonymous_ratings": 200,
+  "anonymous_mapping_verified": true,
+  "fixture_hash_verified": true,
+  "runner_hash_verified": true,
+  "installed_digests_verified": true,
+  "html_cases": 50,
+  "html_translation_panels": 200,
+  "report_links_verified": true,
+  "browser_checks": {
+    "all_cases": 50,
+    "japanese": 25,
+    "japanese_ai_drug_discovery": 3,
+    "ai_drug_discovery": 8,
+    "ai_drug_discovery_with_substantive_correction": 7,
+    "search_E23_in_ai_drug_discovery": 1
+  },
+  "browser_note": "Rendered table and panels inspected. Checkbox filter verified using keyboard Space after IAB click automation did not toggle it.",
+  "lint": "ruff check and black --check passed for both benchmark scripts",
+  "ollama_models_resident_after_evaluation": 0
+}

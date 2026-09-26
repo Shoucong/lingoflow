@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from typing import Protocol
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
+from lingoflow.core.dictionary import DictionaryResult, word_script
+from lingoflow.core.errors import ProviderConnectionError, TranslationError
 from lingoflow.core.ports import ClipboardPort, LLMProvider, Notifier
-from lingoflow.infrastructure.ollama_client import OllamaConnectionError, OllamaError
+from lingoflow.core.session import SessionStatus, TranslationSession
+from lingoflow.core.text_preparation import TranslationCheckpoint
+from lingoflow.i18n import tr
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.ui import messages
 from lingoflow.ui.popup import TranslationPopup
@@ -20,11 +25,14 @@ logger = get_logger(__name__)
 class TranslationSignals(Protocol):
     """Signals emitted by translation workers."""
 
+    selection_ready: object
+    translation_checkpoint: object
     translation_chunk: object
     translation_cleared: object
     translation_error: object
     translation_completed: object
     translation_finished: object
+    translation_source_detected: object
 
 
 class TranslationWorkflow:
@@ -40,6 +48,8 @@ class TranslationWorkflow:
         signals: TranslationSignals,
         notifier: Notifier,
         popup_factory: Callable[[AppSettings], TranslationPopup],
+        on_settings_requested: Callable[[str], None] | None = None,
+        dictionary=None,
     ) -> None:
         self.settings = settings
         self.translator = translator
@@ -49,9 +59,12 @@ class TranslationWorkflow:
         self._signals = signals
         self._notifier = notifier
         self._popup_factory = popup_factory
+        self._on_settings_requested = on_settings_requested
+        self._dictionary = dictionary
 
         self.popup: TranslationPopup | None = None
         self.active_task: BackgroundTask | None = None
+        self.session: TranslationSession | None = None
 
     @property
     def is_translating(self) -> bool:
@@ -60,58 +73,154 @@ class TranslationWorkflow:
 
     def apply_settings(self, settings: AppSettings) -> None:
         """Apply settings to workflow-owned UI."""
+        if self.active_task:
+            self.stop_from_popup()
         self.settings = settings
         if self.popup:
             self.popup.update_settings(settings)
 
     def translate_selection(self) -> None:
-        """Translate the current selected text."""
-        if self._app_state.is_translating or self._app_state.is_ocr_active:
-            logger.debug("Translation or OCR already in progress, ignoring")
+        """Capture and check the local service without blocking the Qt thread."""
+        self.cancel_active("New selection requested", update_status=False)
+        task = self._task_runner.create("selection")
+        self.active_task = task
+        self.session = TranslationSession(task.task_id)
+        self._app_state.set(AppState.ACQUIRING)
+        self._notifier.update_status("Reading selection...")
+        task.start(self._selection_worker)
+
+    def _selection_worker(self, task: BackgroundTask) -> None:
+        text, error = "", ""
+        try:
+            if task.is_cancelled():
+                return
+            text = (self.clipboard.get_selected_text(cancel_check=task.is_cancelled) or "").strip()
+            if not text:
+                error = "empty"
+            elif not task.is_cancelled() and not self.translator.is_available():
+                error = "offline"
+        except Exception:
+            logger.exception("Could not capture selected text")
+            error = "capture"
+        if not task.is_cancelled():
+            self._signals.selection_ready.emit(task.task_id, text, error)
+
+    def on_selection_ready(self, task_id: int, text: str, error: str) -> None:
+        if not self.is_active_task(task_id):
             return
-
-        if not self.translator.is_available():
-            self._notifier.show_notification(
-                messages.OLLAMA_NOT_RUNNING_TITLE,
-                messages.OLLAMA_START_COMMAND,
-            )
-            self._notifier.update_status(messages.OLLAMA_OFFLINE_STATUS)
+        self.active_task = None
+        self._app_state.reset()
+        if error:
+            if self.session:
+                self.session.finish(SessionStatus.FAILED, error)
+            if error == "offline":
+                self._notifier.show_notification(
+                    messages.OLLAMA_NOT_RUNNING_TITLE,
+                    messages.OLLAMA_START_COMMAND,
+                )
+                self._notifier.update_status(messages.OLLAMA_OFFLINE_STATUS)
+            elif error == "empty":
+                self._notifier.show_notification(
+                    messages.NO_TEXT_SELECTED_TITLE,
+                    messages.NO_TEXT_SELECTED_MESSAGE,
+                )
+                self._notifier.update_status("Ready")
+            else:
+                self._notifier.show_notification(
+                    messages.SELECTION_UNAVAILABLE_TITLE,
+                    messages.SELECTION_UNAVAILABLE_MESSAGE,
+                )
+                self._notifier.update_status("Ready")
             return
-
-        selected_text = self.clipboard.get_selected_text()
-
-        if not selected_text or not selected_text.strip():
-            logger.debug("No text selected")
-            self._notifier.show_notification(
-                messages.NO_TEXT_SELECTED_TITLE,
-                messages.NO_TEXT_SELECTED_MESSAGE,
-            )
-            return
-
-        selected_text = selected_text.strip()
-
-        max_length = 5000
-        if len(selected_text) > max_length:
-            logger.warning(f"Text too long ({len(selected_text)} chars), truncating")
-            selected_text = selected_text[:max_length] + "..."
-
-        if self.settings.privacy.allow_content_logging:
-            logger.info(f"Translating selected text: {selected_text[:80]}...")
-        else:
-            logger.info(f"Translating selected text ({len(selected_text)} chars)")
-
-        self.translate_text(selected_text)
+        self.translate_text(text)
 
     def translate_text(self, text: str) -> None:
         """Show source text and start translating it."""
+        self.cancel_active("New text requested", update_status=False)
         self.ensure_popup()
         self.popup.show_with_text(
             text,
             source_language=self.settings.translation.source_language,
         )
-        self.start_translation(text)
+        self._start_request(text)
 
-    def start_translation(self, text: str) -> None:
+    def _lookup_word(self, text: str) -> DictionaryResult | None:
+        """Offline dictionary entry for a single selected word, if one applies."""
+        if (
+            self._dictionary is None
+            or not self.popup
+            or not self.settings.translation.dictionary_lookup
+            or word_script(text) is None
+        ):
+            return None
+        started = time.perf_counter()
+        try:
+            result = self._dictionary.lookup(text.strip(), self.popup.get_target_language())
+        except Exception:
+            logger.exception("Dictionary lookup failed")
+            return None
+        if result is None:
+            return None  # no dictionary applies (language pair) or none is available
+        if result.found:
+            path = "dictionary" if result.bilingual else "definition + model"
+        else:
+            # Looked up but in neither dictionary (e.g. "equivariance"): still a word
+            # card, so it is visible that the dictionaries were checked.
+            path = "not in dictionaries, model"
+            result = DictionaryResult(result.query, "", bilingual=False)
+        # No selected text in the log: only which path answered and how fast.
+        logger.info("trace word: %s in %.1f ms", path, (time.perf_counter() - started) * 1000)
+        return result
+
+    def _start_request(
+        self,
+        text: str,
+        checkpoint: TranslationCheckpoint | None = None,
+        allow_dictionary: bool = True,
+    ) -> None:
+        """Show a word card for single words (plus a model gloss), else translate."""
+        if not self.popup:
+            return
+        result = self._lookup_word(text) if allow_dictionary else None
+        if result is not None:
+            self.popup.show_dictionary(result, expect_gloss=True)
+            if self.settings.translation.source_language == "auto":
+                script = word_script(text)
+                self.popup.set_detected_source_language(
+                    "English" if script == "latin" else "Chinese(Simplified)"
+                )
+            self.start_translation(text.strip())
+            return
+        self.popup.leave_word_mode()
+        self.start_translation(text, checkpoint)
+
+    def translate_with_model(self, text: str) -> None:
+        """Translate a word as ordinary text, skipping the dictionary."""
+        if not text.strip() or not self.popup:
+            return
+        self.cancel_active("Model translation requested", update_status=False)
+        self._start_request(text, allow_dictionary=False)
+
+    def review_text(self, text: str) -> None:
+        """Show editable input without sending it to a model until requested."""
+        self.cancel_active("Reviewing text", update_status=False)
+        self.ensure_popup()
+        self.popup.show_with_text(text, source_language=self.settings.translation.source_language)
+        self.popup.prepare_review()
+        self.session = TranslationSession(
+            0,
+            text,
+            self.popup.get_target_language(),
+            SessionStatus.REVIEW,
+        )
+        self._app_state.reset()
+        self._notifier.update_status("Review text")
+
+    def start_translation(
+        self,
+        text: str,
+        checkpoint: TranslationCheckpoint | None = None,
+    ) -> None:
         """Start translation in a background task."""
         if not self.popup:
             return
@@ -124,17 +233,32 @@ class TranslationWorkflow:
 
         task = self._task_runner.create("translation")
         self.active_task = task
-        task.start(lambda current_task: self._translate_worker(current_task, text, target_lang))
+        self.session = TranslationSession(
+            task.task_id,
+            text,
+            target_lang,
+            SessionStatus.TRANSLATING,
+        )
+        task.start(
+            lambda current_task: self._translate_worker(
+                current_task,
+                text,
+                target_lang,
+                checkpoint,
+            )
+        )
 
     def _translate_worker(
         self,
         task: BackgroundTask,
         text: str,
         target_language: str,
+        checkpoint: TranslationCheckpoint | None = None,
     ) -> None:
         """Background worker for translation."""
         max_retries = 2
         retry_count = 0
+        emitted_text = False
 
         try:
             while retry_count <= max_retries:
@@ -147,10 +271,19 @@ class TranslationWorkflow:
                         text,
                         target_language=target_language,
                         cancel_check=task.is_cancelled,
+                        checkpoint=checkpoint,
+                        on_checkpoint=lambda saved: self._signals.translation_checkpoint.emit(
+                            task.task_id,
+                            saved,
+                        ),
+                        on_source_detected=lambda language: (
+                            self._signals.translation_source_detected.emit(task.task_id, language)
+                        ),
                     ):
                         if task.is_cancelled():
                             logger.info("Translation cancelled")
                             return
+                        emitted_text = emitted_text or bool(chunk)
                         self._signals.translation_chunk.emit(task.task_id, chunk)
 
                     if task.is_cancelled():
@@ -161,11 +294,19 @@ class TranslationWorkflow:
                     logger.info("Translation completed")
                     break
 
-                except OllamaConnectionError as e:
+                except ProviderConnectionError as e:
                     if task.is_cancelled():
                         logger.info("Translation cancelled")
                         return
 
+                    if emitted_text:
+                        raise TranslationError(
+                            tr(
+                                "Connection interrupted. The partial translation is kept; "
+                                "retry when ready.",
+                                "连接中断，已保留部分译文，可稍后重试。",
+                            )
+                        ) from e
                     retry_count += 1
                     if retry_count <= max_retries:
                         logger.warning(
@@ -182,7 +323,7 @@ class TranslationWorkflow:
                             messages.OLLAMA_CONNECT_TRANSLATION_ERROR,
                         )
 
-        except OllamaError as e:
+        except TranslationError as e:
             if task.is_cancelled():
                 logger.info("Translation cancelled")
                 return
@@ -196,44 +337,66 @@ class TranslationWorkflow:
                 return
 
             logger.error(f"Translation error: {e}")
-            self._signals.translation_error.emit(task.task_id, f"Translation failed: {e}")
+            self._signals.translation_error.emit(
+                task.task_id,
+                tr("Translation failed: {error}", "翻译失败：{error}", error=e),
+            )
 
         finally:
             if not task.is_cancelled():
                 self._signals.translation_finished.emit(task.task_id)
 
     def on_finished(self, task_id: int) -> None:
-        """Handle translation completion on the main thread."""
         if not self.is_active_task(task_id):
-            logger.debug(f"Ignoring stale translation finish signal: {task_id}")
             return
-
-        self._app_state.reset()
         self.active_task = None
-        self._notifier.update_status("Ready")
+        if self.session and self.session.status == SessionStatus.FAILED:
+            self._app_state.mark_error("Failed")
+            self._notifier.update_status("Failed")
+        else:
+            self._app_state.reset()
+            self._notifier.update_status("Ready")
 
     def on_chunk(self, task_id: int, chunk: str) -> None:
         """Append a chunk to the active popup."""
         if not self.is_active_task(task_id) or not self.popup:
             return
-        self.popup.append_translation(chunk)
+        if self.session and self.session.append(task_id, chunk):
+            self.popup.append_translation(chunk)
+
+    def on_checkpoint(self, task_id: int, checkpoint: TranslationCheckpoint) -> None:
+        if self.is_active_task(task_id) and self.session:
+            self.session.checkpoint = checkpoint
+            if self.popup:
+                self.popup.set_progress(len(checkpoint.completed), checkpoint.total)
+
+    def on_source_detected(self, task_id: int, language: str) -> None:
+        """Show the locally identified source language for the active request."""
+        if self.is_active_task(task_id) and self.popup:
+            self.popup.set_detected_source_language(language)
 
     def on_cleared(self, task_id: int) -> None:
         """Clear active popup translation output."""
         if not self.is_active_task(task_id) or not self.popup:
             return
+        if self.session:
+            self.session.translated_text = ""
         self.popup.clear_translation()
 
     def on_error(self, task_id: int, message: str) -> None:
         """Show a translation error."""
         if not self.is_active_task(task_id) or not self.popup:
             return
+        if self.session:
+            self.session.finish(SessionStatus.FAILED, message)
         self.popup.show_error(message)
 
     def on_completed(self, task_id: int) -> None:
         """Mark popup translation complete."""
         if not self.is_active_task(task_id) or not self.popup:
             return
+        if self.session:
+            self.session.finish(SessionStatus.COMPLETED)
         self.popup.finish_translation()
 
     def ensure_popup(self) -> None:
@@ -242,10 +405,21 @@ class TranslationWorkflow:
             self.popup = self._popup_factory(self.settings)
             self.popup.language_changed.connect(self.on_popup_language_changed)
             self.popup.closed.connect(self.on_popup_closed)
+            self.popup.stop_requested.connect(self.stop_from_popup)
+            self.popup.retry_requested.connect(self.retry_from_popup)
+            self.popup.model_translation_requested.connect(self.translate_with_model)
+            if self._on_settings_requested:
+                self.popup.settings_requested.connect(self._on_settings_requested)
 
-    def dismiss_popup(self, reason: str) -> None:
+    def dismiss_popup(self, reason: str, keep_pinned: bool = False) -> None:
         """Dismiss the popup even if macOS has hidden it."""
         if not self.popup:
+            return
+        try:
+            if keep_pinned and getattr(self.popup, "is_pinned", False):
+                return
+        except RuntimeError:
+            self.popup = None
             return
 
         logger.debug(reason)
@@ -257,19 +431,20 @@ class TranslationWorkflow:
     def is_active_task(self, task_id: int) -> bool:
         """Return whether a task still owns the active translation."""
         return (
-            self._app_state.is_translating
-            and self.active_task is not None
+            self.active_task is not None
             and self.active_task.task_id == task_id
             and not self.active_task.is_cancelled()
         )
 
     def cancel_active(self, reason: str, update_status: bool = True) -> None:
         """Cancel the active translation task if one is running."""
-        if not self._app_state.is_translating:
+        if self.active_task is None:
             return
 
         logger.info(reason)
         self._app_state.set(AppState.CANCELLING)
+        if self.session:
+            self.session.finish(SessionStatus.CANCELLED)
         self._task_runner.cancel(self.active_task)
         self.translator.cancel()
         self._app_state.reset()
@@ -278,13 +453,35 @@ class TranslationWorkflow:
         if update_status:
             self._notifier.update_status("Ready")
 
+    def stop_from_popup(self) -> None:
+        self.cancel_active("Stopped by user")
+        if self.popup:
+            self.popup.stop_translation()
+
+    def retry_from_popup(self, text: str) -> None:
+        if not text.strip():
+            return
+        checkpoint = (
+            self.session.checkpoint
+            if self.session
+            and self.session.status in {SessionStatus.FAILED, SessionStatus.CANCELLED}
+            else None
+        )
+        self.cancel_active("Retry requested", update_status=False)
+        if self.popup:
+            self.popup.clear_translation()
+            self._start_request(text, checkpoint)
+
     def on_popup_closed(self) -> None:
         """Cancel translation work when the popup is dismissed."""
         self.cancel_active(messages.POPUP_CLOSED_CANCEL_TRANSLATION_REASON)
         self.popup = None
+        self.session = None
 
     def on_popup_language_changed(self, language: str) -> None:
         """Re-translate when user changes target language in popup."""
+        if self.popup and self.popup.is_reviewing:
+            return
         self.cancel_active(
             messages.TARGET_LANGUAGE_CHANGED_CANCEL_REASON,
             update_status=False,
@@ -296,7 +493,7 @@ class TranslationWorkflow:
         source_text = self.popup.get_source_text()
         if source_text:
             self.popup.clear_translation()
-            self.start_translation(source_text)
+            self._start_request(source_text)
 
     def shutdown(self) -> None:
         """Cancel active translation during app shutdown."""

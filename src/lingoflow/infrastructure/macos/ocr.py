@@ -5,86 +5,24 @@ Handles screen capture and text extraction.
 Uses Apple Vision and macOS screencapture.
 """
 
-import subprocess
-from dataclasses import dataclass
+import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import uuid4
 
+import objc
 from PIL import Image, ImageEnhance, ImageFilter
 
 from lingoflow.config.constants import OCR_CAPTURE_DIR
 from lingoflow.config.settings import AppSettings
+from lingoflow.core.errors import ScreenCaptureError
+from lingoflow.core.models import CaptureRegion, OCRResult
+from lingoflow.infrastructure.macos.screen_capture import ScreenCaptureRunner
+from lingoflow.infrastructure.macos.vision import VISION_AVAILABLE, VisionRecognizer
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-try:
-    import Vision
-    from Cocoa import NSURL
-
-    VISION_AVAILABLE = True
-except ImportError:
-    logger.warning("PyObjc not installed. Run: pip install pyobjc-framework-Vision")
-    VISION_AVAILABLE = False
-
-
-# ==========================================================
-# Data Types
-# ==========================================================
-
-
-@dataclass
-class CaptureRegion:
-    """Represents a screen region to capture"""
-
-    x: int
-    y: int
-    width: int
-    height: int
-
-    def to_tuple(self) -> Tuple[int, int, int, int]:
-        """Return as (x,y,width,height) tuple"""
-        return (self.x, self.y, self.width, self.height)
-
-
-@dataclass
-class OCRResult:
-    """Result of an OCR operation."""
-
-    text: str
-    confidence: Optional[float] = None
-    source_image_path: Optional[str] = None
-    success: bool = True
-    error_message: Optional[str] = None
-
-
-# ==========================================================
-# Exceptions
-# ==========================================================
-
-
-class OCRError(Exception):
-    """Base exception for OCR operations."""
-
-    pass
-
-
-class ScreenCaptureError(OCRError):
-    """Failed to capture screen region"""
-
-    pass
-
-
-class VisionError(OCRError):
-    """Apple Vision framework error."""
-
-    pass
-
-
-# ==========================================================
-# OCR Service
-# ==========================================================
 
 
 class OCRService:
@@ -103,6 +41,10 @@ class OCRService:
     """
 
     # Language mapping from app settings codes to Apple Vision identifiers.
+    # Order matters: Vision uses the first language's model. Its Chinese/Japanese
+    # models also read Latin letters, but the English model cannot read CJK text, so
+    # "en-US" first returned nothing for Chinese and garbled mixed lines. CJK comes
+    # first in mixed options (measured: Chinese 98-100%, mixed 90-95% character accuracy).
     LANGUAGE_MAP = {
         "eng": ["en-US"],
         "chi_sim": ["zh-Hans"],
@@ -116,8 +58,8 @@ class OCRService:
         "ita": ["it-IT"],
         "rus": ["ru-RU"],
         # Composite options for mixed-language documents
-        "eng+chi_sim": ["en-US", "zh-Hans"],
-        "eng+jpn": ["en-US", "ja-JP"],
+        "eng+chi_sim": ["zh-Hans", "en-US"],
+        "eng+jpn": ["ja-JP", "en-US"],
     }
 
     def __init__(self, settings: Optional[AppSettings] = None):
@@ -129,6 +71,9 @@ class OCRService:
         """
         self.settings = settings or AppSettings.load()
         self._capture_dir = OCR_CAPTURE_DIR
+        self._vision_gate = threading.Lock()
+        self.capture = ScreenCaptureRunner()
+        self.recognizer = VisionRecognizer()
         self._prepare_capture_dir()
         if not self.settings.privacy.keep_ocr_captures:
             self.cleanup_stale_captures()
@@ -142,7 +87,11 @@ class OCRService:
     # Public Methods
     # ==========================================================
 
-    def extract_text(self, image_path: Path) -> OCRResult:
+    def extract_text(
+        self,
+        image_path: Path,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> OCRResult:
         """
         Extract text from an image file.
 
@@ -163,11 +112,29 @@ class OCRService:
                 error_message=f"Image file not found: {image_path}",
             )
 
+        prepared = None
         try:
-            return self._extract_text_apple_vision(image_path)
+            with self._vision_gate, objc.autorelease_pool():
+                if cancel_check and cancel_check():
+                    return OCRResult(text="", cancelled=True)
+                recognition_path = image_path
+                if self.settings.ocr.enhance_image:
+                    prepared = self._new_capture_path()
+                    with Image.open(image_path) as image:
+                        self._preprocess_image(image).save(prepared, format="PNG")
+                    self._secure_capture_file(prepared)
+                    recognition_path = prepared
+                if cancel_check and cancel_check():
+                    return OCRResult(text="", cancelled=True)
+                result = self._extract_text_apple_vision(recognition_path, cancel_check)
+                result.source_image_path = str(image_path)
+                return result
         except Exception as e:
             logger.error(f"OCR extraction failed: {e}")
             return OCRResult(text="", success=False, error_message=str(e))
+        finally:
+            if prepared is not None:
+                prepared.unlink(missing_ok=True)
 
     def capture_screen_region(self, region: CaptureRegion) -> Path:
         """
@@ -201,7 +168,10 @@ class OCRService:
             logger.error(f"Screen capture failed: {e}")
             raise ScreenCaptureError(f"Failed to capture screen: {e}") from e
 
-    def capture_interactive(self) -> Optional[Path]:
+    def capture_interactive(
+        self,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> Optional[Path]:
         """
         Let user interactively select a screen region to capture.
 
@@ -212,11 +182,13 @@ class OCRService:
         logger.info("Starting interactive screen capture")
 
         try:
-            return self._capture_interactive_macos(output_path)
+            return self._capture_interactive_macos(output_path, cancel_check)
         except ScreenCaptureError:
+            self.cleanup_capture(output_path)
             raise
         except Exception as e:
             logger.error(f"Interactive capture failed: {e}")
+            self.cleanup_capture(output_path)
             return None
 
     def capture_and_extract(self, region: Optional[CaptureRegion] = None) -> OCRResult:
@@ -294,92 +266,8 @@ class OCRService:
     # macOS implementation
     # ==========================================================
 
-    def _extract_text_apple_vision(self, image_path: Path) -> OCRResult:
-        """
-        Extract text using Apple's Vision framework.
-
-        Provides strong accuracy for CJK (Chinese, Japanese, Korean) text.
-        """
-        if not VISION_AVAILABLE:
-            return OCRResult(
-                text="",
-                success=False,
-                error_message=(
-                    "Apple Vision not available. " "Install: pip install pyobjc-framework-Vision"
-                ),
-            )
-
-        try:
-            # Create URL for the image
-            input_url = NSURL.fileURLWithPath_(str(image_path))
-
-            # Create request handler
-            request_handler = Vision.VNImageRequestHandler.alloc().initWithURL_options_(
-                input_url, None
-            )
-
-            # Create text recognition request
-            request = Vision.VNRecognizeTextRequest.alloc().init()
-
-            # Configure for accuracy (vs speed)
-            request.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelAccurate)
-            request.setUsesLanguageCorrection_(True)
-
-            # Set recognition languages
-            apple_languages = self._get_apple_languages()
-            request.setRecognitionLanguages_(apple_languages)
-
-            logger.debug(f"Vision request with languages: {apple_languages}")
-
-            # Perform OCR
-            success, error = request_handler.performRequests_error_([request], None)
-
-            if not success:
-                error_msg = str(error) if error else "Unknown Vision error"
-                raise VisionError(f"Vision request failed: {error_msg}")
-
-            # Extract results
-            results = request.results()
-            if not results:
-                logger.info("No text detected in image")
-                return OCRResult(
-                    text="",
-                    confidence=0.0,
-                    source_image_path=str(image_path),
-                    success=True,
-                )
-
-            # Collect text and confidence from all observations
-            extracted_lines = []
-            total_confidence = 0.0
-
-            for observation in results:
-                # Get the best candidate for each detected text block
-                candidates = observation.topCandidates_(1)
-                if candidates:
-                    candidate = candidates[0]
-                    extracted_lines.append(candidate.string())
-                    total_confidence += candidate.confidence()
-
-            text = "\n".join(extracted_lines)
-            avg_confidence = total_confidence / len(results) if results else 0.0
-
-            logger.info(
-                f"Apple Vision extracted {len(text)} chars " f"(confidence: {avg_confidence:.2%})"
-            )
-
-            return OCRResult(
-                text=text,
-                confidence=avg_confidence,
-                source_image_path=str(image_path),
-                success=True,
-            )
-
-        except VisionError:
-            raise
-        except Exception as e:
-            logger.error(f"Apple Vision error: {e}")
-            return OCRResult(text="", success=False, error_message=str(e))
+    def _extract_text_apple_vision(self, image_path: Path, cancel_check=None) -> OCRResult:
+        return self.recognizer.recognize(image_path, self._get_apple_languages(), cancel_check)
 
     def _get_apple_languages(self) -> List[str]:
         """
@@ -393,64 +281,46 @@ class OCRService:
             return self.LANGUAGE_MAP[lang]
 
         # default
-        logger.warning(f"Unknown languages '{lang}', defaulting to en-US + zh-Hans")
-        return ["en-US", "zh-Hans"]
+        logger.warning(f"Unknown languages '{lang}', defaulting to zh-Hans + en-US")
+        return ["zh-Hans", "en-US"]
 
     # ==========================================================
     # macOS: Screen Capture
     # ==========================================================
 
-    def _capture_macos(self, region: CaptureRegion, output_path: Path) -> None:
-        """
-        Capture screen region on macOS using screencapture.
-        """
-        try:
-            result = subprocess.run(
-                [
-                    "screencapture",
-                    "-x",
-                    "-R",
-                    f"{region.x}, {region.y}, {region.width}, {region.height}",
-                    str(output_path),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=10.0,
-            )
-        except subprocess.TimeoutExpired as e:
-            raise ScreenCaptureError(
-                "Screen capture timed out. Check macOS Screen Recording permission."
-            ) from e
+    def cancel(self) -> None:
+        """Cancel only the native operations owned by this service."""
+        self.capture.cancel()
+        self.recognizer.cancel()
 
+    def _capture_macos(self, region: CaptureRegion, output_path: Path) -> None:
+        result = self.capture.run(
+            [
+                "/usr/sbin/screencapture",
+                "-x",
+                "-R",
+                f"{region.x},{region.y},{region.width},{region.height}",
+                str(output_path),
+            ],
+            10.0,
+        )
         if result.returncode != 0:
             raise ScreenCaptureError(self._format_macos_capture_error(result.stderr))
 
-    def _capture_interactive_macos(self, output_path: Path) -> Optional[Path]:
-        """
-        Interactive screen capture on macOS.
-        """
-        try:
-            result = subprocess.run(
-                ["screencapture", "-i", "-s", "-x", str(output_path)],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=120.0,
-            )
-        except subprocess.TimeoutExpired as e:
-            raise ScreenCaptureError("Screen capture timed out.") from e
-
+    def _capture_interactive_macos(self, output_path: Path, cancel_check=None) -> Optional[Path]:
+        result = self.capture.run(
+            ["/usr/sbin/screencapture", "-i", "-s", "-x", str(output_path)],
+            120.0,
+            cancel_check,
+        )
+        if result.returncode == -1:
+            self.cleanup_capture(output_path)
+            return None
         if output_path.exists():
             self._secure_capture_file(output_path)
-            logger.info("Interactive capture saved to managed OCR cache")
             return output_path
-
-        stderr = result.stderr.strip() if result.stderr else ""
-        if result.returncode != 0 and stderr:
-            raise ScreenCaptureError(self._format_macos_capture_error(stderr))
-
-        logger.info("Interactive capture cancelled by user")
+        if result.returncode != 0 and result.stderr.strip():
+            raise ScreenCaptureError(self._format_macos_capture_error(result.stderr))
         return None
 
     # ==========================================================

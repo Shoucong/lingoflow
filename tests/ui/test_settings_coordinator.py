@@ -8,7 +8,6 @@ pytest.importorskip("PyQt6")
 pytest.importorskip("pytestqt")
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.ui import messages
 from lingoflow.ui.settings_coordinator import SettingsCoordinator
 
 
@@ -31,9 +30,13 @@ class FakeSettingsDialog:
         self.finished = FakeSignal()
         self.shown = False
         self.deleted = False
+        self.sections: list[str] = []
 
     def show(self) -> None:
         self.shown = True
+
+    def show_section(self, section: str) -> None:
+        self.sections.append(section)
 
     def deleteLater(self) -> None:
         self.deleted = True
@@ -42,9 +45,7 @@ class FakeSettingsDialog:
 def test_settings_coordinator_opens_once_and_applies_settings(qapp) -> None:
     settings = AppSettings()
     created_dialogs: list[FakeSettingsDialog] = []
-    dismissed_reasons: list[str] = []
-    activated_count = 0
-    raised_dialogs: list[object] = []
+    presented: list[object] = []
     applied_settings: list[AppSettings] = []
 
     def make_dialog(dialog_settings: AppSettings) -> FakeSettingsDialog:
@@ -52,28 +53,21 @@ def test_settings_coordinator_opens_once_and_applies_settings(qapp) -> None:
         created_dialogs.append(dialog)
         return dialog
 
-    def activate() -> None:
-        nonlocal activated_count
-        activated_count += 1
-
     coordinator = SettingsCoordinator(
         settings=settings,
         on_settings_changed=applied_settings.append,
-        dismiss_popup=dismissed_reasons.append,
-        activate_app=activate,
-        raise_dialog=raised_dialogs.append,
+        present=presented.append,
         dialog_factory=make_dialog,
     )
 
     coordinator.show()
-    coordinator.show()
+    coordinator.show("speech")
 
     assert len(created_dialogs) == 1
-    assert created_dialogs[0].shown is True
     assert coordinator.is_open is True
-    assert dismissed_reasons == [messages.SETTINGS_OPEN_DISMISS_POPUP_REASON]
-    assert activated_count == 1
-    assert raised_dialogs[-1] is created_dialogs[0]
+    # Reopening presents the same window again instead of creating a duplicate.
+    assert presented == [created_dialogs[0], created_dialogs[0]]
+    assert created_dialogs[0].sections == ["speech"]
 
     new_settings = settings.model_copy(deep=True)
     new_settings.translation.target_language = "Japanese"
@@ -88,3 +82,7 @@ def test_settings_coordinator_opens_once_and_applies_settings(qapp) -> None:
     assert coordinator.is_open is False
     assert coordinator.dialog is None
     assert created_dialogs[0].deleted is True
+
+    coordinator.show()
+    assert len(created_dialogs) == 2
+    assert presented[-1] is created_dialogs[1]

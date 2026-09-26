@@ -5,11 +5,15 @@ The app reads selected text by preserving the pasteboard, posting Cmd+C through
 Quartz, reading the copied text, and restoring the original pasteboard.
 """
 
+import threading
 import time
+from collections.abc import Callable
 from typing import Any, Optional
 
+import ApplicationServices
+import objc
 import Quartz
-from AppKit import NSPasteboard, NSPasteboardItem, NSPasteboardTypeString, NSString
+from AppKit import NSPasteboard, NSPasteboardItem, NSPasteboardTypeString, NSString, NSWorkspace
 
 from lingoflow.utils.logger import get_logger
 
@@ -27,13 +31,18 @@ class ClipboardEmptyError(ClipboardError):
 class ClipboardManager:
     """macOS pasteboard helper."""
 
-    def __init__(self):
+    def __init__(self, pasteboard=None, copy_timeout: float = 0.6):
+        self._pasteboard = (
+            pasteboard if pasteboard is not None else NSPasteboard.generalPasteboard()
+        )
+        self._copy_timeout = copy_timeout
+        self._selection_lock = threading.Lock()
         logger.debug("ClipboardManager initialized")
 
     def get_text(self) -> Optional[str]:
         """Get plain text from the macOS pasteboard."""
         try:
-            pb = NSPasteboard.generalPasteboard()
+            pb = self._pasteboard
             content = pb.stringForType_(NSPasteboardTypeString)
             return content if content else None
         except Exception as e:
@@ -43,7 +52,7 @@ class ClipboardManager:
     def set_text(self, text: str) -> bool:
         """Set plain text on the macOS pasteboard."""
         try:
-            pb = NSPasteboard.generalPasteboard()
+            pb = self._pasteboard
             pb.clearContents()
             ns_string = NSString.stringWithString_(text)
             return bool(pb.setString_forType_(ns_string, NSPasteboardTypeString))
@@ -51,31 +60,78 @@ class ClipboardManager:
             logger.error(f"AppKit set_text error: {e}")
             return False
 
-    def get_selected_text(self) -> Optional[str]:
-        """Copy the current selection, read it, then restore the pasteboard."""
-        logger.debug("Getting selected text")
-        clipboard_snapshot = self._snapshot_clipboard()
+    def get_selected_text(self, cancel_check: Callable[[], bool] | None = None) -> Optional[str]:
+        """Prefer Accessibility; fall back to a bounded, change-count guarded copy."""
+        while not self._selection_lock.acquire(timeout=0.05):
+            if cancel_check and cancel_check():
+                return None
+        try:
+            with objc.autorelease_pool():
+                if cancel_check and cancel_check():
+                    return None
+                text = self._get_accessibility_selection()
+                if text:
+                    return None if cancel_check and cancel_check() else text
+                return self._copy_selection(cancel_check)
+        finally:
+            self._selection_lock.release()
 
-        self.set_text("")
-        time.sleep(0.05)
+    def _get_accessibility_selection(self) -> Optional[str]:
+        try:
+            system = ApplicationServices.AXUIElementCreateSystemWide()
+            ApplicationServices.AXUIElementSetMessagingTimeout(system, 0.4)
+            error, focused = ApplicationServices.AXUIElementCopyAttributeValue(
+                system,
+                ApplicationServices.kAXFocusedUIElementAttribute,
+                None,
+            )
+            if error or focused is None:
+                return None
+            error, selected = ApplicationServices.AXUIElementCopyAttributeValue(
+                focused,
+                ApplicationServices.kAXSelectedTextAttribute,
+                None,
+            )
+            if not error and selected:
+                return str(selected)
+        except Exception:
+            logger.debug("Accessibility selection unavailable; trying copy fallback")
+        return None
 
-        copy_succeeded = self._simulate_copy()
-        time.sleep(0.1)
+    @staticmethod
+    def _frontmost_pid() -> int | None:
+        app = NSWorkspace.sharedWorkspace().frontmostApplication()
+        return int(app.processIdentifier()) if app else None
 
-        selected_text = self.get_text() if copy_succeeded else None
-        self._restore_clipboard(clipboard_snapshot)
-
-        if selected_text:
-            logger.debug(f"Got selected text: {len(selected_text)} chars")
-        else:
-            logger.debug("No text selected")
-
-        return selected_text
+    def _copy_selection(self, cancel_check) -> Optional[str]:
+        pb = self._pasteboard
+        original_count = pb.changeCount()
+        snapshot = self._snapshot_clipboard()
+        if pb.changeCount() != original_count or (cancel_check and cancel_check()):
+            return None
+        source_pid = self._frontmost_pid()
+        if not self._simulate_copy():
+            return None
+        # Never clear the pasteboard. Once copy is posted, finish the bounded
+        # capture/restore even if canceled, to avoid leaving our copy behind.
+        deadline = time.monotonic() + self._copy_timeout
+        while time.monotonic() < deadline:
+            copied_count = pb.changeCount()
+            if copied_count != original_count:
+                if source_pid != self._frontmost_pid():
+                    return None
+                text = self.get_text()
+                restored = self._restore_clipboard(snapshot, expected_count=copied_count)
+                if not restored or (cancel_check and cancel_check()):
+                    return None
+                return text
+            time.sleep(0.01)
+        return None
 
     def _snapshot_clipboard(self) -> list[list[tuple[Any, Any]]]:
         """Capture all current pasteboard item data for later restoration."""
         snapshot = []
-        pb = NSPasteboard.generalPasteboard()
+        pb = self._pasteboard
 
         for item in pb.pasteboardItems() or []:
             item_snapshot = []
@@ -88,10 +144,16 @@ class ClipboardManager:
 
         return snapshot
 
-    def _restore_clipboard(self, snapshot: list[list[tuple[Any, Any]]]) -> bool:
+    def _restore_clipboard(
+        self,
+        snapshot: list[list[tuple[Any, Any]]],
+        expected_count: int | None = None,
+    ) -> bool:
         """Restore a pasteboard snapshot created by _snapshot_clipboard."""
         try:
-            pb = NSPasteboard.generalPasteboard()
+            pb = self._pasteboard
+            if expected_count is not None and pb.changeCount() != expected_count:
+                return False
             pb.clearContents()
 
             restored_items = []

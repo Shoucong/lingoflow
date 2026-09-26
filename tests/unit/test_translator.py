@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+import pytest
+
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.translator import (
     TranslationService,
@@ -9,6 +11,7 @@ from lingoflow.core.translator import (
 )
 from lingoflow.infrastructure.ollama_client import (
     OllamaConnectionError,
+    OllamaError,
     OllamaStreamChunk,
 )
 
@@ -29,6 +32,7 @@ class FakeOllamaClient:
         model: str,
         system_prompt: str | None = None,
         cancel_check=None,
+        **options,
     ) -> Iterator[OllamaStreamChunk]:
         self.calls.append(
             {
@@ -47,10 +51,10 @@ class FakeOllamaClient:
 
 def service_with_fake_client(fake_client: FakeOllamaClient) -> TranslationService:
     settings = AppSettings()
+    settings.ollama.model = "generic-chat-model"
     settings.translation.source_language = "English"
     settings.translation.target_language = "Japanese"
-    service = TranslationService(settings)
-    service.client = fake_client
+    service = TranslationService(settings, client=fake_client)
     return service
 
 
@@ -101,3 +105,49 @@ def test_translate_stream_stops_when_external_cancel_check_is_true() -> None:
     chunks = list(service.translate_stream("hello", cancel_check=lambda: True))
 
     assert chunks == []
+
+
+def test_empty_model_response_is_an_error() -> None:
+    service = service_with_fake_client(FakeOllamaClient([OllamaStreamChunk("", True)]))
+    with pytest.raises(OllamaError, match="returned no translation"):
+        list(service.translate_stream("hello"))
+
+
+def test_long_translation_retries_only_incomplete_parts():
+    class SegmentedClient:
+        def __init__(self):
+            self.calls = []
+            self.fail_at = 2
+
+        def chat_stream(self, message, **kwargs):
+            self.calls.append(message)
+            if len(self.calls) == self.fail_at:
+                yield OllamaStreamChunk("unfinished", False)
+                raise OllamaError("interrupted")
+            yield OllamaStreamChunk("complete", True)
+
+    client = SegmentedClient()
+    settings = AppSettings()
+    settings.ollama.model = "generic-chat-model"
+    service = TranslationService(settings, client=client)
+    source = "A paragraph with exact values [12]. " * 300
+    checkpoints = []
+    with pytest.raises(OllamaError, match="Part 2/"):
+        list(service.translate_stream(source, on_checkpoint=checkpoints.append))
+    saved = checkpoints[-1]
+    assert len(saved.completed) == 1
+    assert "unfinished" not in "".join(saved.completed)
+    first_prompt = client.calls[0]
+    result = "".join(service.translate_stream(source, checkpoint=saved))
+    assert result.startswith(saved.completed[0])
+    assert client.calls.count(first_prompt) == 1
+    assert len(client.calls) == saved.total + 1
+
+
+def test_changed_source_invalidates_a_checkpoint():
+    client = FakeOllamaClient([OllamaStreamChunk("translated", True)])
+    service = service_with_fake_client(client)
+    checkpoints = []
+    list(service.translate_stream("first", on_checkpoint=checkpoints.append))
+    list(service.translate_stream("different", checkpoint=checkpoints[-1]))
+    assert len(client.calls) == 2

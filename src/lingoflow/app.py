@@ -224,9 +224,9 @@ def run_cli() -> None:
         return
 
     if args.test_translate:
-        from lingoflow.core.translator import TranslationService
+        from lingoflow.infrastructure.translation_service import create_translation_service
 
-        service = TranslationService()
+        service = create_translation_service()
         print(f"Translating: {args.test_translate}")
         print("Result: ", end="", flush=True)
         for chunk in service.translate_stream(args.test_translate):
@@ -235,7 +235,7 @@ def run_cli() -> None:
         return
 
     if args.test_ocr:
-        from lingoflow.core.ocr import OCRService
+        from lingoflow.infrastructure.macos.ocr import OCRService
 
         service = OCRService()
         print("Select a screen region...")

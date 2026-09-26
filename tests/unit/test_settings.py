@@ -5,7 +5,19 @@ import json
 import pytest
 from pydantic import ValidationError
 
+from lingoflow.config.constants import MILMMT_MODEL
 from lingoflow.config.settings import AppSettings
+
+
+def test_new_defaults_use_milmmt_without_overwriting_an_existing_choice(isolated_settings_paths):
+    assert AppSettings().ollama.model == MILMMT_MODEL
+    assert AppSettings().ollama.temperature == 0
+    config = isolated_settings_paths["config_file"]
+    config.parent.mkdir(parents=True)
+    config.write_text(json.dumps({"ollama": {"model": "existing-choice", "temperature": 0.3}}))
+    restored = AppSettings.load()
+    assert restored.ollama.model == "existing-choice"
+    assert restored.ollama.temperature == 0.3
 
 
 def test_settings_save_load_roundtrip(isolated_settings_paths: dict[str, object]) -> None:

@@ -1,0 +1,1470 @@
+{
+  "available": true,
+  "load_ms": 57.56,
+  "words": {
+    "inhibited": {
+      "group": "inflection",
+      "ms": 4.76,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "inhibit",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Biology",
+            "Physiology"
+          ]
+        },
+        {
+          "headword": "inhibited",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "inhibits": {
+      "group": "inflection",
+      "ms": 0.61,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "inhibit",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Biology",
+            "Physiology"
+          ]
+        }
+      ]
+    },
+    "mediates": {
+      "group": "inflection",
+      "ms": 0.95,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "mediate",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "attenuated": {
+      "group": "inflection",
+      "ms": 0.93,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "attenuate",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        },
+        {
+          "headword": "attenuated",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "conferred": {
+      "group": "inflection",
+      "ms": 1.1,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "confer",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "elucidating": {
+      "group": "inflection",
+      "ms": 0.5,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "elucidate",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "binding": {
+      "group": "inflection",
+      "ms": 3.12,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "bind",
+          "form_of": null,
+          "sense_count": 10,
+          "domains": []
+        },
+        {
+          "headword": "binding",
+          "form_of": null,
+          "sense_count": 4,
+          "domains": []
+        }
+      ]
+    },
+    "bound": {
+      "group": "inflection",
+      "ms": 7.31,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "bind",
+          "form_of": null,
+          "sense_count": 10,
+          "domains": []
+        },
+        {
+          "headword": "bound 1",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": []
+        },
+        {
+          "headword": "bound 2",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "underlying": {
+      "group": "inflection",
+      "ms": 1.23,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "underlie",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        },
+        {
+          "headword": "underlying",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "assays": {
+      "group": "inflection",
+      "ms": 0.48,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "assay",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "cleaved": {
+      "group": "inflection",
+      "ms": 1.41,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "cleave 1",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": []
+        }
+      ]
+    },
+    "analyses": {
+      "group": "inflection",
+      "ms": 1.57,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "analyse",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Psychology"
+          ]
+        },
+        {
+          "headword": "analysis",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "criteria": {
+      "group": "inflection",
+      "ms": 0.61,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "criterion",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "phenomena": {
+      "group": "inflection",
+      "ms": 1.23,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "phenomenon",
+          "form_of": [
+            "plural",
+            "phenomena"
+          ],
+          "sense_count": 3,
+          "domains": []
+        }
+      ]
+    },
+    "hypotheses": {
+      "group": "inflection",
+      "ms": 0.63,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "hypothesis",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Philosophy"
+          ]
+        }
+      ]
+    },
+    "mice": {
+      "group": "inflection",
+      "ms": 1.52,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "mouse",
+          "form_of": [
+            "plural",
+            "mice"
+          ],
+          "sense_count": 3,
+          "domains": [
+            "Computing",
+            "Zoology"
+          ]
+        }
+      ]
+    },
+    "ran": {
+      "group": "inflection",
+      "ms": 22.89,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "run",
+          "form_of": [
+            "past tense",
+            "ran"
+          ],
+          "sense_count": 71,
+          "domains": []
+        }
+      ]
+    },
+    "better": {
+      "group": "inflection",
+      "ms": 26.56,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "better 1",
+          "form_of": null,
+          "sense_count": 14,
+          "domains": []
+        },
+        {
+          "headword": "better 2",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        },
+        {
+          "headword": "bettor",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "lying": {
+      "group": "inflection",
+      "ms": 5.29,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "lie 1",
+          "form_of": null,
+          "sense_count": 13,
+          "domains": []
+        },
+        {
+          "headword": "lie 2",
+          "form_of": null,
+          "sense_count": 4,
+          "domains": []
+        },
+        {
+          "headword": "lying",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "yielded": {
+      "group": "inflection",
+      "ms": 3.42,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "yield",
+          "form_of": null,
+          "sense_count": 13,
+          "domains": [
+            "Finance"
+          ]
+        }
+      ]
+    },
+    "inhibit": {
+      "group": "academic",
+      "ms": 0.83,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "inhibit",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Biology",
+            "Physiology"
+          ]
+        }
+      ]
+    },
+    "mediate": {
+      "group": "academic",
+      "ms": 0.78,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "mediate",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "elucidate": {
+      "group": "academic",
+      "ms": 0.48,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "elucidate",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "robust": {
+      "group": "academic",
+      "ms": 1.16,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "robust",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": []
+        }
+      ]
+    },
+    "putative": {
+      "group": "academic",
+      "ms": 0.53,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "putative",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "ubiquitous": {
+      "group": "academic",
+      "ms": 0.54,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "ubiquitous",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "attenuate": {
+      "group": "academic",
+      "ms": 0.48,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "attenuate",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "confer": {
+      "group": "academic",
+      "ms": 0.98,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "confer",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "whereas": {
+      "group": "academic",
+      "ms": 0.66,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "whereas",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Law"
+          ]
+        }
+      ]
+    },
+    "albeit": {
+      "group": "academic",
+      "ms": 0.51,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "albeit",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "thereby": {
+      "group": "academic",
+      "ms": 0.7,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "thereby",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "notably": {
+      "group": "academic",
+      "ms": 0.71,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "notably",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "respectively": {
+      "group": "academic",
+      "ms": 0.52,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "respectively",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "moreover": {
+      "group": "academic",
+      "ms": 0.49,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "moreover",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "plausible": {
+      "group": "academic",
+      "ms": 0.65,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "plausible",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "novel": {
+      "group": "academic",
+      "ms": 0.77,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "novel",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": []
+        }
+      ]
+    },
+    "abundance": {
+      "group": "academic",
+      "ms": 0.69,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "abundance",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "consistent": {
+      "group": "academic",
+      "ms": 1.14,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "consistent",
+          "form_of": null,
+          "sense_count": 4,
+          "domains": []
+        }
+      ]
+    },
+    "robustly": {
+      "group": "academic",
+      "ms": 0.74,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "robustly",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "discrepancy": {
+      "group": "academic",
+      "ms": 0.46,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "discrepancy",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "kinase": {
+      "group": "biomedical",
+      "ms": 14.54,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "kinase",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "kinases": {
+      "group": "biomedical",
+      "ms": 0.76,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "kinase",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "apoptosis": {
+      "group": "biomedical",
+      "ms": 1.15,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "apoptosis",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "phosphorylated": {
+      "group": "biomedical",
+      "ms": 1.01,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "phosphorylate",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "ubiquitination": {
+      "group": "biomedical",
+      "ms": 1.63,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": false,
+      "entries": []
+    },
+    "transcription": {
+      "group": "biomedical",
+      "ms": 0.94,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "transcription",
+          "form_of": null,
+          "sense_count": 4,
+          "domains": []
+        }
+      ]
+    },
+    "transcriptional": {
+      "group": "biomedical",
+      "ms": 1.03,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "transcriptional",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Biochemistry"
+          ]
+        }
+      ]
+    },
+    "promoter": {
+      "group": "biomedical",
+      "ms": 0.65,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "promoter",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": []
+        }
+      ]
+    },
+    "ligand": {
+      "group": "biomedical",
+      "ms": 1.02,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "ligand",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Biochemistry",
+            "Chemistry"
+          ]
+        }
+      ]
+    },
+    "receptor": {
+      "group": "biomedical",
+      "ms": 0.49,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "receptor",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "antibody": {
+      "group": "biomedical",
+      "ms": 0.47,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "antibody",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "antigen": {
+      "group": "biomedical",
+      "ms": 0.25,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "antigen",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "cytokine": {
+      "group": "biomedical",
+      "ms": 0.83,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "cytokine",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "enzyme": {
+      "group": "biomedical",
+      "ms": 0.46,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "enzyme",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "mitochondria": {
+      "group": "biomedical",
+      "ms": 0.47,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "mitochondrion",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "mitochondrial": {
+      "group": "biomedical",
+      "ms": 0.28,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "mitochondrial",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "knockdown": {
+      "group": "biomedical",
+      "ms": 0.6,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "knock-down",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "upregulated": {
+      "group": "biomedical",
+      "ms": 0.72,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "upregulate",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "homolog": {
+      "group": "biomedical",
+      "ms": 0.48,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "homologue",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "plasmid": {
+      "group": "biomedical",
+      "ms": 0.82,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "plasmid",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "pathway": {
+      "group": "biomedical",
+      "ms": 0.58,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "pathway",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "phenotype": {
+      "group": "biomedical",
+      "ms": 0.83,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "phenotype",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "genotype": {
+      "group": "biomedical",
+      "ms": 0.79,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "genotype",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "allele": {
+      "group": "biomedical",
+      "ms": 1.13,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "allele",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "mutation": {
+      "group": "biomedical",
+      "ms": 0.79,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "mutation",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": [
+            "Biology"
+          ]
+        }
+      ]
+    },
+    "epitope": {
+      "group": "biomedical",
+      "ms": 0.9,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "epitope",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "vaccine": {
+      "group": "biomedical",
+      "ms": 0.67,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "vaccine",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Computing",
+            "Medicine",
+            "Veterinary science"
+          ]
+        }
+      ]
+    },
+    "pathogen": {
+      "group": "biomedical",
+      "ms": 0.92,
+      "dictionary": "New Oxford American Dictionary",
+      "bilingual": false,
+      "found": true,
+      "entries": [
+        {
+          "headword": "pathogen",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "inflammation": {
+      "group": "biomedical",
+      "ms": 0.47,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "inflammation",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "metabolism": {
+      "group": "biomedical",
+      "ms": 0.44,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "metabolism",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "window": {
+      "group": "polysemous",
+      "ms": 1.75,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "window",
+          "form_of": null,
+          "sense_count": 6,
+          "domains": [
+            "Computing"
+          ]
+        }
+      ]
+    },
+    "paper": {
+      "group": "polysemous",
+      "ms": 2.62,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "paper",
+          "form_of": null,
+          "sense_count": 12,
+          "domains": []
+        }
+      ]
+    },
+    "cell": {
+      "group": "polysemous",
+      "ms": 0.9,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "cell",
+          "form_of": null,
+          "sense_count": 5,
+          "domains": [
+            "Biology",
+            "Botany",
+            "Politics",
+            "Telecommunications"
+          ]
+        }
+      ]
+    },
+    "culture": {
+      "group": "polysemous",
+      "ms": 0.98,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "culture",
+          "form_of": null,
+          "sense_count": 4,
+          "domains": [
+            "Biology",
+            "Farming",
+            "Sociology"
+          ]
+        }
+      ]
+    },
+    "express": {
+      "group": "polysemous",
+      "ms": 2.45,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "express",
+          "form_of": null,
+          "sense_count": 14,
+          "domains": [
+            "Railways",
+            "Transport"
+          ]
+        }
+      ]
+    },
+    "expression": {
+      "group": "polysemous",
+      "ms": 1.4,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "expression",
+          "form_of": null,
+          "sense_count": 7,
+          "domains": []
+        }
+      ]
+    },
+    "yield": {
+      "group": "polysemous",
+      "ms": 3.25,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "yield",
+          "form_of": null,
+          "sense_count": 13,
+          "domains": [
+            "Finance"
+          ]
+        }
+      ]
+    },
+    "significant": {
+      "group": "polysemous",
+      "ms": 0.75,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "significant",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": []
+        }
+      ]
+    },
+    "model": {
+      "group": "polysemous",
+      "ms": 2.51,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "model",
+          "form_of": null,
+          "sense_count": 10,
+          "domains": []
+        }
+      ]
+    },
+    "strain": {
+      "group": "polysemous",
+      "ms": 2.84,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "strain",
+          "form_of": null,
+          "sense_count": 15,
+          "domains": []
+        }
+      ]
+    },
+    "host": {
+      "group": "polysemous",
+      "ms": 1.74,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "host 1",
+          "form_of": null,
+          "sense_count": 7,
+          "domains": [
+            "Botany",
+            "Radio",
+            "Television",
+            "Zoology"
+          ]
+        },
+        {
+          "headword": "host 2",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "vector": {
+      "group": "polysemous",
+      "ms": 0.65,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "vector",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": [
+            "Aviation",
+            "Biology",
+            "Mathematics",
+            "Physics"
+          ]
+        }
+      ]
+    },
+    "medium": {
+      "group": "polysemous",
+      "ms": 1.5,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "medium",
+          "form_of": null,
+          "sense_count": 7,
+          "domains": []
+        }
+      ]
+    },
+    "fraction": {
+      "group": "polysemous",
+      "ms": 0.71,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "fraction",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Mathematics"
+          ]
+        }
+      ]
+    },
+    "resolution": {
+      "group": "polysemous",
+      "ms": 1.09,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "resolution",
+          "form_of": null,
+          "sense_count": 5,
+          "domains": []
+        }
+      ]
+    },
+    "抑制": {
+      "group": "chinese",
+      "ms": 0.64,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "抑制",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": [
+            "Physiology"
+          ]
+        }
+      ]
+    },
+    "结合": {
+      "group": "chinese",
+      "ms": 0.61,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "结合",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "表达": {
+      "group": "chinese",
+      "ms": 0.51,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "表达",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    }
+  },
+  "summary": {
+    "words": 88,
+    "bilingual_found": 74,
+    "monolingual_fallback": 13,
+    "nothing": 1,
+    "median_ms": 0.81,
+    "max_ms": 26.56
+  },
+  "note": "Dictionary wording is not stored: only coverage, resolved headwords, sense counts, subject labels and timing. Run this script locally to see senses."
+}

@@ -1,0 +1,204 @@
+{
+  "version": "0.2.0",
+  "python": "3.12.12",
+  "qt_runtime": "6.11.1",
+  "qt_platform": "cocoa",
+  "frozen": true,
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "window_cycles": [
+    {
+      "cycle": 1,
+      "rss_kib": 162672,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 2,
+      "rss_kib": 159568,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 3,
+      "rss_kib": 157328,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 4,
+      "rss_kib": 164432,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 5,
+      "rss_kib": 158160,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 6,
+      "rss_kib": 165136,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 7,
+      "rss_kib": 158816,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 8,
+      "rss_kib": 165616,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 9,
+      "rss_kib": 159360,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 10,
+      "rss_kib": 159712,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 11,
+      "rss_kib": 166528,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 12,
+      "rss_kib": 160272,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 13,
+      "rss_kib": 173856,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 14,
+      "rss_kib": 161168,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 15,
+      "rss_kib": 167952,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 16,
+      "rss_kib": 161760,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 17,
+      "rss_kib": 168640,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 18,
+      "rss_kib": 162432,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 19,
+      "rss_kib": 169168,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 20,
+      "rss_kib": 162880,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 21,
+      "rss_kib": 169568,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 22,
+      "rss_kib": 148336,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 23,
+      "rss_kib": 154304,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 24,
+      "rss_kib": 147968,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 25,
+      "rss_kib": 154576,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 26,
+      "rss_kib": 148320,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 27,
+      "rss_kib": 155024,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 28,
+      "rss_kib": 148768,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 29,
+      "rss_kib": 154816,
+      "registered_monitors": 2
+    },
+    {
+      "cycle": 30,
+      "rss_kib": 147632,
+      "registered_monitors": 2
+    }
+  ],
+  "vision": {
+    "text": "LingoFlow local OCR test\nKeep value 12.5 and citation [12].",
+    "confidence": 1.0,
+    "seconds": 0.37678354198578745,
+    "remaining_capture_files": 0
+  },
+  "permission_preflight": [
+    {
+      "key": "accessibility",
+      "state": "missing"
+    },
+    {
+      "key": "input_monitoring",
+      "state": "missing"
+    },
+    {
+      "key": "screen_recording",
+      "state": "granted"
+    }
+  ],
+  "completed": true,
+  "build": {
+    "date": "2026-09-26",
+    "clean_environment": "build/venv-macos-0.2.0",
+    "locked_wheels": 50,
+    "unit_integration_ui_tests": 137,
+    "cocoa_ui_tests": 54,
+    "app": "dist/refactor-20260926/LingoFlow.app",
+    "installed_app_replaced": false,
+    "signing_identity": "LingoFlow Local Development (existing Keychain identity)",
+    "signature_verification": "codesign --verify --deep --strict: exit 0",
+    "source_sha256": "80d986ab9c2970f75d4d2cf6e37ae4460d979329a3dbf0e255f0d75b1b34c104",
+    "executable_sha256": "4a51e58d6519da9a07cface2a6c06a549e49e638d159091f6eb0b39e008d7f15",
+    "dependency_lock_sha256": "f749b9bf73085af8e16ebf20c4138afc341ca654186830019f7f67034b331f88",
+    "source_revision": "91891a4",
+    "dmg_sha256": "da55e72e84710e3f17f09163233f20776ff45f8d68cc4a97ee2081b6d0036298",
+    "dmg_verification": "hdiutil verify, readonly mount, deep strict codesign verification and executable SHA256 comparison passed",
+    "dmg_size_bytes": 46393621
+  },
+  "limitations": [
+    "No manual Accessibility/Input Monitoring permission grant; preflight reports missing.",
+    "No physical multi-screen/fullscreen Spaces or sleep/wake endurance verification.",
+    "Thirty window cycles are a bounded smoke test, not an hours-long leak proof."
+  ]
+}

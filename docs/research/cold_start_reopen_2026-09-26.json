@@ -1,0 +1,16 @@
+{
+  "source_revision": "0a6e701",
+  "qt_platform": "cocoa",
+  "model": "huihui_ai/hunyuan-mt-abliterated:7b-chimera",
+  "resident_models_before": [],
+  "close_after_http_body_sent_seconds": 0.3,
+  "first_request_output_chars_before_close": 0,
+  "close_handler_seconds": 0.024952457984909415,
+  "close_to_new_popup_seconds": 0.06479058298282325,
+  "cancelled_worker_confirmed_exited_seconds": 0.0647978330089245,
+  "second_first_text_after_close_seconds": 3.6837775830063038,
+  "second_translation": "第二个翻译请求应立即在新窗口中打开。",
+  "active_requests_after": 0,
+  "completed": true,
+  "scope": "Real local Ollama and native windows; synthetic clipboard and the hotkey signal. Physical global key/AX acquisition is not exercised."
+}

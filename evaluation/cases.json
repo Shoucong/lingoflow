@@ -1,0 +1,235 @@
+[
+  {
+    "id": "T01",
+    "category": "short",
+    "text": "Please keep the window open while I read the translation.",
+    "must_preserve": []
+  },
+  {
+    "id": "T02",
+    "category": "negation",
+    "text": "The update did not remove any saved settings.",
+    "must_preserve": []
+  },
+  {
+    "id": "T03",
+    "category": "contrast",
+    "text": "Although the smaller model started faster, its translation omitted the final sentence.",
+    "must_preserve": []
+  },
+  {
+    "id": "T04",
+    "category": "numbers",
+    "text": "The measured length was 12.5 mm, and the temperature was 23.0 °C.",
+    "must_preserve": [
+      "12.5",
+      "23.0"
+    ]
+  },
+  {
+    "id": "T05",
+    "category": "units",
+    "text": "Store the image at 300 dpi. The file size must not exceed 20 MB.",
+    "must_preserve": [
+      "300",
+      "20"
+    ]
+  },
+  {
+    "id": "T06",
+    "category": "uncertainty",
+    "text": "The result may indicate a trend, but the evidence is not sufficient to establish causation.",
+    "must_preserve": []
+  },
+  {
+    "id": "T07",
+    "category": "citation",
+    "text": "Earlier work [12] used the same dataset; our method follows Smith et al. (2024).",
+    "must_preserve": [
+      "[12]",
+      "2024"
+    ]
+  },
+  {
+    "id": "T08",
+    "category": "equation",
+    "text": "For a circle, the relation $x^2 + y^2 = r^2$ holds for every point on its boundary.",
+    "must_preserve": [
+      "x^2",
+      "y^2",
+      "r^2"
+    ]
+  },
+  {
+    "id": "T09",
+    "category": "notation",
+    "text": "The parameter α controls the learning rate, whereas β changes the penalty term.",
+    "must_preserve": [
+      "α",
+      "β"
+    ]
+  },
+  {
+    "id": "T10",
+    "category": "code",
+    "text": "Use `print(\"hello\")` to display a greeting. Do not modify the code example.",
+    "must_preserve": [
+      "print(\"hello\")"
+    ]
+  },
+  {
+    "id": "T11",
+    "category": "url",
+    "text": "The documentation is available at https://example.org/guide. Read the second section first.",
+    "must_preserve": [
+      "https://example.org/guide"
+    ]
+  },
+  {
+    "id": "T12",
+    "category": "ocr-lines",
+    "text": "The proposed method improves\ntranslation consistency across\nseveral independent paragraphs.",
+    "must_preserve": []
+  },
+  {
+    "id": "T13",
+    "category": "ocr-hyphen",
+    "text": "The evalua-\ntion was repeated under identical conditions.",
+    "must_preserve": []
+  },
+  {
+    "id": "T14",
+    "category": "paragraph",
+    "text": "First, inspect the source text.\n\nThen correct recognition errors before starting translation.",
+    "must_preserve": []
+  },
+  {
+    "id": "T15",
+    "category": "list",
+    "text": "1. Select the text.\n2. Translate the selection.\n3. Listen to the pronunciation.",
+    "must_preserve": [
+      "1.",
+      "2.",
+      "3."
+    ]
+  },
+  {
+    "id": "T16",
+    "category": "proper-name",
+    "text": "LingoFlow connects to Ollama and uses Apple Vision for text recognition.",
+    "must_preserve": [
+      "LingoFlow",
+      "Ollama",
+      "Apple Vision"
+    ]
+  },
+  {
+    "id": "T17",
+    "category": "technical",
+    "text": "The decoder processes noisy coordinates conditioned on the surrounding environment.",
+    "must_preserve": []
+  },
+  {
+    "id": "T18",
+    "category": "long-sentence",
+    "text": "When the window loses focus after generation has completed, it should close only if the user has enabled automatic dismissal and has not pinned it to the screen.",
+    "must_preserve": []
+  },
+  {
+    "id": "T19",
+    "category": "comparison",
+    "text": "The baseline achieved 87.2%, compared with 89.1% for the revised method.",
+    "must_preserve": [
+      "87.2",
+      "89.1"
+    ]
+  },
+  {
+    "id": "T20",
+    "category": "range",
+    "text": "We tested values from 0.01 to 0.10 in increments of 0.01.",
+    "must_preserve": [
+      "0.01",
+      "0.10"
+    ]
+  },
+  {
+    "id": "T21",
+    "category": "negative-value",
+    "text": "The estimated difference was -2.5, with a 95% confidence interval from -4.0 to -1.0.",
+    "must_preserve": [
+      "-2.5",
+      "95",
+      "-4.0",
+      "-1.0"
+    ]
+  },
+  {
+    "id": "T22",
+    "category": "time",
+    "text": "The test began at 09:30 on 2026-09-26 and lasted 45 minutes.",
+    "must_preserve": [
+      "09:30",
+      "2026-09-26",
+      "45"
+    ]
+  },
+  {
+    "id": "T23",
+    "category": "already-chinese",
+    "text": "保留完整原文，并在用户选词时停止自动滚动。",
+    "must_preserve": []
+  },
+  {
+    "id": "T24",
+    "category": "mixed",
+    "text": "The score is unchanged（保持不变）, but the response time decreased.",
+    "must_preserve": []
+  },
+  {
+    "id": "T25",
+    "category": "question",
+    "text": "Could you explain how to pronounce this word in British English?",
+    "must_preserve": []
+  },
+  {
+    "id": "T26",
+    "category": "idiom",
+    "text": "Take your time; there is no need to rush through the paper.",
+    "must_preserve": []
+  },
+  {
+    "id": "T27",
+    "category": "limit",
+    "text": "Failure to reject the null hypothesis does not prove that the two methods are equivalent.",
+    "must_preserve": []
+  },
+  {
+    "id": "T28",
+    "category": "table",
+    "text": "Method | Time (s)\nBaseline | 12.8\nRevised | 9.4",
+    "must_preserve": [
+      "12.8",
+      "9.4"
+    ]
+  },
+  {
+    "id": "T29",
+    "category": "formula-context",
+    "text": "Equation (3) defines the objective: \\[L = a + b\\]. The notation follows Appendix A.",
+    "must_preserve": [
+      "(3)",
+      "L = a + b"
+    ]
+  },
+  {
+    "id": "T30",
+    "category": "long-over-5000",
+    "text": "Section 01. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 1.25 is recorded for this section.\n\nSection 02. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 2.25 is recorded for this section.\n\nSection 03. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 3.25 is recorded for this section.\n\nSection 04. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 4.25 is recorded for this section.\n\nSection 05. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 5.25 is recorded for this section.\n\nSection 06. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 6.25 is recorded for this section.\n\nSection 07. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 7.25 is recorded for this section.\n\nSection 08. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 8.25 is recorded for this section.\n\nSection 09. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 9.25 is recorded for this section.\n\nSection 10. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 10.25 is recorded for this section.\n\nSection 11. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 11.25 is recorded for this section.\n\nSection 12. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 12.25 is recorded for this section.\n\nSection 13. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 13.25 is recorded for this section.\n\nSection 14. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 14.25 is recorded for this section.\n\nSection 15. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 15.25 is recorded for this section.\n\nSection 16. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 16.25 is recorded for this section.\n\nSection 17. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 17.25 is recorded for this section.\n\nSection 18. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 18.25 is recorded for this section.\n\nSection 19. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 19.25 is recorded for this section.\n\nSection 20. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 20.25 is recorded for this section.\n\nSection 21. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 21.25 is recorded for this section.\n\nSection 22. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 22.25 is recorded for this section.\n\nSection 23. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 23.25 is recorded for this section.\n\nSection 24. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 24.25 is recorded for this section.\n\nSection 25. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 25.25 is recorded for this section.\n\nSection 26. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 26.25 is recorded for this section.\n\nSection 27. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 27.25 is recorded for this section.\n\nSection 28. The reader can move and resize the translation window. The complete source remains available, and generation must preserve every paragraph without replacing it with a summary. Value 28.25 is recorded for this section.\n\nFinal marker END-928: This final sentence must also be translated.",
+    "must_preserve": [
+      "1.25",
+      "28.25",
+      "END-928"
+    ]
+  }
+]

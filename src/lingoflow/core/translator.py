@@ -10,11 +10,20 @@ from enum import Enum
 from typing import Callable, Optional
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.infrastructure.ollama_client import (
-    OllamaClient,
-    OllamaConnectionError,
-    OllamaError,
+from lingoflow.core.errors import (
+    ProviderConnectionError,
+    TranslationCancelledError,
+    TranslationError,
 )
+from lingoflow.core.ports import ChatProvider
+from lingoflow.core.text_preparation import TranslationCheckpoint, fingerprint, split_text
+from lingoflow.core.translation_profiles import (
+    MILMMT_MAX_PART_BYTES,
+    is_milmmt_model,
+    milmmt_options,
+    milmmt_prompt,
+)
+from lingoflow.i18n import tr
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -101,7 +110,7 @@ class TranslationService:
     streaming and non-streaming translation methods.
 
     Examples:
-        service = TranslationService()
+        service = TranslationService(settings, client=provider)
 
         # Streaming (for UI)
         for chunk in service.translate_stream("Hello world", "Chinese(Simplified)")
@@ -112,7 +121,14 @@ class TranslationService:
         print(result.translated_text)
     """
 
-    def __init__(self, settings: Optional[AppSettings] = None):
+    def __init__(
+        self,
+        settings: Optional[AppSettings] = None,
+        *,
+        client: ChatProvider | None = None,
+        client_factory: Callable[[AppSettings], ChatProvider] | None = None,
+        language_detector: Callable[[str], str | None] | None = None,
+    ):
         """
         Initialize the translation service.
 
@@ -120,8 +136,11 @@ class TranslationService:
             settings: App settings (loads from disk if not provided)
         """
         self.settings = settings or AppSettings.load()
-        self.client = OllamaClient(host=self.settings.ollama.host)
-        self._cancelled = False
+        if client is None and client_factory is None:
+            raise TypeError("TranslationService requires a client or client_factory")
+        self._client_factory = client_factory
+        self._language_detector = language_detector
+        self.client = client if client is not None else client_factory(self.settings)
 
         logger.info(f"TranslationService initialized with model: {self.settings.ollama.model}")
 
@@ -136,56 +155,184 @@ class TranslationService:
         source_language: Optional[str] = None,
         on_chunk: Optional[Callable[[str], None]] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
+        checkpoint: TranslationCheckpoint | None = None,
+        on_checkpoint: Callable[[TranslationCheckpoint], None] | None = None,
+        on_source_detected: Callable[[str], None] | None = None,
     ) -> Iterator[str]:
-        """
-        Translate text with streaming output.
-
-        Args:
-            text: Text to translate
-            target_language: Target language (uses settings default if None)
-            source_language: Source language ("auto" or specific language)
-            on_chunk: Optional callback for each chunk (for UI updates in future)
-
-        Yields:
-            Translation text chunks as they arrive
-        """
-        self._cancelled = False
-
-        # Use defaults from settings if not specified
-        target_lang = target_language or self.settings.translation.target_language
-        source_lang = source_language or self.settings.translation.source_language
-
-        # Build prompt
-        system_prompt = self._get_system_prompt()
-        user_prompt = self._build_user_prompt(text, source_lang, target_lang)
-
-        logger.info(f"Starting translation: {source_lang} -> {target_lang}")
-        logger.debug(f"Source text length: {len(text)} chars")
-
-        def should_cancel() -> bool:
-            return self._cancelled or bool(cancel_check and cancel_check())
-
+        """Translate complete source segments, retaining only completed retry checkpoints."""
+        if cancel_check and cancel_check():
+            return
+        if not text.strip():
+            raise TranslationError(tr("Enter text to translate.", "请输入要翻译的文字。"))
+        settings = self.settings.model_copy(deep=True)
+        client = self.client
+        target = target_language or settings.translation.target_language
+        source = source_language or settings.translation.source_language
+        raw = is_milmmt_model(settings.ollama.model)
+        if raw:
+            if not any(char.isalpha() for char in text):
+                if on_chunk:
+                    on_chunk(text)
+                yield text
+                return
+            if source == "auto":
+                source = self._language_detector(text) if self._language_detector else None
+                if cancel_check and cancel_check():
+                    return
+                if not source:
+                    raise TranslationError(
+                        tr(
+                            "Could not identify the source language. "
+                            "Choose it in Settings → General → Source language.",
+                            "无法识别原文语言，请在“设置 → 通用 → 原文语言”中手动选择。",
+                        )
+                    )
+                if on_source_detected:
+                    on_source_detected(source)
+            if source == target:
+                if on_chunk:
+                    on_chunk(text)
+                yield text
+                return
+        system = "" if raw else (settings.translation.custom_prompt or TRANSLATION_SYSTEM_PROMPT)
+        if not raw and settings.translation.preset == "academic":
+            system += (
+                "\nPreserve citations, equations, symbols, numerical values, units and "
+                "technical abbreviations. Do not add explanations or invent references."
+            )
+        make_prompt = milmmt_prompt if raw else self._build_user_prompt
+        prefix = make_prompt("", source, target)
+        # Reserve output plus actual prompt bytes, a bounded context hint, and role tokens.
+        overhead = len((system + prefix).encode("utf-8")) + 512
+        budget = min(
+            settings.ollama.context_window - settings.ollama.max_output_tokens - overhead,
+            settings.ollama.max_output_tokens * 2,
+        )
+        if raw:
+            # The small completion model can collapse repeated passages inside a large
+            # request. Keep reading-sized parts without altering the official prompt.
+            budget = min(budget, MILMMT_MAX_PART_BYTES)
+        if budget < 128:
+            raise TranslationError(
+                tr(
+                    "The prompt and output budget fill the context. "
+                    "Increase the context window in Settings → Model & Advanced.",
+                    "提示词和输出预算占满了上下文，请在“设置 → 模型与高级”中增大上下文窗口。",
+                )
+            )
         try:
-            for chunk in self.client.chat_stream(
-                message=user_prompt,
-                model=self.settings.ollama.model,
-                system_prompt=system_prompt,
-                cancel_check=should_cancel,
-            ):
-                if should_cancel():
-                    logger.info("Translation cancelled")
-                    break
-
-                if chunk.content:
-                    if on_chunk:
-                        on_chunk(chunk.content)
-                    yield chunk.content
-        except OllamaConnectionError as e:
-            logger.error(f"Ollama connection error during translation: {e}")
-            raise
-        except OllamaError as e:
-            logger.error(f"Ollama error during translation: {e}")
-            raise
+            segments = split_text(text, budget)
+        except ValueError as error:
+            raise TranslationError(str(error)) from error
+        key = fingerprint(
+            text,
+            {
+                "ollama": settings.ollama.model_dump(),
+                "system": system,
+                "source": source,
+                "target": target,
+            },
+        )
+        completed = (
+            list(checkpoint.completed) if checkpoint and checkpoint.fingerprint == key else []
+        )
+        if len(completed) > len(segments):
+            completed = []
+        if on_checkpoint:
+            on_checkpoint(TranslationCheckpoint(key, tuple(completed), len(segments)))
+        for result in completed:
+            if cancel_check and cancel_check():
+                return
+            if on_chunk:
+                on_chunk(result)
+            yield result
+        options = {
+            "num_ctx": settings.ollama.context_window,
+            "num_predict": settings.ollama.max_output_tokens,
+            "temperature": settings.ollama.temperature,
+        }
+        if raw:
+            options.update(milmmt_options())
+        think = None if raw else {"auto": None, "off": False, "on": True}[settings.ollama.thinking]
+        for index in range(len(completed), len(segments)):
+            if cancel_check and cancel_check():
+                return
+            segment = segments[index]
+            translated = []
+            pending_space = ""
+            if segment.text.strip():
+                prompt = make_prompt(segment.text, source, target)
+                if index and not raw:
+                    context = (
+                        segments[index - 1]
+                        .text.encode("utf-8")[-256:]
+                        .decode(
+                            "utf-8",
+                            errors="ignore",
+                        )
+                    )
+                    prompt = (
+                        "Previous source context (do not translate again):\n"
+                        + context
+                        + "\nTranslate only the current segment below.\n"
+                        + prompt
+                    )
+                try:
+                    for chunk in client.chat_stream(
+                        message=prompt,
+                        model=settings.ollama.model,
+                        system_prompt=system or None,
+                        cancel_check=cancel_check,
+                        options=options,
+                        keep_alive=settings.ollama.keep_alive,
+                        think=think,
+                        raw=raw,
+                    ):
+                        if cancel_check and cancel_check():
+                            return
+                        combined = pending_space + chunk.content
+                        visible = combined.rstrip()
+                        pending_space = combined[len(visible) :]
+                        if visible:
+                            translated.append(visible)
+                            if on_chunk:
+                                on_chunk(visible)
+                            yield visible
+                except TranslationCancelledError:
+                    raise
+                except TranslationError as error:
+                    error_type = (
+                        ProviderConnectionError
+                        if isinstance(error, ProviderConnectionError)
+                        else TranslationError
+                    )
+                    raise error_type(
+                        tr(
+                            "Part {part}/{total}: {error}",
+                            "第 {part}/{total} 段：{error}",
+                            part=index + 1,
+                            total=len(segments),
+                            error=error,
+                        )
+                    ) from error
+                if cancel_check and cancel_check():
+                    return
+                if not any(part.strip() for part in translated):
+                    raise TranslationError(
+                        tr(
+                            "Part {part}/{total}: the model returned no translation.",
+                            "第 {part}/{total} 段：模型没有返回译文。",
+                            part=index + 1,
+                            total=len(segments),
+                        )
+                    )
+            if segment.separator:
+                if on_chunk:
+                    on_chunk(segment.separator)
+                yield segment.separator
+            completed.append("".join(translated) + segment.separator)
+            if on_checkpoint:
+                on_checkpoint(TranslationCheckpoint(key, tuple(completed), len(segments)))
 
     def translate(
         self,
@@ -208,9 +355,9 @@ class TranslationService:
         """
         target_lang = target_language or self.settings.translation.target_language
         source_lang = source_language or self.settings.translation.source_language
+        translated_parts = []
         try:
             # Collect all chunks
-            translated_parts = []
             for chunk in self.translate_stream(text, target_lang, source_lang):
                 translated_parts.append(chunk)
 
@@ -223,10 +370,18 @@ class TranslationService:
                 target_language=target_lang,
                 status=TranslationStatus.COMPLETED,
             )
-        except OllamaError as e:
+        except TranslationCancelledError:
+            return TranslationResult(
+                text,
+                "".join(translated_parts),
+                source_lang,
+                target_lang,
+                TranslationStatus.CANCELLED,
+            )
+        except TranslationError as e:
             return TranslationResult(
                 source_text=text,
-                translated_text="",
+                translated_text="".join(translated_parts),
                 source_language=source_lang,
                 target_language=target_lang,
                 status=TranslationStatus.ERROR,
@@ -235,7 +390,7 @@ class TranslationService:
 
     def cancel(self) -> None:
         """Cancel an ongoing streaming translation."""
-        self._cancelled = True
+        self.client.cancel()
         logger.debug("Translation cancellation requested.")
 
     def lookup_word(self, attempt: str, meaning: str, language: str = "English") -> Iterator[str]:
@@ -290,7 +445,7 @@ class TranslationService:
         try:
             models = self.client.list_models()
             return [m.name for m in models]
-        except OllamaError:
+        except TranslationError:
             return []
 
     def update_settings(self, settings: AppSettings) -> None:
@@ -299,8 +454,10 @@ class TranslationService:
 
         Called when the user changes settings in the UI.
         """
+        self.cancel()
         self.settings = settings
-        self.client = OllamaClient(host=settings.ollama.host)
+        if self._client_factory is not None:
+            self.client = self._client_factory(settings)
         logger.info(f"Settings updated, model: {settings.ollama.model}")
 
     # =========================================================

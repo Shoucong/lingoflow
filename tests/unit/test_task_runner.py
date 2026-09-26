@@ -65,3 +65,18 @@ def test_task_runner_cancel_all_requests_cancellation() -> None:
 
     assert task.is_cancelled()
     assert task.state == TaskState.CANCELLED
+
+
+def test_completed_tasks_are_released_and_diagnostics_are_bounded() -> None:
+    runner = TaskRunner()
+    for _ in range(140):
+        task = runner.start("short", lambda _: None)
+        join_task(task)
+    assert runner.active_count == 0
+    assert len(runner.recent) == 100
+
+
+def test_cancelled_unstarted_task_does_not_remain_registered() -> None:
+    runner = TaskRunner()
+    runner.create("pending").cancel()
+    assert runner.active_count == 0

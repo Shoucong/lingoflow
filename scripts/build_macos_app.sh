@@ -3,20 +3,24 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SPEC_FILE="$ROOT_DIR/packaging/macos/LingoFlow.spec"
-APP_PATH="$ROOT_DIR/dist/LingoFlow.app"
+BUILD_PYTHON="${LINGOFLOW_PYTHON:-$ROOT_DIR/.venv/bin/python}"
+DIST_DIR="${LINGOFLOW_DIST_DIR:-$ROOT_DIR/dist}"
+WORK_DIR="${LINGOFLOW_WORK_DIR:-$ROOT_DIR/build/pyinstaller}"
+APP_PATH="$DIST_DIR/LingoFlow.app"
 ENTITLEMENTS="$ROOT_DIR/packaging/macos/entitlements.plist"
 LOCAL_SIGN_IDENTITY="${LINGOFLOW_LOCAL_CODESIGN_IDENTITY:-LingoFlow Local Development}"
 
 cd "$ROOT_DIR"
 export PYINSTALLER_CONFIG_DIR="${PYINSTALLER_CONFIG_DIR:-$ROOT_DIR/build/pyinstaller-cache}"
 
-if ! python -c "import PyInstaller" >/dev/null 2>&1; then
+if ! "$BUILD_PYTHON" -c "import PyInstaller" >/dev/null 2>&1; then
   echo "PyInstaller is not installed."
-  echo "Install packaging dependencies with: python -m pip install -e '.[package]'"
+  echo "Install locked dependencies; see packaging/macos/README.md."
   exit 1
 fi
 
-python -m PyInstaller --clean --noconfirm "$SPEC_FILE"
+"$BUILD_PYTHON" -m pip check
+"$BUILD_PYTHON" -m PyInstaller --clean --noconfirm --distpath "$DIST_DIR" --workpath "$WORK_DIR" "$SPEC_FILE"
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "Build failed: $APP_PATH was not created."

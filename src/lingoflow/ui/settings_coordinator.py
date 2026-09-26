@@ -4,56 +4,47 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PyQt6.QtCore import QTimer
-
 from lingoflow.config.settings import AppSettings
-from lingoflow.ui import messages
 from lingoflow.ui.settings_dialog import SettingsDialog
 
 
 class SettingsCoordinator:
-    """Own settings dialog lifecycle and settings-change delegation."""
+    """Own settings dialog lifecycle and settings-change delegation.
+
+    Opening Settings leaves any reading window alone; the menu window presenter
+    keeps Settings above a pinned reading window while Settings is in use.
+    """
 
     def __init__(
         self,
         settings: AppSettings,
         on_settings_changed: Callable[[AppSettings], None],
-        dismiss_popup: Callable[[str], None],
-        activate_app: Callable[[], None],
-        raise_dialog: Callable[[object], None],
+        present: Callable[[object], None],
         dialog_factory: Callable[[AppSettings], SettingsDialog] = SettingsDialog,
     ) -> None:
         self.settings = settings
         self._on_settings_changed = on_settings_changed
-        self._dismiss_popup = dismiss_popup
-        self._activate_app = activate_app
-        self._raise_dialog = raise_dialog
+        self._present = present
         self._dialog_factory = dialog_factory
         self.dialog: SettingsDialog | None = None
         self.is_open = False
 
-    def show(self) -> None:
+    def show(self, section: str | None = None) -> None:
         """Show the settings dialog, reusing the existing one if open."""
-        if self.is_open:
-            self.raise_current()
-            return
-
-        self._dismiss_popup(messages.SETTINGS_OPEN_DISMISS_POPUP_REASON)
-        self.is_open = True
-
-        dialog = self._dialog_factory(self.settings)
-        self.dialog = dialog
-        dialog.settings_changed.connect(self.apply_settings)
-        dialog.finished.connect(lambda _: self.on_closed(dialog))
-
-        self._activate_app()
-        QTimer.singleShot(0, lambda: self._raise_dialog(dialog))
-        QTimer.singleShot(150, lambda: self._raise_dialog(dialog))
-        dialog.show()
+        if not self.is_open:
+            self.is_open = True
+            dialog = self._dialog_factory(self.settings)
+            self.dialog = dialog
+            dialog.settings_changed.connect(self.apply_settings)
+            dialog.finished.connect(lambda _: self.on_closed(dialog))
+        if section and hasattr(self.dialog, "show_section"):
+            self.dialog.show_section(section)
+        self._present(self.dialog)
 
     def raise_current(self) -> None:
         """Raise the current settings dialog if present."""
-        self._raise_dialog(self.dialog)
+        if self.dialog is not None:
+            self._present(self.dialog)
 
     def on_closed(self, dialog: SettingsDialog) -> None:
         """Clear dialog state after a modeless settings window closes."""

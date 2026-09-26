@@ -13,7 +13,8 @@ pytest.importorskip("PyQt6")
 pytest.importorskip("pytestqt")
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.core.ocr import OCRResult, ScreenCaptureError
+from lingoflow.core.app_state import AppState
+from lingoflow.infrastructure.macos.ocr import OCRResult, ScreenCaptureError
 from lingoflow.infrastructure.ollama_client import OllamaError
 from lingoflow.ui import main_window, messages, tray_controller
 from lingoflow.ui.main_window import MainController
@@ -67,7 +68,7 @@ class FakeClipboard:
     def __init__(self) -> None:
         self.selected_text = ""
 
-    def get_selected_text(self) -> str:
+    def get_selected_text(self, cancel_check=None) -> str:
         return self.selected_text
 
 
@@ -96,6 +97,9 @@ class FakeTranslator:
         source_language: str | None = None,
         on_chunk=None,
         cancel_check=None,
+        checkpoint=None,
+        on_checkpoint=None,
+        on_source_detected=None,
     ):
         self.started.set()
         self.requests.append(
@@ -136,15 +140,18 @@ class FakeOCRService:
         self.cleanup_paths: list[Path] = []
         self.updated_settings: list[AppSettings] = []
 
-    def capture_interactive(self) -> Path | None:
+    def capture_interactive(self, cancel_check=None) -> Path | None:
         self.capture_calls += 1
         if self.capture_error:
             raise self.capture_error
         return self.capture_result
 
-    def extract_text(self, image_path: Path) -> OCRResult:
+    def extract_text(self, image_path: Path, cancel_check=None) -> OCRResult:
         self.extract_paths.append(image_path)
         return self.extract_result
+
+    def cancel(self) -> None:
+        pass
 
     def cleanup_capture(self, image_path: Path) -> bool:
         self.cleanup_paths.append(image_path)
@@ -152,6 +159,18 @@ class FakeOCRService:
 
     def update_settings(self, settings: AppSettings) -> None:
         self.updated_settings.append(settings)
+
+
+class FakeDictionary:
+    """Answers only for words registered by a test; everything else goes to the model."""
+
+    def __init__(self) -> None:
+        self.results: dict[str, object] = {}
+        self.queries: list[tuple[str, str]] = []
+
+    def lookup(self, word: str, target_language: str):
+        self.queries.append((word, target_language))
+        return self.results.get(word)
 
 
 class FakeHotkeyManager:
@@ -181,6 +200,14 @@ class FakePopup:
         self.settings = settings
         self.language_changed = FakeSignal()
         self.closed = FakeSignal()
+        self.stop_requested = FakeSignal()
+        self.retry_requested = FakeSignal()
+        self.settings_requested = FakeSignal()
+        self.model_translation_requested = FakeSignal()
+        self.dictionary_results: list = []
+        self.left_word_mode = 0
+        self.is_pinned = False
+        self.detected_languages: list[str] = []
         self.target_language = settings.translation.target_language
         self.shown: list[dict[str, object]] = []
         self.chunks: list[str] = []
@@ -189,6 +216,7 @@ class FakePopup:
         self.started_count = 0
         self.finished_count = 0
         self.dismissed = False
+        self.is_reviewing = False
         self.updated_settings: list[AppSettings] = []
 
     def show_with_text(
@@ -216,8 +244,26 @@ class FakePopup:
     def finish_translation(self) -> None:
         self.finished_count += 1
 
+    def prepare_review(self) -> None:
+        self.is_reviewing = True
+
+    def stop_translation(self) -> None:
+        pass
+
+    def set_progress(self, completed, total) -> None:
+        pass
+
     def show_error(self, message: str) -> None:
         self.errors.append(message)
+
+    def set_detected_source_language(self, language: str) -> None:
+        self.detected_languages.append(language)
+
+    def show_dictionary(self, result, expect_gloss: bool = True) -> None:
+        self.dictionary_results.append(result)
+
+    def leave_word_mode(self) -> None:
+        self.left_word_mode += 1
 
     def clear_translation(self) -> None:
         self.cleared_count += 1
@@ -267,6 +313,7 @@ class UnsupportedPermissions:
 @pytest.fixture
 def controller_harness(monkeypatch, qapp, isolated_settings_paths) -> ControllerHarness:
     settings = AppSettings()
+    settings.ocr.review_before_translation = False
     clipboard = FakeClipboard()
     translator = FakeTranslator()
     ocr = FakeOCRService()
@@ -278,10 +325,11 @@ def controller_harness(monkeypatch, qapp, isolated_settings_paths) -> Controller
         "load",
         classmethod(lambda cls: settings),
     )
-    monkeypatch.setattr(main_window, "TranslationService", lambda _settings: translator)
+    monkeypatch.setattr(main_window, "create_translation_service", lambda _settings: translator)
     monkeypatch.setattr(main_window, "OCRService", lambda _settings: ocr)
     monkeypatch.setattr(main_window, "ClipboardManager", lambda: clipboard)
     monkeypatch.setattr(main_window, "HotkeyManager", lambda _settings: hotkeys)
+    monkeypatch.setattr(main_window, "MacOSDictionaryService", lambda: FakeDictionary())
     monkeypatch.setattr(main_window, "MacOSPermissionService", UnsupportedPermissions)
     monkeypatch.setattr(tray_controller, "QSystemTrayIcon", FakeTrayIcon)
 
@@ -322,6 +370,14 @@ def wait_for_idle_translation(qtbot, harness: ControllerHarness) -> None:
     qtbot.waitUntil(lambda: not harness.controller._is_translating, timeout=2000)
 
 
+def test_typed_input_waits_for_user_to_request_translation(controller_harness) -> None:
+    harness = controller_harness
+    harness.controller._open_input()
+    assert harness.popup.is_reviewing
+    assert not harness.translator.requests
+    assert harness.popup.get_source_text() == ""
+
+
 def test_translate_selection_shows_popup_and_streams_translation(
     qtbot,
     controller_harness: ControllerHarness,
@@ -350,6 +406,7 @@ def test_translate_selection_shows_popup_and_streams_translation(
 
 
 def test_translate_request_without_ollama_notifies_and_does_not_create_popup(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -358,12 +415,14 @@ def test_translate_request_without_ollama_notifies_and_does_not_create_popup(
 
     harness.controller._on_translate_requested()
 
+    qtbot.waitUntil(lambda: bool(harness.controller.tray_icon.messages))
     assert harness.popup is None
     assert harness.controller.tray_icon.messages[-1][0] == messages.OLLAMA_NOT_RUNNING_TITLE
-    assert messages.OLLAMA_OFFLINE_STATUS in harness.controller.tray_icon.tooltip
+    assert "Ollama is not running" in harness.controller.tray_icon.tooltip
 
 
 def test_translate_request_without_selected_text_notifies(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -371,6 +430,7 @@ def test_translate_request_without_selected_text_notifies(
 
     harness.controller._on_translate_requested()
 
+    qtbot.waitUntil(lambda: bool(harness.controller.tray_icon.messages))
     assert harness.popup is None
     assert harness.controller.tray_icon.messages[-1] == (
         messages.NO_TEXT_SELECTED_TITLE,
@@ -378,7 +438,7 @@ def test_translate_request_without_selected_text_notifies(
     )
 
 
-def test_translate_request_truncates_very_long_selection(
+def test_translate_request_preserves_very_long_selection(
     qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
@@ -389,8 +449,7 @@ def test_translate_request_truncates_very_long_selection(
     wait_for_idle_translation(qtbot, harness)
 
     shown_text = harness.popup.shown[-1]["source_text"]
-    assert len(shown_text) == 5003
-    assert str(shown_text).endswith("...")
+    assert shown_text == "a" * 5100
     assert harness.translator.requests[-1]["text"] == shown_text
 
 
@@ -414,6 +473,7 @@ def test_ocr_success_extracts_text_then_translates(
 
 
 def test_ocr_cancelled_restores_ready_without_popup(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -421,12 +481,13 @@ def test_ocr_cancelled_restores_ready_without_popup(
 
     harness.controller._on_ocr_requested()
 
-    assert harness.controller._is_processing_ocr is False
+    qtbot.waitUntil(lambda: not harness.controller._is_processing_ocr)
     assert harness.popup is None
     assert "Ready" in harness.controller.tray_icon.tooltip
 
 
 def test_ocr_capture_error_notifies_without_starting_worker(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -434,6 +495,7 @@ def test_ocr_capture_error_notifies_without_starting_worker(
 
     harness.controller._on_ocr_requested()
 
+    qtbot.waitUntil(lambda: not harness.controller._is_processing_ocr)
     assert harness.popup is None
     assert harness.controller._active_ocr_task is None
     assert harness.controller.tray_icon.messages[-1] == (
@@ -473,7 +535,7 @@ def test_translation_error_is_shown_in_popup(
     qtbot.waitUntil(lambda: not harness.controller._is_translating, timeout=2000)
 
     assert harness.popup.errors == ["model failed"]
-    assert "Ready" in harness.controller.tray_icon.tooltip
+    assert "Translation failed" in harness.controller.tray_icon.tooltip
 
 
 def test_popup_close_cancels_active_translation(
@@ -485,7 +547,7 @@ def test_popup_close_cancels_active_translation(
     harness.translator.wait_until_cancel = True
 
     harness.controller._on_translate_requested()
-    assert harness.translator.started.wait(timeout=2.0)
+    qtbot.waitUntil(harness.translator.started.is_set, timeout=2000)
     assert harness.popup is not None
 
     harness.popup.dismiss()
@@ -529,3 +591,150 @@ def test_stale_translation_signals_are_ignored(controller_harness: ControllerHar
     assert harness.popup.chunks == []
     assert harness.popup.errors == []
     assert harness.popup.finished_count == 0
+
+
+def test_slow_service_probe_does_not_block_ui(qtbot, controller_harness, monkeypatch):
+    harness = controller_harness
+    harness.clipboard.selected_text = "First text"
+    entered, release = threading.Event(), threading.Event()
+
+    def probe():
+        entered.set()
+        release.wait(2)
+        return True
+
+    monkeypatch.setattr(harness.translator, "is_available", probe)
+    try:
+        harness.controller._on_translate_requested()
+        qtbot.waitUntil(entered.is_set)
+        assert harness.controller.app_state == AppState.ACQUIRING
+    finally:
+        release.set()
+    wait_for_idle_translation(qtbot, harness)
+
+
+def test_new_selection_replaces_old_task_and_rejects_late_output(qtbot, controller_harness):
+    harness = controller_harness
+    harness.clipboard.selected_text = "First text"
+    harness.translator.wait_until_cancel = True
+    harness.controller._on_translate_requested()
+    qtbot.waitUntil(harness.translator.started.is_set)
+    old_task = harness.controller._active_translation_task
+    harness.translator.wait_until_cancel = False
+    harness.clipboard.selected_text = "new selection"
+    harness.controller._on_translate_requested()
+    wait_for_idle_translation(qtbot, harness)
+    harness.controller._on_translation_chunk(old_task.task_id, "obsolete")
+    session = harness.controller.translation_workflow.session
+    assert old_task.is_cancelled()
+    assert session.source_text == "new selection"
+    assert "obsolete" not in session.translated_text
+    qtbot.waitUntil(lambda: harness.controller._task_runner.active_count == 0)
+
+
+def test_cancelled_capture_keeps_ui_responsive_and_cleans_late_image(
+    qtbot,
+    controller_harness,
+    monkeypatch,
+):
+    harness = controller_harness
+    entered, release = threading.Event(), threading.Event()
+
+    def capture(cancel_check=None):
+        entered.set()
+        release.wait(2)
+        return harness.ocr.capture_result
+
+    monkeypatch.setattr(harness.ocr, "capture_interactive", capture)
+    try:
+        harness.controller._on_ocr_requested()
+        qtbot.waitUntil(entered.is_set)
+        assert harness.controller.app_state == AppState.CAPTURING
+        harness.controller.ocr_workflow.cancel_active()
+    finally:
+        release.set()
+    qtbot.waitUntil(lambda: harness.controller._task_runner.active_count == 0)
+    assert harness.popup is None
+    assert harness.ocr.cleanup_paths == [harness.ocr.capture_result]
+
+
+def test_ocr_review_waits_for_explicit_translation(qtbot, controller_harness):
+    harness = controller_harness
+    harness.controller.settings.ocr.review_before_translation = True
+    harness.controller._on_ocr_requested()
+    qtbot.waitUntil(lambda: harness.popup is not None)
+    assert harness.popup.is_reviewing
+    assert harness.translator.requests == []
+    harness.popup.retry_requested.emit("corrected OCR text")
+    wait_for_idle_translation(qtbot, harness)
+    assert harness.translator.requests[-1]["text"] == "corrected OCR text"
+
+
+def test_single_word_shows_a_dictionary_card_and_a_model_gloss(qtbot, controller_harness):
+    from lingoflow.core.dictionary import DictionaryResult
+
+    harness = controller_harness
+    dictionary = harness.controller.translation_workflow._dictionary
+    dictionary.results["inhibited"] = DictionaryResult(
+        "inhibited", "D", True, (_found_entry("inhibit"),)
+    )
+    harness.clipboard.selected_text = "inhibited"
+    harness.translator.stream_chunks = ["抑制"]
+
+    harness.controller._on_translate_requested()
+    wait_for_idle_translation(qtbot, harness)
+
+    assert harness.popup.dictionary_results[-1].query == "inhibited"
+    assert dictionary.queries[-1] == ("inhibited", harness.settings.translation.target_language)
+    # The gloss is the ordinary model request for the same word.
+    assert harness.translator.requests[-1]["text"] == "inhibited"
+    assert harness.popup.detected_languages[-1] == "English"
+
+
+def test_phrases_words_without_entries_and_the_disabled_setting_use_the_model(
+    qtbot, controller_harness
+):
+    harness = controller_harness
+    dictionary = harness.controller.translation_workflow._dictionary
+    harness.clipboard.selected_text = "binding affinity"
+    harness.controller._on_translate_requested()
+    wait_for_idle_translation(qtbot, harness)
+    assert dictionary.queries == []
+    assert harness.popup.dictionary_results == []
+
+    # A single word in neither dictionary still gets a card saying so, and the model
+    # translation fills it in.
+    from lingoflow.core.dictionary import DictionaryResult
+
+    dictionary.results["ubiquitination"] = DictionaryResult("ubiquitination", "D", True, ())
+    harness.controller.translation_workflow._start_request("ubiquitination")
+    assert dictionary.queries[-1][0] == "ubiquitination"
+    miss = harness.popup.dictionary_results[-1]
+    assert (miss.query, miss.entries, miss.bilingual) == ("ubiquitination", (), False)
+    qtbot.waitUntil(lambda: harness.popup.finished_count == 2, timeout=2000)
+    assert harness.translator.requests[-1]["text"] == "ubiquitination"
+
+    harness.settings.translation.dictionary_lookup = False
+    dictionary.queries.clear()
+    dictionary.results["inhibited"] = object()
+    harness.controller.translation_workflow._start_request("inhibited")
+    assert dictionary.queries == []
+
+
+def test_translate_with_model_skips_the_dictionary(qtbot, controller_harness):
+    harness = controller_harness
+    dictionary = harness.controller.translation_workflow._dictionary
+    harness.controller.translation_workflow.ensure_popup()
+    popup = harness.popup
+    popup.shown.append({"source_text": "inhibited"})
+    harness.controller.translation_workflow.translate_with_model("inhibited")
+    qtbot.waitUntil(lambda: popup.finished_count == 1, timeout=2000)
+    assert dictionary.queries == []
+    assert popup.left_word_mode == 1
+    assert harness.translator.requests[-1]["text"] == "inhibited"
+
+
+def _found_entry(headword):
+    from lingoflow.core.dictionary import DictionaryEntry, PartOfSpeech, Sense
+
+    return DictionaryEntry(headword, (), (PartOfSpeech("verb", (Sense(translations=("抑制",)),)),))

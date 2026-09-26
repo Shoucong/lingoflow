@@ -15,7 +15,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from lingoflow.infrastructure.macos_permissions import (
+from lingoflow.i18n import tr
+from lingoflow.infrastructure.macos.permissions import (
     MacOSPermissionService,
     PermissionCheck,
     PermissionState,
@@ -44,8 +45,8 @@ class OnboardingDialog(QDialog):
 
     def _setup_window(self) -> None:
         """Configure dialog window."""
-        self.setWindowTitle("Set up LingoFlow")
-        self.setMinimumWidth(620)
+        self.setWindowTitle(tr("LingoFlow Permissions & Diagnostics", "LingoFlow 权限与诊断"))
+        self.setMinimumWidth(600)
         self.setModal(False)
         self.setWindowModality(Qt.WindowModality.NonModal)
 
@@ -54,13 +55,16 @@ class OnboardingDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(14)
 
-        title = QLabel("Set up LingoFlow")
+        title = QLabel(tr("Set up LingoFlow permissions", "设置 LingoFlow 所需权限"))
         title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 
         intro = QLabel(
-            "LingoFlow needs a few macOS permissions before hotkeys, selected-text "
-            "translation, and OCR can work reliably."
+            tr(
+                "Hotkeys, selected-text translation and screenshot recognition need "
+                "these macOS permissions.",
+                "快捷键、划词翻译和截图识别需要以下 macOS 权限。",
+            )
         )
         intro.setWordWrap(True)
         layout.addWidget(intro)
@@ -71,8 +75,11 @@ class OnboardingDialog(QDialog):
         layout.addLayout(self.permission_grid)
 
         self.restart_note = QLabel(
-            "After changing macOS permissions, restart LingoFlow. Recheck can still "
-            "show stale results until the restarted app receives the new permission state."
+            tr(
+                "After changing macOS permissions, restart LingoFlow. "
+                "Until then, Recheck may still show the old state.",
+                "修改 macOS 权限后请重新启动 LingoFlow；重启前重新检查可能仍显示旧状态。",
+            )
         )
         self.restart_note.setWordWrap(True)
         self.restart_note.setStyleSheet("color: #9a6500;")
@@ -85,22 +92,22 @@ class OnboardingDialog(QDialog):
 
         button_layout = QHBoxLayout()
 
-        self.recheck_btn = QPushButton("Recheck")
+        self.recheck_btn = QPushButton(tr("Recheck", "重新检查"))
         self.recheck_btn.clicked.connect(self._refresh_checks)
         button_layout.addWidget(self.recheck_btn)
 
         button_layout.addStretch()
 
-        self.restart_btn = QPushButton("Restart LingoFlow")
+        self.restart_btn = QPushButton(tr("Restart LingoFlow", "重新启动 LingoFlow"))
         self.restart_btn.clicked.connect(self.restart_requested.emit)
         self.restart_btn.setVisible(False)
         button_layout.addWidget(self.restart_btn)
 
-        self.skip_btn = QPushButton("Continue Later")
+        self.skip_btn = QPushButton(tr("Continue Later", "稍后设置"))
         self.skip_btn.clicked.connect(self.reject)
         button_layout.addWidget(self.skip_btn)
 
-        self.continue_btn = QPushButton("Continue")
+        self.continue_btn = QPushButton(tr("Done", "完成"))
         self.continue_btn.setDefault(True)
         self.continue_btn.clicked.connect(self._continue)
         button_layout.addWidget(self.continue_btn)
@@ -118,18 +125,20 @@ class OnboardingDialog(QDialog):
 
         ready = all(check.is_ready for check in checks)
         if self._restart_required:
-            self.recheck_btn.setText("Recheck after restart")
+            self.recheck_btn.setText(tr("Recheck after restart", "重启后再检查"))
             self.recheck_btn.setEnabled(False)
             self.restart_btn.setVisible(True)
             self.restart_note.setVisible(True)
-            self.continue_btn.setText("Restart Required")
+            self.continue_btn.setText(tr("Restart Required", "需要重新启动"))
             self.continue_btn.setEnabled(False)
         else:
-            self.recheck_btn.setText("Recheck")
+            self.recheck_btn.setText(tr("Recheck", "重新检查"))
             self.recheck_btn.setEnabled(True)
             self.restart_btn.setVisible(False)
             self.restart_note.setVisible(False)
-            self.continue_btn.setText("Continue" if ready else "Continue Anyway")
+            self.continue_btn.setText(
+                tr("Done", "完成") if ready else tr("Continue Anyway", "仍然继续")
+            )
             self.continue_btn.setEnabled(True)
 
     def _create_row(self, row: int, check: PermissionCheck) -> None:
@@ -143,10 +152,10 @@ class OnboardingDialog(QDialog):
         purpose_label = QLabel()
         purpose_label.setWordWrap(True)
 
-        request_btn = QPushButton("Request")
+        request_btn = QPushButton(tr("Request", "请求权限"))
         request_btn.clicked.connect(lambda _, key=check.key: self._request_permission(key))
 
-        settings_btn = QPushButton("Open Settings")
+        settings_btn = QPushButton(tr("Open System Settings", "打开系统设置"))
         settings_btn.clicked.connect(
             lambda _, key=check.key, url=check.settings_url: self._open_settings(key, url)
         )
@@ -171,16 +180,16 @@ class OnboardingDialog(QDialog):
         request_btn = row["request"]
 
         if check.state == PermissionState.GRANTED:
-            status_label.setText("Granted")
+            status_label.setText(tr("Granted", "已允许"))
             status_label.setStyleSheet("color: green; font-weight: 600;")
         elif check.state == PermissionState.MISSING:
-            status_label.setText("Needs setup")
+            status_label.setText(tr("Needs setup", "需要设置"))
             status_label.setStyleSheet("color: #b26a00; font-weight: 600;")
         elif check.state == PermissionState.MANUAL:
-            status_label.setText("Manual check")
+            status_label.setText(tr("Check manually", "需手动确认"))
             status_label.setStyleSheet("color: #555; font-weight: 600;")
         else:
-            status_label.setText("Unknown")
+            status_label.setText(tr("Unknown", "未知"))
             status_label.setStyleSheet("color: #b26a00; font-weight: 600;")
 
         purpose_label.setText(f"{check.purpose}\n{check.detail}")
@@ -224,9 +233,9 @@ class OnboardingDialog(QDialog):
         self._restart_required = True
         self.restart_note.setVisible(True)
         self.restart_btn.setVisible(True)
-        self.recheck_btn.setText("Recheck after restart")
+        self.recheck_btn.setText(tr("Recheck after restart", "重启后再检查"))
         self.recheck_btn.setEnabled(False)
-        self.continue_btn.setText("Restart Required")
+        self.continue_btn.setText(tr("Restart Required", "需要重新启动"))
         self.continue_btn.setEnabled(False)
 
     def _hide_app_for_system_prompt(self) -> None:
@@ -245,10 +254,14 @@ class OnboardingDialog(QDialog):
 
         self._refresh_checks()
 
-    def show_for_user(self) -> None:
-        """Show setup when the user explicitly opens or returns to it."""
+    def prepare_for_user(self) -> None:
+        """Refresh before the menu window presenter shows the dialog."""
         self._pending_permission_request = False
         self._refresh_checks()
+
+    def show_for_user(self) -> None:
+        """Show setup when the user explicitly opens or returns to it."""
+        self.prepare_for_user()
         self.show()
         self.raise_()
         self.activateWindow()
@@ -259,12 +272,16 @@ class OnboardingDialog(QDialog):
         missing = [check for check in checks if not check.is_ready]
 
         if missing:
-            names = ", ".join(check.name for check in missing)
+            names = tr(", ", "、").join(check.name for check in missing)
             reply = QMessageBox.question(
                 self,
-                "Continue without all permissions?",
-                f"These permissions are still missing: {names}.\n\n"
-                "Some LingoFlow features may not work until they are enabled.",
+                tr("Continue without all permissions?", "缺少部分权限，仍然继续？"),
+                tr(
+                    "Still missing: {names}.\n\n"
+                    "Related features may not work until they are enabled.",
+                    "仍缺少：{names}。\n\n启用之前，相关功能可能无法使用。",
+                    names=names,
+                ),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )

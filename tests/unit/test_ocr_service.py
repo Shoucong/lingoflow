@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import sys
+import threading
+import time
 from pathlib import Path
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.core.ocr import OCRService
+from lingoflow.infrastructure.macos.ocr import OCRService
 
 
 def make_service(keep_captures: bool = False) -> OCRService:
@@ -64,3 +67,69 @@ def test_new_capture_path_is_unique_and_managed(isolated_ocr_capture_dir: Path) 
     assert first.parent == isolated_ocr_capture_dir
     assert first.name.startswith("capture-")
     assert first.suffix == ".png"
+
+
+def test_cancelling_capture_terminates_its_process(isolated_ocr_capture_dir: Path) -> None:
+    service = make_service()
+    results = []
+    worker = threading.Thread(
+        target=lambda: results.append(
+            service.capture.run(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                timeout=5,
+            )
+        )
+    )
+    worker.start()
+    try:
+        deadline = time.monotonic() + 2
+        while service.capture.process is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert service.capture.process is not None
+        service.cancel()
+        worker.join(2)
+        assert not worker.is_alive()
+        assert results[0].returncode == -1
+        assert service.capture.process is None
+    finally:
+        service.cancel()
+        worker.join(3)
+
+
+def test_image_enhancement_is_applied_and_temporary_derivative_is_removed(
+    isolated_ocr_capture_dir,
+    tmp_path,
+    monkeypatch,
+):
+    from PIL import Image
+
+    from lingoflow.infrastructure.macos.ocr import OCRResult
+
+    source = tmp_path / "original.png"
+    Image.new("RGB", (100, 100), "white").save(source)
+    service = make_service()
+    paths = []
+
+    def recognize(path, cancel_check=None):
+        paths.append(path)
+        assert path.exists()
+        with Image.open(path) as image:
+            assert image.width >= 300
+        return OCRResult("recognized")
+
+    monkeypatch.setattr(service, "_extract_text_apple_vision", recognize)
+    result = service.extract_text(source)
+    assert result.text == "recognized"
+    assert result.source_image_path == str(source)
+    assert paths[0] != source and not paths[0].exists()
+    assert source.exists()
+
+
+def test_mixed_language_options_list_the_cjk_model_first() -> None:
+    # Vision's English model cannot read CJK text; its CJK models also read Latin letters.
+    from lingoflow.config.settings import AppSettings
+    from lingoflow.infrastructure.macos.ocr import OCRService
+
+    assert OCRService.LANGUAGE_MAP["eng+chi_sim"] == ["zh-Hans", "en-US"]
+    assert OCRService.LANGUAGE_MAP["eng+jpn"] == ["ja-JP", "en-US"]
+    assert AppSettings().ocr.language == "eng+chi_sim"
