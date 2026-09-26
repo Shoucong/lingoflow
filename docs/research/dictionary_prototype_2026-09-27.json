@@ -1,10 +1,10 @@
 {
   "available": true,
-  "load_ms": 67.06,
+  "load_ms": 57.56,
   "words": {
     "inhibited": {
       "group": "inflection",
-      "ms": 5.82,
+      "ms": 4.76,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -12,48 +12,23 @@
         {
           "headword": "inhibit",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪnˈhɪbɪt",
-            "AmE ɪnˈhɪbət"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "抑制；妨碍；阻碍"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [
-                "Physiology",
-                "Biology"
-              ],
-              "meaning": "抑制"
-            }
+          "domains": [
+            "Biology",
+            "Physiology"
           ]
         },
         {
           "headword": "inhibited",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪnˈhɪbɪtɪd",
-            "AmE ɪnˈhɪbədəd"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "拘谨的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "inhibits": {
       "group": "inflection",
-      "ms": 0.62,
+      "ms": 0.61,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -61,32 +36,17 @@
         {
           "headword": "inhibit",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪnˈhɪbɪt",
-            "AmE ɪnˈhɪbət"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "抑制；妨碍；阻碍"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [
-                "Physiology",
-                "Biology"
-              ],
-              "meaning": "抑制"
-            }
+          "domains": [
+            "Biology",
+            "Physiology"
           ]
         }
       ]
     },
     "mediates": {
       "group": "inflection",
-      "ms": 0.83,
+      "ms": 0.95,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -94,29 +54,14 @@
         {
           "headword": "mediate",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈmiːdɪeɪt",
-            "AmE ˈmidiˌeɪt"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "调解"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "调停解决；经调解达成"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "attenuated": {
       "group": "inflection",
-      "ms": 1.83,
+      "ms": 0.93,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -124,40 +69,20 @@
         {
           "headword": "attenuate",
           "form_of": null,
-          "pronunciations": [
-            "BrE əˈtɛnjʊeɪt",
-            "AmE əˈtɛnjəˌweɪt"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "减弱"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "attenuated",
           "form_of": null,
-          "pronunciations": [
-            "BrE əˈtɛnjʊeɪtɪd",
-            "AmE əˈtɛnjəˌweɪdəd"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "减弱的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "conferred": {
       "group": "inflection",
-      "ms": 1.78,
+      "ms": 1.1,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -165,29 +90,14 @@
         {
           "headword": "confer",
           "form_of": null,
-          "pronunciations": [
-            "BrE kənˈfəː",
-            "AmE kənˈfər"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "授予；赋予"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "商量；协商"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "elucidating": {
       "group": "inflection",
-      "ms": 1.18,
+      "ms": 0.5,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -195,25 +105,14 @@
         {
           "headword": "elucidate",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪˈluːsɪdeɪt,",
-            "BrE ɪˈljuːsɪdeɪt",
-            "AmE əˈlusəˌdeɪt"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "transitive or intransitive verb",
-              "domains": [],
-              "meaning": "阐明"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "binding": {
       "group": "inflection",
-      "ms": 4.29,
+      "ms": 3.12,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -221,70 +120,20 @@
         {
           "headword": "bind",
           "form_of": null,
-          "pronunciations": [
-            "BrE bʌɪnd",
-            "AmE baɪnd"
-          ],
           "sense_count": 10,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "捆；束；包扎"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "使结合"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "束缚"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "冻结；黏合"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "binding",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈbʌɪndɪŋ",
-            "AmE ˈbaɪndɪŋ"
-          ],
           "sense_count": 4,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "封皮"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "镶边"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "皮靴固定装置"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "有约束力的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "bound": {
       "group": "inflection",
-      "ms": 8.03,
+      "ms": 7.31,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -292,81 +141,26 @@
         {
           "headword": "bind",
           "form_of": null,
-          "pronunciations": [
-            "BrE bʌɪnd",
-            "AmE baɪnd"
-          ],
           "sense_count": 10,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "捆；束；包扎"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "使结合"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "束缚"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "冻结；黏合"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "bound 1",
           "form_of": null,
-          "pronunciations": [
-            "BrE baʊnd",
-            "AmE baʊnd"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "一定的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "有义务的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "有封皮的"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "bound 2",
           "form_of": null,
-          "pronunciations": [
-            "BrE baʊnd",
-            "AmE baʊnd"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "正在前往…的；准备前往…的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "underlying": {
       "group": "inflection",
-      "ms": 2.06,
+      "ms": 1.23,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -374,45 +168,20 @@
         {
           "headword": "underlie",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˌʌndəˈlʌɪ",
-            "AmE ˌəndərˈlaɪ"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "位于…之下"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "构成…的基础"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "underlying",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˌʌndəˈlʌɪɪŋ",
-            "AmE ˌəndərˈlaɪɪŋ"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "隐含的；潜在的；根本的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "assays": {
       "group": "inflection",
-      "ms": 0.83,
+      "ms": 0.48,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -420,25 +189,14 @@
         {
           "headword": "assay",
           "form_of": null,
-          "pronunciations": [
-            "BrE əˈseɪ,",
-            "BrE ˈaseɪ",
-            "AmE ˈæˌseɪ"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "检验"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "cleaved": {
       "group": "inflection",
-      "ms": 2.23,
+      "ms": 1.41,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -446,34 +204,14 @@
         {
           "headword": "cleave 1",
           "form_of": null,
-          "pronunciations": [
-            "BrE kliːv",
-            "AmE kliv"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "劈开；切开；砍下"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "裂开"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "劈"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "analyses": {
       "group": "inflection",
-      "ms": 1.63,
+      "ms": 1.57,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -481,52 +219,22 @@
         {
           "headword": "analyse",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈanəlʌɪz",
-            "AmE ˈænlˌaɪz"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "分析；解读"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [
-                "Psychology"
-              ],
-              "meaning": "给…作心理分析"
-            }
+          "domains": [
+            "Psychology"
           ]
         },
         {
           "headword": "analysis",
           "form_of": null,
-          "pronunciations": [
-            "BrE əˈnalɪsɪs",
-            "AmE əˈnæləsəs"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "分析"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "分析报告"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "criteria": {
       "group": "inflection",
-      "ms": 0.55,
+      "ms": 0.61,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -534,24 +242,14 @@
         {
           "headword": "criterion",
           "form_of": null,
-          "pronunciations": [
-            "BrE krʌɪˈtɪərɪən",
-            "AmE kraɪˈtɪriən"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "标准"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "phenomena": {
       "group": "inflection",
-      "ms": 1.96,
+      "ms": 1.23,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -562,35 +260,14 @@
             "plural",
             "phenomena"
           ],
-          "pronunciations": [
-            "BrE fɪˈnɒmɪnən",
-            "AmE fəˈnɑməˌnɑn,",
-            "AmE fəˈnɑmənən"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "现象"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "不寻常的情况"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "非凡的人；非凡的事物"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "hypotheses": {
       "group": "inflection",
-      "ms": 1.51,
+      "ms": 0.63,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -598,31 +275,16 @@
         {
           "headword": "hypothesis",
           "form_of": null,
-          "pronunciations": [
-            "BrE hʌɪˈpɒθɪsɪs",
-            "AmE haɪˈpɑθəsəs"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "假设"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Philosophy"
-              ],
-              "meaning": "假说"
-            }
+          "domains": [
+            "Philosophy"
           ]
         }
       ]
     },
     "mice": {
       "group": "inflection",
-      "ms": 1.38,
+      "ms": 1.52,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -633,38 +295,17 @@
             "plural",
             "mice"
           ],
-          "pronunciations": [
-            "BrE maʊs",
-            "AmE maʊs"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [
-                "Zoology"
-              ],
-              "meaning": "鼠"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Computing"
-              ],
-              "meaning": "鼠标"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "胆小鬼"
-            }
+          "domains": [
+            "Computing",
+            "Zoology"
           ]
         }
       ]
     },
     "ran": {
       "group": "inflection",
-      "ms": 22.17,
+      "ms": 22.89,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -675,39 +316,14 @@
             "past tense",
             "ran"
           ],
-          "pronunciations": [
-            "BrE rʌn",
-            "AmE rən"
-          ],
           "sense_count": 71,
-          "first_senses": [
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "跑"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "跑步"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "参加赛跑"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "逃跑"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "better": {
       "group": "inflection",
-      "ms": 29.36,
+      "ms": 26.56,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -715,71 +331,26 @@
         {
           "headword": "better 1",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈbɛtə",
-            "AmE ˈbɛdər"
-          ],
           "sense_count": 14,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "更好的；更吸引人的；更愉快的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "好转的；缓解的；痊愈的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "更能干的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "更合适的"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "better 2",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈbɛtə",
-            "AmE ˈbɛdər"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "打赌的人"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "bettor",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈbɛtə",
-            "AmE ˈbɛdər"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "打赌者"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "lying": {
       "group": "inflection",
-      "ms": 6.3,
+      "ms": 5.29,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -787,91 +358,26 @@
         {
           "headword": "lie 1",
           "form_of": null,
-          "pronunciations": [
-            "BrE lʌɪ",
-            "AmE laɪ"
-          ],
           "sense_count": 13,
-          "first_senses": [
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "躺；趴"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "被埋葬"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "平放"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "处于某位置；处于某状态"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "lie 2",
           "form_of": null,
-          "pronunciations": [
-            "BrE lʌɪ",
-            "AmE laɪ"
-          ],
           "sense_count": 4,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "谎言"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "说谎"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "造成假象"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "谎称"
-            }
-          ]
+          "domains": []
         },
         {
           "headword": "lying",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈlʌɪɪŋ",
-            "AmE ˈlaɪɪŋ"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "说谎"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "说谎的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "yielded": {
       "group": "inflection",
-      "ms": 3.43,
+      "ms": 3.42,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -879,41 +385,16 @@
         {
           "headword": "yield",
           "form_of": null,
-          "pronunciations": [
-            "BrE jiːld",
-            "AmE jild"
-          ],
           "sense_count": 13,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "出产；产"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [
-                "Finance"
-              ],
-              "meaning": "产生"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "产出"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "让出；缴出"
-            }
+          "domains": [
+            "Finance"
           ]
         }
       ]
     },
     "inhibit": {
       "group": "academic",
-      "ms": 0.88,
+      "ms": 0.83,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -921,32 +402,17 @@
         {
           "headword": "inhibit",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪnˈhɪbɪt",
-            "AmE ɪnˈhɪbət"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "抑制；妨碍；阻碍"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [
-                "Physiology",
-                "Biology"
-              ],
-              "meaning": "抑制"
-            }
+          "domains": [
+            "Biology",
+            "Physiology"
           ]
         }
       ]
     },
     "mediate": {
       "group": "academic",
-      "ms": 0.81,
+      "ms": 0.78,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -954,29 +420,14 @@
         {
           "headword": "mediate",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈmiːdɪeɪt",
-            "AmE ˈmidiˌeɪt"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "调解"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "调停解决；经调解达成"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "elucidate": {
       "group": "academic",
-      "ms": 0.47,
+      "ms": 0.48,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -984,25 +435,14 @@
         {
           "headword": "elucidate",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪˈluːsɪdeɪt,",
-            "BrE ɪˈljuːsɪdeɪt",
-            "AmE əˈlusəˌdeɪt"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "transitive or intransitive verb",
-              "domains": [],
-              "meaning": "阐明"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "robust": {
       "group": "academic",
-      "ms": 2.12,
+      "ms": 1.16,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1010,35 +450,14 @@
         {
           "headword": "robust",
           "form_of": null,
-          "pronunciations": [
-            "BrE rə(ʊ)ˈbʌst",
-            "AmE roʊˈbəst,",
-            "AmE ˈroʊˌbəst"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "强壮的；结实的；强劲的；旺盛的；茁壮的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "坚定的；斩钉截铁的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "醇厚的；浓郁的；浓烈的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "putative": {
       "group": "academic",
-      "ms": 1.5,
+      "ms": 0.53,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1046,47 +465,12 @@
         {
           "headword": "putative",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈpjuːtətɪv",
-            "AmE ˈpjudədɪv"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "推定的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "ubiquitous": {
-      "group": "academic",
-      "ms": 1.35,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "ubiquitous",
-          "form_of": null,
-          "pronunciations": [
-            "BrE juːˈbɪkwɪtəs",
-            "AmE juˈbɪkwədəs"
-          ],
-          "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "普遍存在的"
-            }
-          ]
-        }
-      ]
-    },
-    "attenuate": {
       "group": "academic",
       "ms": 0.54,
       "dictionary": "牛津英汉汉英词典",
@@ -1094,26 +478,31 @@
       "found": true,
       "entries": [
         {
+          "headword": "ubiquitous",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "attenuate": {
+      "group": "academic",
+      "ms": 0.48,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
           "headword": "attenuate",
           "form_of": null,
-          "pronunciations": [
-            "BrE əˈtɛnjʊeɪt",
-            "AmE əˈtɛnjəˌweɪt"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "减弱"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "confer": {
       "group": "academic",
-      "ms": 1.08,
+      "ms": 0.98,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1121,29 +510,14 @@
         {
           "headword": "confer",
           "form_of": null,
-          "pronunciations": [
-            "BrE kənˈfəː",
-            "AmE kənˈfər"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "授予；赋予"
-            },
-            {
-              "part": "intransitive verb",
-              "domains": [],
-              "meaning": "商量；协商"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "whereas": {
       "group": "academic",
-      "ms": 1.05,
+      "ms": 0.66,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1151,34 +525,16 @@
         {
           "headword": "whereas",
           "form_of": null,
-          "pronunciations": [
-            "BrE wəˈraz,",
-            "BrE wɛːˈraz,",
-            "BrE wɛˈraz",
-            "AmE (h)wəˈræz,",
-            "AmE (h)wɛˈræz"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "conjunction",
-              "domains": [],
-              "meaning": "然而"
-            },
-            {
-              "part": "conjunction",
-              "domains": [
-                "Law"
-              ],
-              "meaning": "鉴于"
-            }
+          "domains": [
+            "Law"
           ]
         }
       ]
     },
     "albeit": {
       "group": "academic",
-      "ms": 1.24,
+      "ms": 0.51,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1186,264 +542,12 @@
         {
           "headword": "albeit",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɔːlˈbiːɪt",
-            "AmE ælˈbiət,",
-            "AmE ɔlˈbiət"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "conjunction",
-              "domains": [],
-              "meaning": "尽管"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "thereby": {
-      "group": "academic",
-      "ms": 1.3,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "thereby",
-          "form_of": null,
-          "pronunciations": [
-            "BrE ˌðɛːˈbʌɪ,",
-            "BrE ðɛːˈbʌɪ",
-            "AmE ðɛrˈbaɪ"
-          ],
-          "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adverb",
-              "domains": [],
-              "meaning": "因此"
-            }
-          ]
-        }
-      ]
-    },
-    "notably": {
-      "group": "academic",
-      "ms": 1.44,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "notably",
-          "form_of": null,
-          "pronunciations": [
-            "BrE ˈnəʊtəbli",
-            "AmE ˈnoʊdəbli"
-          ],
-          "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "adverb",
-              "domains": [],
-              "meaning": "尤其"
-            },
-            {
-              "part": "adverb",
-              "domains": [],
-              "meaning": "极其；显眼地"
-            }
-          ]
-        }
-      ]
-    },
-    "respectively": {
-      "group": "academic",
-      "ms": 1.15,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "respectively",
-          "form_of": null,
-          "pronunciations": [
-            "BrE rɪˈspɛktɪvli",
-            "AmE rəˈspɛktəvli"
-          ],
-          "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adverb",
-              "domains": [],
-              "meaning": "各自"
-            }
-          ]
-        }
-      ]
-    },
-    "moreover": {
-      "group": "academic",
-      "ms": 1.01,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "moreover",
-          "form_of": null,
-          "pronunciations": [
-            "BrE mɔːrˈəʊvə",
-            "AmE mɔˈroʊvər"
-          ],
-          "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adverb",
-              "domains": [],
-              "meaning": "此外"
-            }
-          ]
-        }
-      ]
-    },
-    "plausible": {
-      "group": "academic",
-      "ms": 1.33,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "plausible",
-          "form_of": null,
-          "pronunciations": [
-            "BrE ˈplɔːzɪbl",
-            "AmE ˈplɔzəb(ə)l"
-          ],
-          "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "貌似合理的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "花言巧语的"
-            }
-          ]
-        }
-      ]
-    },
-    "novel": {
-      "group": "academic",
-      "ms": 0.91,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "novel",
-          "form_of": null,
-          "pronunciations": [
-            "BrE ˈnɒvl",
-            "AmE ˈnɑv(ə)l"
-          ],
-          "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "小说体"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "小说"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "新颖的；与众不同的；新奇的"
-            }
-          ]
-        }
-      ]
-    },
-    "abundance": {
-      "group": "academic",
-      "ms": 1.49,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "abundance",
-          "form_of": null,
-          "pronunciations": [
-            "BrE əˈbʌnd(ə)n(t)s",
-            "AmE əˈbənd(ə)n(t)s"
-          ],
-          "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "大量"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "富足"
-            }
-          ]
-        }
-      ]
-    },
-    "consistent": {
-      "group": "academic",
-      "ms": 1.45,
-      "dictionary": "牛津英汉汉英词典",
-      "bilingual": true,
-      "found": true,
-      "entries": [
-        {
-          "headword": "consistent",
-          "form_of": null,
-          "pronunciations": [
-            "BrE kənˈsɪst(ə)nt",
-            "AmE kənˈsɪst(ə)nt"
-          ],
-          "sense_count": 4,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "一贯的；始终如一的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "持续的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "不变的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "连贯一致的"
-            }
-          ]
-        }
-      ]
-    },
-    "robustly": {
       "group": "academic",
       "ms": 0.7,
       "dictionary": "牛津英汉汉英词典",
@@ -1451,31 +555,136 @@
       "found": true,
       "entries": [
         {
+          "headword": "thereby",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "notably": {
+      "group": "academic",
+      "ms": 0.71,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "notably",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "respectively": {
+      "group": "academic",
+      "ms": 0.52,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "respectively",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "moreover": {
+      "group": "academic",
+      "ms": 0.49,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "moreover",
+          "form_of": null,
+          "sense_count": 1,
+          "domains": []
+        }
+      ]
+    },
+    "plausible": {
+      "group": "academic",
+      "ms": 0.65,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "plausible",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "novel": {
+      "group": "academic",
+      "ms": 0.77,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "novel",
+          "form_of": null,
+          "sense_count": 3,
+          "domains": []
+        }
+      ]
+    },
+    "abundance": {
+      "group": "academic",
+      "ms": 0.69,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "abundance",
+          "form_of": null,
+          "sense_count": 2,
+          "domains": []
+        }
+      ]
+    },
+    "consistent": {
+      "group": "academic",
+      "ms": 1.14,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
+          "headword": "consistent",
+          "form_of": null,
+          "sense_count": 4,
+          "domains": []
+        }
+      ]
+    },
+    "robustly": {
+      "group": "academic",
+      "ms": 0.74,
+      "dictionary": "牛津英汉汉英词典",
+      "bilingual": true,
+      "found": true,
+      "entries": [
+        {
           "headword": "robustly",
           "form_of": null,
-          "pronunciations": [
-            "BrE rə(ʊ)ˈbʌstli",
-            "AmE roʊˈbəs(t)li"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "adverb",
-              "domains": [],
-              "meaning": "结实地"
-            },
-            {
-              "part": "adverb",
-              "domains": [],
-              "meaning": "斩钉截铁地；坚定地"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "discrepancy": {
       "group": "academic",
-      "ms": 1.28,
+      "ms": 0.46,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1483,24 +692,14 @@
         {
           "headword": "discrepancy",
           "form_of": null,
-          "pronunciations": [
-            "BrE dɪˈskrɛpn(t)si",
-            "AmE dəˈskrɛpən(t)si"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "差异"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "kinase": {
       "group": "biomedical",
-      "ms": 18.02,
+      "ms": 14.54,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1508,24 +707,14 @@
         {
           "headword": "kinase",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈkīˌnās,",
-            "AmE ˈkiˌnās"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "an enzyme that catalyzes the transfer of a phosphate group from ATP to a specified molecule."
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "kinases": {
       "group": "biomedical",
-      "ms": 0.74,
+      "ms": 0.76,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1533,24 +722,14 @@
         {
           "headword": "kinase",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈkīˌnās,",
-            "AmE ˈkiˌnās"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "an enzyme that catalyzes the transfer of a phosphate group from ATP to a specified molecule."
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "apoptosis": {
       "group": "biomedical",
-      "ms": 2.07,
+      "ms": 1.15,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1558,23 +737,14 @@
         {
           "headword": "apoptosis",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˌapəpˈtōsəs"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "the death of cells which occurs as a normal and controlled part of an organism's growth or development."
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "phosphorylated": {
       "group": "biomedical",
-      "ms": 2.03,
+      "ms": 1.01,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1582,23 +752,14 @@
         {
           "headword": "phosphorylate",
           "form_of": null,
-          "pronunciations": [
-            "AmE fäsˈfôrəˌlāt"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "verb",
-              "domains": [],
-              "meaning": "introduce a phosphate group into (a molecule or compound)"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "ubiquitination": {
       "group": "biomedical",
-      "ms": 3.0,
+      "ms": 1.63,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": false,
@@ -1606,7 +767,7 @@
     },
     "transcription": {
       "group": "biomedical",
-      "ms": 1.76,
+      "ms": 0.94,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1614,40 +775,14 @@
         {
           "headword": "transcription",
           "form_of": null,
-          "pronunciations": [
-            "BrE tran(t)ˈskrɪpʃn,",
-            "BrE trɑːn(t)ˈskrɪpʃn",
-            "AmE træn(t)ˈskrɪpʃən"
-          ],
           "sense_count": 4,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "抄写"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "抄本；打印本"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "改编"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "标注"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "transcriptional": {
       "group": "biomedical",
-      "ms": 1.99,
+      "ms": 1.03,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1655,31 +790,16 @@
         {
           "headword": "transcriptional",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˌtran(t)ˈskripSH(ə)n(ə)l",
-            "AmE ˌtran(t)ˈskripSH(ə)nəlē"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "relating to the transcription of something"
-            },
-            {
-              "part": "adjective",
-              "domains": [
-                "Biochemistry"
-              ],
-              "meaning": "relating to the process of transcribing RNA"
-            }
+          "domains": [
+            "Biochemistry"
           ]
         }
       ]
     },
     "promoter": {
       "group": "biomedical",
-      "ms": 1.34,
+      "ms": 0.65,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1687,34 +807,14 @@
         {
           "headword": "promoter",
           "form_of": null,
-          "pronunciations": [
-            "BrE prəˈməʊtə",
-            "AmE prəˈmoʊdər"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "筹办人"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "促销员"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "倡导者"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "ligand": {
       "group": "biomedical",
-      "ms": 2.17,
+      "ms": 1.02,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1722,33 +822,17 @@
         {
           "headword": "ligand",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈliɡənd,",
-            "AmE ˈlīɡənd"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [
-                "Chemistry"
-              ],
-              "meaning": "an ion or molecule attached to a metal atom by coordinate bonding."
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Biochemistry"
-              ],
-              "meaning": "a molecule that binds to another (usually larger) molecule."
-            }
+          "domains": [
+            "Biochemistry",
+            "Chemistry"
           ]
         }
       ]
     },
     "receptor": {
       "group": "biomedical",
-      "ms": 1.19,
+      "ms": 0.49,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1756,24 +840,14 @@
         {
           "headword": "receptor",
           "form_of": null,
-          "pronunciations": [
-            "BrE rɪˈsɛptə",
-            "AmE rəˈsɛptər"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "感受器"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "antibody": {
       "group": "biomedical",
-      "ms": 1.0,
+      "ms": 0.47,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1781,24 +855,14 @@
         {
           "headword": "antibody",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈantɪˌbɒdi",
-            "AmE ˈæn(t)əˌbɑdi"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "抗体"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "antigen": {
       "group": "biomedical",
-      "ms": 0.39,
+      "ms": 0.25,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1806,24 +870,14 @@
         {
           "headword": "antigen",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈantɪdʒ(ə)n",
-            "AmE ˈæn(t)ədʒən"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "抗原"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "cytokine": {
       "group": "biomedical",
-      "ms": 1.94,
+      "ms": 0.83,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1831,23 +885,14 @@
         {
           "headword": "cytokine",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈsīdəˌkīn"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "any of a number of substances, such as interferon, interleukin, and growth factors, which are secreted by certain cells "
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "enzyme": {
       "group": "biomedical",
-      "ms": 1.15,
+      "ms": 0.46,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1855,24 +900,14 @@
         {
           "headword": "enzyme",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈɛnzʌɪm",
-            "AmE ˈɛnˌzaɪm"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "酶"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "mitochondria": {
       "group": "biomedical",
-      "ms": 0.93,
+      "ms": 0.47,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1880,24 +915,14 @@
         {
           "headword": "mitochondrion",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˌmʌɪtə(ʊ)ˈkɒndrɪən",
-            "AmE ˌmaɪdəˈkɑndriən"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "线粒体"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "mitochondrial": {
       "group": "biomedical",
-      "ms": 0.31,
+      "ms": 0.28,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1905,24 +930,14 @@
         {
           "headword": "mitochondrial",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˌmʌɪtə(ʊ)ˈkɒndrɪəl",
-            "AmE ˌmaɪdəˈkɑndriəl"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "线粒体的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "knockdown": {
       "group": "biomedical",
-      "ms": 1.48,
+      "ms": 0.6,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1930,29 +945,14 @@
         {
           "headword": "knock-down",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈnɒkdaʊn",
-            "AmE ˈnɑkˌdaʊn"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "击倒"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "低廉的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "upregulated": {
       "group": "biomedical",
-      "ms": 1.78,
+      "ms": 0.72,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -1960,23 +960,14 @@
         {
           "headword": "upregulate",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˌəpˈreɡyəˌlāt"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "verb",
-              "domains": [],
-              "meaning": "increase the rate or level of (a process such as gene expression, or sensitivity to a physiologically active substance) "
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "homolog": {
       "group": "biomedical",
-      "ms": 1.43,
+      "ms": 0.48,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -1984,24 +975,14 @@
         {
           "headword": "homologue",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈhɒməlɒɡ",
-            "AmE ˈhoʊməˌlɑɡ"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "同系物"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "plasmid": {
       "group": "biomedical",
-      "ms": 1.53,
+      "ms": 0.82,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -2009,23 +990,14 @@
         {
           "headword": "plasmid",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈplazmid"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "a genetic structure in a cell that can replicate independently of the chromosomes, typically a small circular DNA strand"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "pathway": {
       "group": "biomedical",
-      "ms": 1.25,
+      "ms": 0.58,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2033,24 +1005,14 @@
         {
           "headword": "pathway",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈpɑːθweɪ",
-            "AmE ˈpæθˌweɪ"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "小路"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "phenotype": {
       "group": "biomedical",
-      "ms": 0.92,
+      "ms": 0.83,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -2058,23 +1020,14 @@
         {
           "headword": "phenotype",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈfēnəˌtīp"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "the set of observable characteristics of an individual resulting from the interaction of its genotype with the environme"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "genotype": {
       "group": "biomedical",
-      "ms": 1.46,
+      "ms": 0.79,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2082,26 +1035,14 @@
         {
           "headword": "genotype",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈdʒɛnə(ʊ)tʌɪp,",
-            "BrE ˈdʒiːnə(ʊ)tʌɪp",
-            "AmE ˈdʒinəˌtaɪp,",
-            "AmE ˈdʒɛnəˌtaɪp"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "基因型；同遗传型小种"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "allele": {
       "group": "biomedical",
-      "ms": 1.95,
+      "ms": 1.13,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -2109,23 +1050,14 @@
         {
           "headword": "allele",
           "form_of": null,
-          "pronunciations": [
-            "AmE əˈlēl"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "one of two or more alternative forms of a gene that arise by mutation and are found at the same place on a chromosome."
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "mutation": {
       "group": "biomedical",
-      "ms": 1.78,
+      "ms": 0.79,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2133,38 +1065,16 @@
         {
           "headword": "mutation",
           "form_of": null,
-          "pronunciations": [
-            "BrE mjuːˈteɪʃn",
-            "AmE mjuˈteɪʃən"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [
-                "Biology"
-              ],
-              "meaning": "突变"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Biology"
-              ],
-              "meaning": "突变体"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "转变"
-            }
+          "domains": [
+            "Biology"
           ]
         }
       ]
     },
     "epitope": {
       "group": "biomedical",
-      "ms": 2.0,
+      "ms": 0.9,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -2172,23 +1082,14 @@
         {
           "headword": "epitope",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈepəˌtōp"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "the part of an antigen molecule to which an antibody attaches itself."
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "vaccine": {
       "group": "biomedical",
-      "ms": 1.51,
+      "ms": 0.67,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2196,36 +1097,18 @@
         {
           "headword": "vaccine",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈvaksiːn,",
-            "BrE ˈvaksɪn",
-            "AmE vækˈsin,",
-            "AmE ˈvækˌsin"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [
-                "Medicine",
-                "Veterinary science"
-              ],
-              "meaning": "疫苗"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Computing"
-              ],
-              "meaning": "防毒软件"
-            }
+          "domains": [
+            "Computing",
+            "Medicine",
+            "Veterinary science"
           ]
         }
       ]
     },
     "pathogen": {
       "group": "biomedical",
-      "ms": 1.66,
+      "ms": 0.92,
       "dictionary": "New Oxford American Dictionary",
       "bilingual": false,
       "found": true,
@@ -2233,24 +1116,14 @@
         {
           "headword": "pathogen",
           "form_of": null,
-          "pronunciations": [
-            "AmE ˈpaTHəˌjen,",
-            "AmE ˈpaTHəj(ə)n"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "a bacterium, virus, or other microorganism that can cause disease."
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "inflammation": {
       "group": "biomedical",
-      "ms": 0.73,
+      "ms": 0.47,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2258,24 +1131,14 @@
         {
           "headword": "inflammation",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˌɪnfləˈmeɪʃn",
-            "AmE ˌɪnfləˈmeɪʃən"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "发炎"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "metabolism": {
       "group": "biomedical",
-      "ms": 0.75,
+      "ms": 0.44,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2283,24 +1146,14 @@
         {
           "headword": "metabolism",
           "form_of": null,
-          "pronunciations": [
-            "BrE mɪˈtabəlɪz(ə)m",
-            "AmE məˈtæbəˌlɪzəm"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "新陈代谢"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "window": {
       "group": "polysemous",
-      "ms": 2.43,
+      "ms": 1.75,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2308,41 +1161,16 @@
         {
           "headword": "window",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈwɪndəʊ",
-            "AmE ˈwɪndoʊ"
-          ],
           "sense_count": 6,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "窗；窗玻璃；窗口；天窗"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "橱窗玻璃；橱窗"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "服务窗口"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Computing"
-              ],
-              "meaning": "视窗"
-            }
+          "domains": [
+            "Computing"
           ]
         }
       ]
     },
     "paper": {
       "group": "polysemous",
-      "ms": 3.45,
+      "ms": 2.62,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2350,39 +1178,14 @@
         {
           "headword": "paper",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈpeɪpə",
-            "AmE ˈpeɪpər"
-          ],
           "sense_count": 12,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "纸；纸制的"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "书面的；账面的"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "糖纸；卷烟纸"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "报纸"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "cell": {
       "group": "polysemous",
-      "ms": 1.59,
+      "ms": 0.9,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2390,46 +1193,19 @@
         {
           "headword": "cell",
           "form_of": null,
-          "pronunciations": [
-            "BrE sɛl",
-            "AmE sɛl"
-          ],
           "sense_count": 5,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "单人牢房；小间"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Biology",
-                "Botany"
-              ],
-              "meaning": "细胞"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Politics"
-              ],
-              "meaning": "秘密小组"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Telecommunications"
-              ],
-              "meaning": "基站信号覆盖区"
-            }
+          "domains": [
+            "Biology",
+            "Botany",
+            "Politics",
+            "Telecommunications"
           ]
         }
       ]
     },
     "culture": {
       "group": "polysemous",
-      "ms": 1.71,
+      "ms": 0.98,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2437,45 +1213,18 @@
         {
           "headword": "culture",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈkʌltʃə",
-            "AmE ˈkəltʃər"
-          ],
           "sense_count": 4,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "文化"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Sociology"
-              ],
-              "meaning": "文化群体；文化方式"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Farming"
-              ],
-              "meaning": "种植"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Biology"
-              ],
-              "meaning": "培养菌"
-            }
+          "domains": [
+            "Biology",
+            "Farming",
+            "Sociology"
           ]
         }
       ]
     },
     "express": {
       "group": "polysemous",
-      "ms": 2.44,
+      "ms": 2.45,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2483,44 +1232,17 @@
         {
           "headword": "express",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪkˈsprɛs,",
-            "BrE ɛkˈsprɛs",
-            "AmE ɪkˈsprɛs"
-          ],
           "sense_count": 14,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [
-                "Railways"
-              ],
-              "meaning": "特快列车"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "快递"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "快速的"
-            },
-            {
-              "part": "adjective",
-              "domains": [
-                "Transport"
-              ],
-              "meaning": "特快的"
-            }
+          "domains": [
+            "Railways",
+            "Transport"
           ]
         }
       ]
     },
     "expression": {
       "group": "polysemous",
-      "ms": 1.37,
+      "ms": 1.4,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2528,41 +1250,14 @@
         {
           "headword": "expression",
           "form_of": null,
-          "pronunciations": [
-            "BrE ɪkˈsprɛʃn,",
-            "BrE ɛkˈsprɛʃn",
-            "AmE ɪkˈsprɛʃən,",
-            "AmE ɛkˈsprɛʃən"
-          ],
           "sense_count": 7,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "表达"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "流露；表现"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "情感的表露"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "表情"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "yield": {
       "group": "polysemous",
-      "ms": 3.16,
+      "ms": 3.25,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2570,41 +1265,16 @@
         {
           "headword": "yield",
           "form_of": null,
-          "pronunciations": [
-            "BrE jiːld",
-            "AmE jild"
-          ],
           "sense_count": 13,
-          "first_senses": [
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "出产；产"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [
-                "Finance"
-              ],
-              "meaning": "产生"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "产出"
-            },
-            {
-              "part": "transitive verb",
-              "domains": [],
-              "meaning": "让出；缴出"
-            }
+          "domains": [
+            "Finance"
           ]
         }
       ]
     },
     "significant": {
       "group": "polysemous",
-      "ms": 0.73,
+      "ms": 0.75,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2612,34 +1282,14 @@
         {
           "headword": "significant",
           "form_of": null,
-          "pronunciations": [
-            "BrE sɪɡˈnɪfɪk(ə)nt",
-            "AmE səɡˈnɪfək(ə)nt"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "重要的；值得关注的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "有意义的"
-            },
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "意味深长的"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "model": {
       "group": "polysemous",
-      "ms": 2.77,
+      "ms": 2.51,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2647,39 +1297,14 @@
         {
           "headword": "model",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈmɒdl",
-            "AmE ˈmɑd(ə)l"
-          ],
           "sense_count": 10,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "模型"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "型号"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "样板"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "模特儿"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "strain": {
       "group": "polysemous",
-      "ms": 3.99,
+      "ms": 2.84,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2687,39 +1312,14 @@
         {
           "headword": "strain",
           "form_of": null,
-          "pronunciations": [
-            "BrE streɪn",
-            "AmE streɪn"
-          ],
           "sense_count": 15,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "压力"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "紧张"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "作用力"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "劳损"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "host": {
       "group": "polysemous",
-      "ms": 2.43,
+      "ms": 1.74,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2727,61 +1327,25 @@
         {
           "headword": "host 1",
           "form_of": null,
-          "pronunciations": [
-            "BrE həʊst",
-            "AmE hoʊst"
-          ],
           "sense_count": 7,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "主人；主持人"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "东道主"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Radio",
-                "Television"
-              ],
-              "meaning": "节目主持人"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Botany",
-                "Zoology"
-              ],
-              "meaning": "寄主"
-            }
+          "domains": [
+            "Botany",
+            "Radio",
+            "Television",
+            "Zoology"
           ]
         },
         {
           "headword": "host 2",
           "form_of": null,
-          "pronunciations": [
-            "BrE həʊst",
-            "AmE hoʊst"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "许多"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "vector": {
       "group": "polysemous",
-      "ms": 1.13,
+      "ms": 0.65,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2789,41 +1353,19 @@
         {
           "headword": "vector",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈvɛktə",
-            "AmE ˈvɛktər"
-          ],
           "sense_count": 3,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [
-                "Mathematics",
-                "Physics"
-              ],
-              "meaning": "矢量；向量"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Biology"
-              ],
-              "meaning": "传病媒介"
-            },
-            {
-              "part": "noun",
-              "domains": [
-                "Aviation"
-              ],
-              "meaning": "航线"
-            }
+          "domains": [
+            "Aviation",
+            "Biology",
+            "Mathematics",
+            "Physics"
           ]
         }
       ]
     },
     "medium": {
       "group": "polysemous",
-      "ms": 1.94,
+      "ms": 1.5,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2831,39 +1373,14 @@
         {
           "headword": "medium",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈmiːdɪəm",
-            "AmE ˈmidiəm"
-          ],
           "sense_count": 7,
-          "first_senses": [
-            {
-              "part": "adjective",
-              "domains": [],
-              "meaning": "中等的；适中的"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "媒介；途径"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "形式；材料"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "溶剂"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "fraction": {
       "group": "polysemous",
-      "ms": 1.64,
+      "ms": 0.71,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2871,31 +1388,16 @@
         {
           "headword": "fraction",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˈfrakʃn",
-            "AmE ˈfrækʃən"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [
-                "Mathematics"
-              ],
-              "meaning": "分数"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "一小部分"
-            }
+          "domains": [
+            "Mathematics"
           ]
         }
       ]
     },
     "resolution": {
       "group": "polysemous",
-      "ms": 1.54,
+      "ms": 1.09,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2903,40 +1405,14 @@
         {
           "headword": "resolution",
           "form_of": null,
-          "pronunciations": [
-            "BrE ˌrɛzəˈluːʃn,",
-            "BrE ˌrɛzəˈljuːʃn",
-            "AmE ˌrɛzəˈluʃən"
-          ],
           "sense_count": 5,
-          "first_senses": [
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "坚定"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "决心"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "决议"
-            },
-            {
-              "part": "noun",
-              "domains": [],
-              "meaning": "解决"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "抑制": {
       "group": "chinese",
-      "ms": 0.69,
+      "ms": 0.64,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2944,30 +1420,16 @@
         {
           "headword": "抑制",
           "form_of": null,
-          "pronunciations": [
-            "yìzhì"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "verb",
-              "domains": [
-                "［Physiology］"
-              ],
-              "meaning": "inhibit"
-            },
-            {
-              "part": "verb",
-              "domains": [],
-              "meaning": "restrain"
-            }
+          "domains": [
+            "Physiology"
           ]
         }
       ]
     },
     "结合": {
       "group": "chinese",
-      "ms": 1.62,
+      "ms": 0.61,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -2975,28 +1437,14 @@
         {
           "headword": "结合",
           "form_of": null,
-          "pronunciations": [
-            "jiéhé"
-          ],
           "sense_count": 2,
-          "first_senses": [
-            {
-              "part": "verb",
-              "domains": [],
-              "meaning": "unite"
-            },
-            {
-              "part": "verb",
-              "domains": [],
-              "meaning": "get married"
-            }
-          ]
+          "domains": []
         }
       ]
     },
     "表达": {
       "group": "chinese",
-      "ms": 1.43,
+      "ms": 0.51,
       "dictionary": "牛津英汉汉英词典",
       "bilingual": true,
       "found": true,
@@ -3004,17 +1452,8 @@
         {
           "headword": "表达",
           "form_of": null,
-          "pronunciations": [
-            "biǎodá"
-          ],
           "sense_count": 1,
-          "first_senses": [
-            {
-              "part": "verb",
-              "domains": [],
-              "meaning": "express"
-            }
-          ]
+          "domains": []
         }
       ]
     }
@@ -3024,7 +1463,8 @@
     "bilingual_found": 74,
     "monolingual_fallback": 13,
     "nothing": 1,
-    "median_ms": 1.5,
-    "max_ms": 29.36
-  }
+    "median_ms": 0.81,
+    "max_ms": 26.56
+  },
+  "note": "Dictionary wording is not stored: only coverage, resolved headwords, sense counts, subject labels and timing. Run this script locally to see senses."
 }

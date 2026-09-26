@@ -173,9 +173,19 @@ def main() -> int:
         "median_ms": round(statistics.median(timings), 2),
         "max_ms": round(max(timings), 2),
     }
-    text = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
-        args.output.write_text(text + "\n")
+        # Dictionary wording is copyrighted: files keep coverage statistics only.
+        saved = json.loads(json.dumps(report))
+        for value in saved["words"].values():
+            for entry in value.get("entries", []):
+                senses = entry.pop("first_senses", [])
+                entry.pop("pronunciations", None)
+                entry["domains"] = sorted({d for s in senses for d in s["domains"]})
+        saved["note"] = (
+            "Dictionary wording is not stored: only coverage, resolved headwords, sense "
+            "counts, subject labels and timing. Run this script locally to see senses."
+        )
+        args.output.write_text(json.dumps(saved, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps(report["summary"], ensure_ascii=False))
     for word, value in report["words"].items():
         first = value.get("entries", [{}])[0] if value.get("entries") else {}
