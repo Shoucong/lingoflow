@@ -136,8 +136,9 @@ class TrayController:
         menu.addAction(settings_action)
 
         if self._on_permissions:
+            # In menu labels "&&" shows a single "&".
             permissions_action = self._labeled_action(
-                menu, "Permissions && Diagnostics…"  # "&&" shows one "&", "权限与诊断…"
+                menu, "Permissions && Diagnostics…", "权限与诊断…"
             )
             permissions_action.triggered.connect(
                 self._menu_action("permissions", self._on_permissions)

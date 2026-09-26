@@ -113,8 +113,9 @@ class SettingsDialog(QDialog):
             self._create_general_tab(), tr("General", "通用")
         )
         self._speech_tab = self._add_scroll_tab(self._create_speech_tab(), tr("Speech", "朗读"))
+        # In tab labels "&&" shows a single "&".
         self._advanced_tab = self._add_scroll_tab(
-            self._create_advanced_tab(), tr("Model && Advanced", "模型与高级")  # "&&" shows one "&"
+            self._create_advanced_tab(), tr("Model && Advanced", "模型与高级")
         )
 
         button_layout = QHBoxLayout()

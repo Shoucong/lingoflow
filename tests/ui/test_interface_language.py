@@ -93,11 +93,20 @@ def test_menu_bar_about_and_notifications_follow_the_language(qtbot, monkeypatch
 
     monkeypatch.setattr(tray_controller, "QSystemTrayIcon", Icon)
     settings = AppSettings()
+    # Build the complete menu the app builds, including the optional entries.
     tray = tray_controller.TrayController(
-        settings, lambda: None, lambda: None, lambda: None, lambda: None, lambda: None
+        settings,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        on_permissions=lambda: None,
+        on_input=lambda: None,
     )
     labels = [action.text() for action in tray.menu.actions()]
     assert "Settings…" in labels and "About LingoFlow" in labels
+    assert "Permissions && Diagnostics…" in labels and "Translate Typed Text…" in labels
     assert tray.status_action.text() == "● Ready"
     assert messages.NO_TEXT_SELECTED_TITLE == "No text selected"
     about = AboutWindow(settings, ("⌥D", "⌥S"))
@@ -109,6 +118,7 @@ def test_menu_bar_about_and_notifications_follow_the_language(qtbot, monkeypatch
     about.update_content(settings, ("⌥D", "⌥S"))
     labels = [action.text() for action in tray.menu.actions()]
     assert "设置…" in labels and "关于 LingoFlow" in labels
+    assert "权限与诊断…" in labels and "输入文字翻译…" in labels
     assert tray.translate_action.text().startswith("翻译选中文字")
     assert tray.status_action.text() == "● 就绪"
     assert messages.NO_TEXT_SELECTED_TITLE == "没有选中文字"
