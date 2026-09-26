@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-26",
+  "macos": "27.2",
+  "chip": "Apple M1 Pro",
+  "memory_bytes": 17179869184,
+  "ollama": {
+    "version": "0.34.3"
+  },
+  "models": [
+    {
+      "name": "zongwei/gemma3-translator:4b",
+      "size": 3338811073,
+      "digest": "7b9182d5b99f676554c691e4733cff58c5355923e5bd4e5ab2ffb262c5cc92a5",
+      "parameters": "4.3B",
+      "quantization": "Q4_K_M"
+    },
+    {
+      "name": "huihui_ai/hunyuan-mt-abliterated:7b-chimera",
+      "size": 4624951026,
+      "digest": "26414d2c7aaf56f3a3de49da95bf3baf34399a08d0e9002c9acdf5f57a961deb",
+      "parameters": "7.5B",
+      "quantization": "Q4_K_M"
+    }
+  ],
+  "external_app_comparison": "Easydict source reviewed; not installed or interactively benchmarked",
+  "live_validation": "Only synthetic texts will be used; user documents and existing settings are not inputs."
+}

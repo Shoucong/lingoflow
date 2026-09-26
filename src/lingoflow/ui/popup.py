@@ -5,9 +5,10 @@ Displays source text and streaming translation results.
 """
 
 import platform
+from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCursor, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -17,19 +18,19 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
+    QSplitter,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from lingoflow.config.constants import (
-    POPUP_MAX_HEIGHT,
-    POPUP_MAX_WIDTH,
     POPUP_MIN_HEIGHT,
     POPUP_MIN_WIDTH,
     SUPPORTED_LANGUAGES,
 )
 from lingoflow.config.settings import AppSettings
+from lingoflow.ui.window_controller import PopupWindowController
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -81,7 +82,9 @@ class TranslationPopup(QWidget):
     closed = pyqtSignal()
     outside_clicked = pyqtSignal()
 
-    def __init__(self, settings: Optional[AppSettings] = None):
+    def __init__(
+        self, settings: Optional[AppSettings] = None, window_state_path: Path | None = None
+    ):
         super().__init__()
 
         self.settings = settings or AppSettings.load()
@@ -100,9 +103,14 @@ class TranslationPopup(QWidget):
         self._outside_click_monitor_timer = QTimer(self)
         self._outside_click_monitor_timer.setSingleShot(True)
         self._outside_click_monitor_timer.timeout.connect(self._install_outside_click_monitor)
+        self._inactive_timer = QTimer(self)
+        self._inactive_timer.setSingleShot(True)
+        self._inactive_timer.timeout.connect(self._dismiss_if_inactive)
 
         self._setup_window()
         self._setup_ui()
+        self.window_controller = PopupWindowController(self, window_state_path)
+        self.pin_btn.setChecked(self.window_controller.pinned)
         self._connect_signals()
 
         logger.debug("TranslationPopup initialized")
@@ -113,22 +121,19 @@ class TranslationPopup(QWidget):
 
     def _setup_window(self) -> None:
         """Configure window properties."""
-        # Frameless, always on top, tool window (no taskbar entry)
+        # Native decorations provide reliable dragging and edge/corner resizing.
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
+            Qt.WindowType.Window | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.WindowCloseButtonHint | Qt.WindowType.WindowMinimizeButtonHint
+            | Qt.WindowType.WindowMaximizeButtonHint
         )
-
-        # Allow transparency for rounded corners
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setWindowTitle("LingoFlow")
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         # Size constraints
         self.setMinimumWidth(POPUP_MIN_WIDTH)
-        self.setMaximumWidth(POPUP_MAX_WIDTH)
         self.setMinimumHeight(POPUP_MIN_HEIGHT)
-        self.setMaximumHeight(POPUP_MAX_HEIGHT)
+        self.resize(640, 480)
 
     def _setup_ui(self) -> None:
         """Build the UI components."""
@@ -175,6 +180,17 @@ class TranslationPopup(QWidget):
 
         header_layout.addStretch()
 
+        self.source_toggle = QPushButton("Source")
+        self.source_toggle.setCheckable(True)
+        self.source_toggle.setChecked(self.settings.ui.show_source_text)
+        self.source_toggle.setToolTip("Show or hide the original text")
+        header_layout.addWidget(self.source_toggle)
+
+        self.pin_btn = QPushButton("Pin")
+        self.pin_btn.setCheckable(True)
+        self.pin_btn.setToolTip("Keep this window open and on top")
+        header_layout.addWidget(self.pin_btn)
+
         # Close button
         self.close_btn = QPushButton("×")
         self.close_btn.setObjectName("closeButton")
@@ -184,21 +200,16 @@ class TranslationPopup(QWidget):
 
         container_layout.addLayout(header_layout)
 
-        # --- Source text (collapsible) ---
-        self.source_text_label = QLabel()
-        self.source_text_label.setObjectName("sourceText")
-        self.source_text_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.source_text_label.setWordWrap(True)
-        self.source_text_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.source_text_label.setVisible(self.settings.ui.show_source_text)
-        container_layout.addWidget(self.source_text_label)
-
-        # Separator
-        self.separator = QFrame()
-        self.separator.setFrameShape(QFrame.Shape.HLine)
-        self.separator.setObjectName("separator")
-        self.separator.setVisible(self.settings.ui.show_source_text)
-        container_layout.addWidget(self.separator)
+        self.text_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.text_splitter.setChildrenCollapsible(False)
+        self.source_text = QTextEdit()
+        self.source_text.setObjectName("sourceText")
+        self.source_text.setAcceptRichText(False)
+        self.source_text.setReadOnly(True)
+        self.source_text.setMinimumHeight(40)
+        self.source_text.setPlaceholderText("Original text")
+        self.source_text.setVisible(self.settings.ui.show_source_text)
+        self.text_splitter.addWidget(self.source_text)
 
         # --- Translation output ---
         self.translation_text = QTextEdit()
@@ -209,7 +220,10 @@ class TranslationPopup(QWidget):
         self.translation_text.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        container_layout.addWidget(self.translation_text)
+        self.translation_text.setMinimumHeight(80)
+        self.text_splitter.addWidget(self.translation_text)
+        self.text_splitter.setSizes([120, 300])
+        container_layout.addWidget(self.text_splitter, 1)
 
         # --- Footer: Copy button and status ---
         footer_layout = QHBoxLayout()
@@ -221,6 +235,11 @@ class TranslationPopup(QWidget):
         footer_layout.addWidget(self.status_label)
 
         footer_layout.addStretch()
+
+        self.latest_btn = QPushButton("Latest")
+        self.latest_btn.setToolTip("Clear the selection and follow new output")
+        self.latest_btn.clicked.connect(self._scroll_to_latest)
+        footer_layout.addWidget(self.latest_btn)
 
         # Copy button
         self.copy_btn = QPushButton("Copy")
@@ -240,7 +259,13 @@ class TranslationPopup(QWidget):
 
         # Language change triggers re-translation
         self.target_combo.currentTextChanged.connect(self._on_language_changed)
-        self.outside_clicked.connect(self.dismiss)
+        self.outside_clicked.connect(self._dismiss_from_outside)
+        self.pin_btn.toggled.connect(self._set_pinned)
+        self.source_toggle.toggled.connect(self.source_text.setVisible)
+        self.translation_text.verticalScrollBar().valueChanged.connect(self._update_latest_button)
+        self.translation_text.verticalScrollBar().rangeChanged.connect(self._update_latest_button)
+        self.translation_text.selectionChanged.connect(self._update_latest_button)
+        self._update_latest_button()
 
     def _get_stylesheet(self) -> str:
         """Return the popup stylesheet."""
@@ -297,6 +322,8 @@ class TranslationPopup(QWidget):
             }}
 
             #sourceText {{
+                background-color: transparent;
+                border: none;
                 color: rgba(255, 255, 255, 0.7);
                 font-size: {font_size - 1}px;
                 padding: 4px 0;
@@ -362,7 +389,8 @@ class TranslationPopup(QWidget):
         self._status_clear_timer.stop()
 
         # Update source text display
-        self.source_text_label.setText(source_text)
+        self.source_text.setPlainText(source_text)
+        self.source_toggle.setChecked(self.settings.ui.show_source_text and len(source_text) <= 400)
         self.source_label.setText(self._format_source_language(source_language))
 
         # Clear previous translation
@@ -373,7 +401,7 @@ class TranslationPopup(QWidget):
             self._set_target_language(target_language)
 
         # Position and show
-        self._position_near_cursor()
+        self.window_controller.prepare_show()
         self.show()
         self.raise_()
         self._start_outside_click_monitor()
@@ -419,8 +447,7 @@ class TranslationPopup(QWidget):
         """Update popup with new settings."""
         self.settings = settings
         self.container.setStyleSheet(self._get_stylesheet())
-        self.source_text_label.setVisible(settings.ui.show_source_text)
-        self.separator.setVisible(settings.ui.show_source_text)
+        self.source_toggle.setChecked(settings.ui.show_source_text)
         self._set_target_language(settings.translation.target_language)
         self.source_label.setText(self._format_source_language())
 
@@ -433,7 +460,6 @@ class TranslationPopup(QWidget):
         if not chunk:
             return
 
-        self._restore_if_translating()
         reader_cursor = self.translation_text.textCursor()
         # Save numeric positions: live QTextCursors move when text is inserted
         # at their boundary, including selections ending at the document end.
@@ -511,7 +537,7 @@ class TranslationPopup(QWidget):
     def _start_outside_click_monitor(self) -> None:
         """Close the popup on outside clicks that Qt does not deliver on macOS."""
         self._stop_outside_click_monitor()
-        if platform.system() != "Darwin":
+        if platform.system() != "Darwin" or not self.settings.ui.hide_on_focus_loss:
             return
 
         self._outside_click_monitor_timer.start(350)
@@ -553,11 +579,11 @@ class TranslationPopup(QWidget):
                 return False
 
         def global_handler(event) -> None:
-            if is_outside_popup() and not self._is_translating:
+            if is_outside_popup() and self._auto_dismiss_allowed():
                 self.outside_clicked.emit()
 
         def local_handler(event):
-            if is_outside_popup() and not self._is_translating:
+            if is_outside_popup() and self._auto_dismiss_allowed():
                 self.outside_clicked.emit()
             return event
 
@@ -621,35 +647,43 @@ class TranslationPopup(QWidget):
             self._schedule_status_clear(1500)
             logger.debug("Translation copied to clipboard")
 
-    def _position_near_cursor(self) -> None:
-        """Position the popup near the cursor."""
-        cursor_pos = QCursor.pos()
-        screen = QApplication.screenAt(cursor_pos)
+    def _set_pinned(self, pinned: bool) -> None:
+        self.window_controller.set_pinned(pinned)
+        self.pin_btn.setText("Pinned" if pinned else "Pin")
+        self._start_outside_click_monitor()
 
-        if screen is None:
-            screen = QApplication.primaryScreen()
+    def _auto_dismiss_allowed(self) -> bool:
+        return (
+            self.settings.ui.hide_on_focus_loss
+            and not self.window_controller.pinned
+            and not self.window_controller.reconfiguring
+            and not self._is_translating
+            and not self._closing
+            and not self.isMinimized()
+        )
 
-        screen_rect = screen.availableGeometry()
+    def _dismiss_from_outside(self) -> None:
+        if self._auto_dismiss_allowed():
+            self.dismiss()
 
-        # Calculate popup position (below and to the right of cursor)
-        x = cursor_pos.x() + 10
-        y = cursor_pos.y() + 20
+    def _dismiss_if_inactive(self) -> None:
+        if (self.isVisible() and not self.isActiveWindow()
+                and not self.target_combo.view().window().isVisible()):
+            self._dismiss_from_outside()
 
-        # Adjust if popup would go off screen
-        popup_width = self.width() or POPUP_MIN_WIDTH
-        popup_height = self.height() or POPUP_MIN_HEIGHT
+    def _scroll_to_latest(self) -> None:
+        cursor = self.translation_text.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.translation_text.setTextCursor(cursor)
+        scrollbar = self.translation_text.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
-        if x + popup_width > screen_rect.right():
-            x = cursor_pos.x() - popup_width - 10
-
-        if y + popup_height > screen_rect.bottom():
-            y = cursor_pos.y() - popup_height - 20
-
-        # Ensure within screen bounds
-        x = max(screen_rect.left(), min(x, screen_rect.right() - popup_width))
-        y = max(screen_rect.top(), min(y, screen_rect.bottom() - popup_height))
-
-        self.move(x, y)
+    def _update_latest_button(self, *_args) -> None:
+        scrollbar = self.translation_text.verticalScrollBar()
+        self.latest_btn.setEnabled(
+            scrollbar.value() < scrollbar.maximum() - 2
+            or self.translation_text.textCursor().hasSelection()
+        )
 
     # =============================================================================
     # Event Handlers
@@ -663,38 +697,30 @@ class TranslationPopup(QWidget):
         else:
             super().keyPressEvent(event)
 
-    def focusOutEvent(self, event) -> None:  # noqa: N802
-        """Handle focus loss — close popup if configured."""
-        if self.settings.ui.hide_on_focus_loss and not self._is_translating:
-            self.dismiss()
-            event.accept()
-        else:
-            super().focusOutEvent(event)
+    def changeEvent(self, event) -> None:  # noqa: N802
+        super().changeEvent(event)
+        if (
+            event.type() == QEvent.Type.ActivationChange
+            and hasattr(self, "window_controller") and not self._closing
+        ):
+            self._inactive_timer.start(0)
 
     def hideEvent(self, event) -> None:  # noqa: N802
-        """Treat macOS tool-window auto-hide as a dismissed popup."""
+        # Minimizing and native flag changes are not cancellation requests.
+        if hasattr(self, "_outside_click_monitor_timer"):
+            self._stop_outside_click_monitor()
         super().hideEvent(event)
-        if (
-            self.settings.ui.hide_on_focus_loss
-            and not self._dismiss_emitted
-            and not self._closing
-            and bool(self._source_text)
-        ):
-            if self._is_translating:
-                QTimer.singleShot(0, self._restore_if_translating)
-            else:
-                QTimer.singleShot(0, self.dismiss)
 
-    def _restore_if_translating(self) -> None:
-        """Keep an active translation visible through transient macOS focus churn."""
-        if self._is_translating and not self._closing and not self.isVisible():
-            self.show()
-            self.raise_()
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        if hasattr(self, "window_controller"):
             self._start_outside_click_monitor()
 
     def closeEvent(self, event) -> None:  # noqa: N802
         """Handle window close."""
         self._closing = True
+        self._inactive_timer.stop()
+        self.window_controller.save()
         self._status_clear_timer.stop()
         self._outside_click_monitor_timer.stop()
         self._stop_outside_click_monitor()
@@ -705,7 +731,7 @@ class TranslationPopup(QWidget):
         self._source_text = ""
         self._translated_text = ""
         self.translation_text.clear()
-        self.source_text_label.clear()
+        self.source_text.clear()
         self.status_label.setText("")
         self.clearFocus()
         if should_emit_closed:

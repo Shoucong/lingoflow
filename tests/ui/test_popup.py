@@ -12,12 +12,12 @@ from lingoflow.ui.popup import TranslationPopup
 
 
 @pytest.fixture
-def popup(qtbot, monkeypatch) -> TranslationPopup:
+def popup(qtbot, monkeypatch, tmp_path) -> TranslationPopup:
     # Keep tests independent of global macOS event monitors and other windows.
     monkeypatch.setattr(TranslationPopup, "_start_outside_click_monitor", lambda self: None)
     settings = AppSettings()
     settings.ui.hide_on_focus_loss = False
-    widget = TranslationPopup(settings)
+    widget = TranslationPopup(settings, window_state_path=tmp_path / "window-state.json")
     qtbot.addWidget(widget)
     widget.resize(420, 320)
     widget.show_with_text("Original text")
@@ -130,12 +130,14 @@ def test_selection_at_end_pauses_following_until_cleared(popup, qtbot) -> None:
 def test_source_selection_preserves_literal_text_during_streaming(popup) -> None:
     source = "Read <b>this word</b> & keep the notation."
     popup.show_with_text(source)
-    popup.source_text_label.setSelection(0, len(source))
+    cursor = popup.source_text.textCursor()
+    cursor.select(QTextCursor.SelectionType.Document)
+    popup.source_text.setTextCursor(cursor)
 
     popup.append_translation("译文开始")
     popup.append_translation("，继续输出。")
 
-    assert popup.source_text_label.selectedText() == source
+    assert popup.source_text.textCursor().selectedText() == source
     assert popup.get_source_text() == source
 
 

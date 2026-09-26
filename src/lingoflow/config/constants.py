@@ -105,10 +105,8 @@ DEFAULT_OCR_HOTKEY = "<alt>+s"
 # ===========================================================
 # UI Defaults
 # ===========================================================
-POPUP_MIN_WIDTH = 300
-POPUP_MAX_WIDTH = 500
-POPUP_MIN_HEIGHT = 100
-POPUP_MAX_HEIGHT = 400
+POPUP_MIN_WIDTH = 360
+POPUP_MIN_HEIGHT = 240
 
 # ===========================================================
 # Timeouts (seconds)
