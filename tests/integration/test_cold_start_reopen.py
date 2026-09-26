@@ -10,6 +10,7 @@ import pytest
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
+from lingoflow.core.translation_profiles import MILMMT_MODEL
 from lingoflow.core.translator import TranslationService
 from lingoflow.infrastructure.ollama_client import create_ollama_client
 from lingoflow.infrastructure.tasks import TaskRunner
@@ -21,8 +22,9 @@ from lingoflow.ui.translation_workflow import TranslationWorkflow
 @pytest.mark.parametrize(
     "headers_sent", [False, True], ids=["loading-before-headers", "waiting-first-token"]
 )
+@pytest.mark.parametrize("model", ["generic-model", MILMMT_MODEL], ids=["chat", "milmmt-raw"])
 def test_close_during_cold_start_allows_immediate_reopen(
-    qtbot, monkeypatch, tmp_path, headers_sent
+    qtbot, monkeypatch, tmp_path, headers_sent, model
 ):
     loading, disconnected, release_old = (threading.Event() for _ in range(3))
     requests = []
@@ -60,7 +62,12 @@ def test_close_during_cold_start_allows_immediate_reopen(
                 # The server's old loading work need not finish for the GUI to reopen.
                 release_old.wait(5)
                 return
-            self.send_json({"message": {"content": "New request completed"}, "done": True})
+            if model == MILMMT_MODEL:
+                assert self.path == "/api/generate" and payload["raw"] is True
+                self.send_json({"response": "New request completed", "done": True})
+            else:
+                assert self.path == "/api/chat"
+                self.send_json({"message": {"content": "New request completed"}, "done": True})
 
         def log_message(self, *_args):
             pass
@@ -82,6 +89,7 @@ def test_close_during_cold_start_allows_immediate_reopen(
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
     settings = AppSettings()
+    settings.ollama.model = model
     settings.ollama.host = f"http://127.0.0.1:{server.server_port}"
     settings.ui.hide_on_focus_loss = False
     monkeypatch.setattr(TranslationPopup, "_start_outside_click_monitor", lambda self: None)
@@ -94,7 +102,9 @@ def test_close_during_cold_start_allows_immediate_reopen(
         popups.append(popup)
         return popup
 
-    service = TranslationService(settings, client_factory=create_ollama_client)
+    service = TranslationService(
+        settings, client_factory=create_ollama_client, language_detector=lambda text: "English"
+    )
     runner, state, signals, clipboard = TaskRunner(), AppStateTracker(), MainSignals(), Clipboard()
     workflow = TranslationWorkflow(
         settings=settings,

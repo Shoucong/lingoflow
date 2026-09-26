@@ -25,9 +25,8 @@ def main():
     from lingoflow.config.settings import AppSettings
     from lingoflow.core.app_state import AppState, AppStateTracker
     from lingoflow.core.session import SessionStatus
-    from lingoflow.core.translator import TranslationService
-    from lingoflow.infrastructure.ollama_client import create_ollama_client
     from lingoflow.infrastructure.tasks import TaskRunner
+    from lingoflow.infrastructure.translation_service import create_translation_service
     from lingoflow.ui.main_window import MainSignals
     from lingoflow.ui.popup import TranslationPopup
     from lingoflow.ui.translation_workflow import TranslationWorkflow
@@ -46,7 +45,7 @@ def main():
 
     class ObservedClient(original_client):
         async def send(self, request, *args, **kwargs):
-            if request.url.path == "/api/chat":
+            if request.url.path in {"/api/chat", "/api/generate"}:
                 request.extensions["trace"] = self.record_trace
             return await super().send(request, *args, **kwargs)
 
@@ -79,7 +78,7 @@ def main():
             app.processEvents()
             time.sleep(0.005)
 
-    service = TranslationService(settings, client_factory=create_ollama_client)
+    service = create_translation_service(settings)
     runner, state, signals, clipboard = TaskRunner(), AppStateTracker(), MainSignals(), Clipboard()
     with tempfile.TemporaryDirectory(prefix="lingoflow-cold-reopen-") as folder:
         workflow = TranslationWorkflow(

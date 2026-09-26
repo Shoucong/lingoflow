@@ -20,8 +20,8 @@ sys.path.insert(0, str(ROOT / "src"))
 import httpx
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.core.translator import TRANSLATION_SYSTEM_PROMPT, TranslationService
-from lingoflow.infrastructure.ollama_client import create_ollama_client
+from lingoflow.core.translator import TRANSLATION_SYSTEM_PROMPT
+from lingoflow.infrastructure.translation_service import create_translation_service
 
 
 def main() -> None:
@@ -70,7 +70,7 @@ def main() -> None:
             settings = AppSettings()
             settings.ollama.host = args.host
             settings.ollama.model = model
-            service = TranslationService(settings, client_factory=create_ollama_client)
+            service = create_translation_service(settings)
             profile = {
                 "model": known[model],
                 "mode": mode,

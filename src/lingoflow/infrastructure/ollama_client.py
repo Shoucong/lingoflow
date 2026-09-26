@@ -105,6 +105,7 @@ class OllamaClient:
         options: dict | None = None,
         keep_alive: int | None = None,
         think: bool | None = None,
+        raw: bool = False,
     ) -> Iterator[OllamaStreamChunk]:
         try:
             yield from self._streams.iterate(
@@ -116,6 +117,7 @@ class OllamaClient:
                     options,
                     keep_alive,
                     think,
+                    raw,
                 )
             )
         except RequestCancelledError as error:
@@ -130,6 +132,7 @@ class OllamaClient:
         options: dict | None = None,
         keep_alive: int | None = None,
         think: bool | None = None,
+        raw: bool = False,
     ) -> AsyncIterator[OllamaStreamChunk]:
         """
         Send a chat message and stream the response.
@@ -147,7 +150,7 @@ class OllamaClient:
             OllamaTimeoutError: if request times out
             OllamaError: for other API errors
         """
-        url = f"{self.host}{OLLAMA_CHAT_ENDPOINT}"
+        url = f"{self.host}{'/api/generate' if raw else OLLAMA_CHAT_ENDPOINT}"
 
         messages = []
         if system_prompt:
@@ -159,6 +162,10 @@ class OllamaClient:
             "messages": messages,
             "stream": True,
         }
+        if raw:
+            if system_prompt:
+                raise OllamaError("Raw completion cannot include a system prompt.")
+            payload = {"model": model, "prompt": message, "raw": True, "stream": True}
 
         if options is not None:
             payload["options"] = options
@@ -205,7 +212,7 @@ class OllamaClient:
                             data = json.loads(line)
                         except json.JSONDecodeError as error:
                             raise OllamaError("Ollama returned an invalid stream frame.") from error
-                        content, done, reason = self._parse_frame(data)
+                        content, done, reason = self._parse_frame(data, raw=raw)
                         if content:
                             yield OllamaStreamChunk(content=content, done=False)
                         if done:
@@ -356,7 +363,7 @@ class OllamaClient:
             return False
 
     @staticmethod
-    def _parse_frame(data: object) -> tuple[str, bool, str | None]:
+    def _parse_frame(data: object, *, raw: bool = False) -> tuple[str, bool, str | None]:
         if not isinstance(data, dict):
             raise OllamaError("Ollama returned an invalid response object.")
         if data.get("error") is not None:
@@ -365,9 +372,9 @@ class OllamaClient:
         message = data.get("message", {})
         done = data.get("done", False)
         reason = data.get("done_reason")
-        if not isinstance(message, dict) or not isinstance(done, bool):
+        if (not raw and not isinstance(message, dict)) or not isinstance(done, bool):
             raise OllamaError("Ollama returned an invalid response frame.")
-        content = message.get("content", "")
+        content = data.get("response", "") if raw else message.get("content", "")
         if not isinstance(content, str) or (reason is not None and not isinstance(reason, str)):
             raise OllamaError("Ollama returned invalid text or completion metadata.")
         return content, done, reason

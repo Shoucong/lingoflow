@@ -26,6 +26,7 @@ class ChatProvider(Protocol):
         options: dict | None = None,
         keep_alive: int | None = None,
         think: bool | None = None,
+        raw: bool = False,
     ) -> Iterator[ModelChunk]: ...
 
     def cancel(self) -> None: ...

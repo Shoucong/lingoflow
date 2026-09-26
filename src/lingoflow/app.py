@@ -224,10 +224,9 @@ def run_cli() -> None:
         return
 
     if args.test_translate:
-        from lingoflow.core.translator import TranslationService
-        from lingoflow.infrastructure.ollama_client import create_ollama_client
+        from lingoflow.infrastructure.translation_service import create_translation_service
 
-        service = TranslationService(client_factory=create_ollama_client)
+        service = create_translation_service()
         print(f"Translating: {args.test_translate}")
         print("Result: ", end="", flush=True)
         for chunk in service.translate_stream(args.test_translate):

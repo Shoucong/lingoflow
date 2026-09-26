@@ -17,6 +17,7 @@ from lingoflow.core.errors import (
 )
 from lingoflow.core.ports import ChatProvider
 from lingoflow.core.text_preparation import TranslationCheckpoint, fingerprint, split_text
+from lingoflow.core.translation_profiles import is_milmmt_model, milmmt_options, milmmt_prompt
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -120,6 +121,7 @@ class TranslationService:
         *,
         client: ChatProvider | None = None,
         client_factory: Callable[[AppSettings], ChatProvider] | None = None,
+        language_detector: Callable[[str], str | None] | None = None,
     ):
         """
         Initialize the translation service.
@@ -131,6 +133,7 @@ class TranslationService:
         if client is None and client_factory is None:
             raise TypeError("TranslationService requires a client or client_factory")
         self._client_factory = client_factory
+        self._language_detector = language_detector
         self.client = client if client is not None else client_factory(self.settings)
 
         logger.info(f"TranslationService initialized with model: {self.settings.ollama.model}")
@@ -158,13 +161,35 @@ class TranslationService:
         client = self.client
         target = target_language or settings.translation.target_language
         source = source_language or settings.translation.source_language
-        system = settings.translation.custom_prompt or TRANSLATION_SYSTEM_PROMPT
-        if settings.translation.preset == "academic":
+        raw = is_milmmt_model(settings.ollama.model)
+        if raw:
+            if not any(char.isalpha() for char in text):
+                if on_chunk:
+                    on_chunk(text)
+                yield text
+                return
+            if source == "auto":
+                source = self._language_detector(text) if self._language_detector else None
+                if cancel_check and cancel_check():
+                    return
+                if not source:
+                    raise TranslationError(
+                        "Could not identify the source language. "
+                        "Choose Text Source in Settings → Languages."
+                    )
+            if source == target:
+                if on_chunk:
+                    on_chunk(text)
+                yield text
+                return
+        system = "" if raw else (settings.translation.custom_prompt or TRANSLATION_SYSTEM_PROMPT)
+        if not raw and settings.translation.preset == "academic":
             system += (
                 "\nPreserve citations, equations, symbols, numerical values, units and "
                 "technical abbreviations. Do not add explanations or invent references."
             )
-        prefix = self._build_user_prompt("", source, target)
+        make_prompt = milmmt_prompt if raw else self._build_user_prompt
+        prefix = make_prompt("", source, target)
         # Reserve output plus actual prompt bytes, a bounded context hint, and role tokens.
         overhead = len((system + prefix).encode("utf-8")) + 512
         budget = min(
@@ -206,7 +231,9 @@ class TranslationService:
             "num_predict": settings.ollama.max_output_tokens,
             "temperature": settings.ollama.temperature,
         }
-        think = {"auto": None, "off": False, "on": True}[settings.ollama.thinking]
+        if raw:
+            options.update(milmmt_options())
+        think = None if raw else {"auto": None, "off": False, "on": True}[settings.ollama.thinking]
         for index in range(len(completed), len(segments)):
             if cancel_check and cancel_check():
                 return
@@ -214,8 +241,8 @@ class TranslationService:
             translated = []
             pending_space = ""
             if segment.text.strip():
-                prompt = self._build_user_prompt(segment.text, source, target)
-                if index:
+                prompt = make_prompt(segment.text, source, target)
+                if index and not raw:
                     context = (
                         segments[index - 1]
                         .text.encode("utf-8")[-256:]
@@ -234,11 +261,12 @@ class TranslationService:
                     for chunk in client.chat_stream(
                         message=prompt,
                         model=settings.ollama.model,
-                        system_prompt=system,
+                        system_prompt=system or None,
                         cancel_check=cancel_check,
                         options=options,
                         keep_alive=settings.ollama.keep_alive,
                         think=think,
+                        raw=raw,
                     ):
                         if cancel_check and cancel_check():
                             return

@@ -14,9 +14,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.errors import TranslationCancelledError
-from lingoflow.core.translator import TranslationService
-from lingoflow.infrastructure.ollama_client import create_ollama_client
 from lingoflow.infrastructure.tasks import TaskRunner
+from lingoflow.infrastructure.translation_service import create_translation_service
 
 
 def main():
@@ -27,7 +26,7 @@ def main():
     settings = AppSettings()
     settings.ollama.host = "http://127.0.0.1:11434"
     settings.ollama.model = args.model
-    service = TranslationService(settings, client_factory=create_ollama_client)
+    service = create_translation_service(settings)
     source = json.loads((ROOT / "evaluation/cases.json").read_text())[-1]["text"]
     evidence = {"model": args.model, "cancellation": []}
     baseline_threads = threading.active_count()

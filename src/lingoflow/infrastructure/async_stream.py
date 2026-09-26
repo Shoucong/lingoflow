@@ -72,6 +72,13 @@ class AsyncStreamRunner:
                 loop.run_until_complete(stream.aclose())
                 loop.run_until_complete(loop.shutdown_asyncgens())
             finally:
+                # Closing nested HTTP iterators can schedule one last async-generator
+                # cleanup task. Drain it before discarding this request's event loop.
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
                 loop.close()
 
     def cancel_all(self) -> None:
