@@ -13,6 +13,7 @@ pytest.importorskip("PyQt6")
 pytest.importorskip("pytestqt")
 
 from lingoflow.config.settings import AppSettings
+from lingoflow.core.app_state import AppState
 from lingoflow.core.ocr import OCRResult, ScreenCaptureError
 from lingoflow.infrastructure.ollama_client import OllamaError
 from lingoflow.ui import main_window, messages, tray_controller
@@ -218,6 +219,9 @@ class FakePopup:
     def finish_translation(self) -> None:
         self.finished_count += 1
 
+    def stop_translation(self) -> None:
+        pass
+
     def show_error(self, message: str) -> None:
         self.errors.append(message)
 
@@ -352,6 +356,7 @@ def test_translate_selection_shows_popup_and_streams_translation(
 
 
 def test_translate_request_without_ollama_notifies_and_does_not_create_popup(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -360,12 +365,14 @@ def test_translate_request_without_ollama_notifies_and_does_not_create_popup(
 
     harness.controller._on_translate_requested()
 
+    qtbot.waitUntil(lambda: bool(harness.controller.tray_icon.messages))
     assert harness.popup is None
     assert harness.controller.tray_icon.messages[-1][0] == messages.OLLAMA_NOT_RUNNING_TITLE
     assert messages.OLLAMA_OFFLINE_STATUS in harness.controller.tray_icon.tooltip
 
 
 def test_translate_request_without_selected_text_notifies(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -373,6 +380,7 @@ def test_translate_request_without_selected_text_notifies(
 
     harness.controller._on_translate_requested()
 
+    qtbot.waitUntil(lambda: bool(harness.controller.tray_icon.messages))
     assert harness.popup is None
     assert harness.controller.tray_icon.messages[-1] == (
         messages.NO_TEXT_SELECTED_TITLE,
@@ -474,7 +482,7 @@ def test_translation_error_is_shown_in_popup(
     qtbot.waitUntil(lambda: not harness.controller._is_translating, timeout=2000)
 
     assert harness.popup.errors == ["model failed"]
-    assert "Ready" in harness.controller.tray_icon.tooltip
+    assert "Failed" in harness.controller.tray_icon.tooltip
 
 
 def test_popup_close_cancels_active_translation(
@@ -486,7 +494,7 @@ def test_popup_close_cancels_active_translation(
     harness.translator.wait_until_cancel = True
 
     harness.controller._on_translate_requested()
-    assert harness.translator.started.wait(timeout=2.0)
+    qtbot.waitUntil(harness.translator.started.is_set, timeout=2000)
     assert harness.popup is not None
 
     harness.popup.dismiss()
@@ -530,3 +538,42 @@ def test_stale_translation_signals_are_ignored(controller_harness: ControllerHar
     assert harness.popup.chunks == []
     assert harness.popup.errors == []
     assert harness.popup.finished_count == 0
+
+
+def test_slow_service_probe_does_not_block_ui(qtbot, controller_harness, monkeypatch):
+    harness = controller_harness
+    harness.clipboard.selected_text = "First text"
+    entered, release = threading.Event(), threading.Event()
+
+    def probe():
+        entered.set()
+        release.wait(2)
+        return True
+
+    monkeypatch.setattr(harness.translator, "is_available", probe)
+    try:
+        harness.controller._on_translate_requested()
+        qtbot.waitUntil(entered.is_set)
+        assert harness.controller.app_state == AppState.ACQUIRING
+    finally:
+        release.set()
+    wait_for_idle_translation(qtbot, harness)
+
+
+def test_new_selection_replaces_old_task_and_rejects_late_output(qtbot, controller_harness):
+    harness = controller_harness
+    harness.clipboard.selected_text = "First text"
+    harness.translator.wait_until_cancel = True
+    harness.controller._on_translate_requested()
+    qtbot.waitUntil(harness.translator.started.is_set)
+    old_task = harness.controller._active_translation_task
+    harness.translator.wait_until_cancel = False
+    harness.clipboard.selected_text = "new selection"
+    harness.controller._on_translate_requested()
+    wait_for_idle_translation(qtbot, harness)
+    harness.controller._on_translation_chunk(old_task.task_id, "obsolete")
+    session = harness.controller.translation_workflow.session
+    assert old_task.is_cancelled()
+    assert session.source_text == "new selection"
+    assert "obsolete" not in session.translated_text
+    qtbot.waitUntil(lambda: harness.controller._task_runner.active_count == 0)

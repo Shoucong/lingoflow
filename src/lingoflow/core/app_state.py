@@ -11,6 +11,7 @@ class AppState(Enum):
     """High-level state for the menu bar app."""
 
     IDLE = "idle"
+    ACQUIRING = "acquiring"
     CAPTURING = "capturing"
     OCR_RECOGNIZING = "ocr_recognizing"
     TRANSLATING = "translating"
@@ -20,6 +21,7 @@ class AppState(Enum):
 
 
 BUSY_STATES = {
+    AppState.ACQUIRING,
     AppState.CAPTURING,
     AppState.OCR_RECOGNIZING,
     AppState.TRANSLATING,
@@ -33,6 +35,7 @@ OCR_STATES = {
 }
 
 STATUS_LABELS = {
+    AppState.ACQUIRING: "Reading selection...",
     AppState.IDLE: "Ready",
     AppState.CAPTURING: "Capturing...",
     AppState.OCR_RECOGNIZING: "Recognizing...",

@@ -5,7 +5,7 @@ Handles all communication with the local Ollama server.
 """
 
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass
 from typing import Optional
 
@@ -17,6 +17,7 @@ from lingoflow.config.constants import (
     OLLAMA_READ_TIMEOUT,
     OLLAMA_TAGS_ENDPOINT,
 )
+from lingoflow.infrastructure.async_stream import AsyncStreamRunner, RequestCancelledError
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -64,6 +65,10 @@ class OllamaError(Exception):
     """Base exception for Ollama-related errors."""
 
     pass
+
+
+class OllamaCancelledError(OllamaError):
+    """Request explicitly stopped by its owner."""
 
 
 class OllamaConnectionError(OllamaError):
@@ -120,6 +125,7 @@ class OllamaClient:
         """
         self.host = host.rstrip("/")
         self._transport = transport
+        self._streams = AsyncStreamRunner()
         self._timeout = httpx.Timeout(
             connect=OLLAMA_CONNECT_TIMEOUT,
             read=OLLAMA_READ_TIMEOUT,
@@ -132,6 +138,10 @@ class OllamaClient:
     # Public Methods
     # ===========================================================
 
+    def cancel(self) -> None:
+        """Interrupt pending I/O, including before the first output token."""
+        self._streams.cancel_all()
+
     def chat_stream(
         self,
         message: str,
@@ -139,6 +149,25 @@ class OllamaClient:
         system_prompt: Optional[str] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
     ) -> Iterator[OllamaStreamChunk]:
+        try:
+            yield from self._streams.iterate(
+                lambda: self._chat_stream_async(
+                    message,
+                    model,
+                    system_prompt,
+                    cancel_check,
+                )
+            )
+        except RequestCancelledError as error:
+            raise OllamaCancelledError("Translation was stopped.") from error
+
+    async def _chat_stream_async(
+        self,
+        message: str,
+        model: str,
+        system_prompt: Optional[str] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
+    ) -> AsyncIterator[OllamaStreamChunk]:
         """
         Send a chat message and stream the response.
 
@@ -172,12 +201,16 @@ class OllamaClient:
         logger.debug(f"Message length: {len(message)} chars")
 
         try:
-            with self._new_client() as client:
-                with client.stream("POST", url, json=payload) as response:
+            if cancel_check and cancel_check():
+                return
+            async with httpx.AsyncClient(
+                timeout=self._timeout, transport=self._transport, trust_env=False
+            ) as client:
+                async with client.stream("POST", url, json=payload) as response:
                     self._raise_for_status(response, model=model)
 
                     saw_done = False
-                    for line in response.iter_lines():
+                    async for line in response.aiter_lines():
                         if cancel_check and cancel_check():
                             return
                         if not line:
@@ -314,7 +347,7 @@ class OllamaClient:
         """
         try:
             with self._new_client() as client:
-                response = client.get(f"{self.host}/api/tags")
+                response = client.get(f"{self.host}/api/tags", timeout=1.5)
                 return response.status_code == 200
         except Exception:
             return False
@@ -380,4 +413,4 @@ class OllamaClient:
 
     def _new_client(self) -> httpx.Client:
         """Create an HTTP client, allowing tests to inject a mock transport."""
-        return httpx.Client(timeout=self._timeout, transport=self._transport)
+        return httpx.Client(timeout=self._timeout, transport=self._transport, trust_env=False)

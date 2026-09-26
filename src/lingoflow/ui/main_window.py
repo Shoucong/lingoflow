@@ -50,6 +50,8 @@ class MainSignals(QObject):
     ocr_requested = pyqtSignal()
     show_error = pyqtSignal(str, str)  # title, message
     status_update = pyqtSignal(str)  # status text
+    selection_ready = pyqtSignal(int, str, str)
+    startup_checked = pyqtSignal(int, object)
     translation_chunk = pyqtSignal(int, str)  # task id, text chunk
     translation_cleared = pyqtSignal(int)  # task id
     translation_error = pyqtSignal(int, str)  # task id, message
@@ -100,6 +102,8 @@ class MainController(QObject):
         # State
         self._app_state = AppStateTracker()
         self._task_runner = TaskRunner()
+        self._quitting = False
+        self._startup_task_id = None
         self._setup_tray()
         self.translation_workflow = TranslationWorkflow(
             settings=self.settings,
@@ -202,6 +206,8 @@ class MainController(QObject):
     def _setup_signals(self) -> None:
         """Connect cross-thread signals."""
         self.signals.translate_requested.connect(self._on_translate_requested)
+        self.signals.selection_ready.connect(self.translation_workflow.on_selection_ready)
+        self.signals.startup_checked.connect(self._on_startup_checked)
         self.signals.ocr_requested.connect(self._on_ocr_requested)
         self.signals.show_error.connect(self._show_error_dialog)
         self.signals.status_update.connect(self._update_status)
@@ -282,10 +288,12 @@ class MainController(QObject):
 
     def _on_translate_requested(self) -> None:
         """Handle translation request (main thread)."""
+        self.ocr_workflow.cancel_active()
         self.translation_workflow.translate_selection()
 
     def _on_ocr_requested(self) -> None:
         """Handle OCR request (main thread)."""
+        self.translation_workflow.cancel_active("New OCR requested")
         self.ocr_workflow.request_ocr()
 
     def _ocr_worker(self, task: BackgroundTask, image_path) -> None:
@@ -530,6 +538,7 @@ class MainController(QObject):
     def _quit(self) -> None:
         """Quit the application."""
         logger.info("Quitting application")
+        self._quitting = True
 
         # Stop any active translation
         self._cancel_active_translation(
@@ -549,6 +558,8 @@ class MainController(QObject):
             self._onboarding_dialog.close()
             self._onboarding_dialog = None
 
+        self._task_runner.shutdown()
+
         # Quit application
         QApplication.quit()
 
@@ -561,32 +572,37 @@ class MainController(QObject):
         self._show_onboarding()
         self._start_hotkeys()
 
-        # Check Ollama connection on startup
-        if not self.translator.is_available():
+        task = self._task_runner.create("startup-check")
+        self._startup_task_id = task.task_id
+        settings_key = (self.settings.ollama.host, self.settings.ollama.model)
+        task.start(lambda task: self._startup_worker(task, settings_key))
+
+    def _startup_worker(self, task: BackgroundTask, settings_key: tuple[str, str]) -> None:
+        available = self.translator.is_available()
+        models = self.translator.get_available_models() if available else []
+        if not task.is_cancelled():
+            self.signals.startup_checked.emit(task.task_id, (settings_key, available, models))
+
+    def _on_startup_checked(self, task_id: int, result) -> None:
+        settings_key, available, models = result
+        if (
+            self._quitting
+            or task_id != self._startup_task_id
+            or self._app_state.is_busy
+            or settings_key != (self.settings.ollama.host, self.settings.ollama.model)
+        ):
+            return
+        if not available:
             self._show_notification(
                 messages.OLLAMA_NOT_RUNNING_TITLE,
                 messages.OLLAMA_START_COMMAND_FOR_TRANSLATION,
             )
             self._update_status(messages.OLLAMA_OFFLINE_STATUS)
-            logger.warning("Ollama is not available at startup")
+        elif self.settings.ollama.model not in models:
+            self._show_notification(
+                messages.MODEL_NOT_FOUND_TITLE,
+                "Choose an installed model in Settings, or install the configured model in Ollama.",
+            )
+            self._update_status("Model unavailable")
         else:
-            # Verify the configured model exists
-            available_models = self.translator.get_available_models()
-            configured_model = self.settings.ollama.model
-
-            if available_models and configured_model not in available_models:
-                fallback_model = available_models[0]
-                self._show_notification(
-                    messages.MODEL_NOT_FOUND_TITLE,
-                    messages.model_fallback_message(fallback_model),
-                )
-                logger.warning(
-                    f"Configured model '{configured_model}' not found; "
-                    f"using session fallback '{fallback_model}'"
-                )
-                runtime_settings = self.settings.model_copy(deep=True)
-                runtime_settings.ollama.model = fallback_model
-                self.translator.update_settings(runtime_settings)
-
             self._update_status("Ready")
-            logger.info("Ollama connection verified")

@@ -11,6 +11,7 @@ from typing import Callable, Optional
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.infrastructure.ollama_client import (
+    OllamaCancelledError,
     OllamaClient,
     OllamaConnectionError,
     OllamaError,
@@ -121,7 +122,6 @@ class TranslationService:
         """
         self.settings = settings or AppSettings.load()
         self.client = OllamaClient(host=self.settings.ollama.host)
-        self._cancelled = False
 
         logger.info(f"TranslationService initialized with model: {self.settings.ollama.model}")
 
@@ -149,7 +149,9 @@ class TranslationService:
         Yields:
             Translation text chunks as they arrive
         """
-        self._cancelled = False
+
+        if cancel_check and cancel_check():
+            return
 
         # Use defaults from settings if not specified
         target_lang = target_language or self.settings.translation.target_language
@@ -163,7 +165,7 @@ class TranslationService:
         logger.debug(f"Source text length: {len(text)} chars")
 
         def should_cancel() -> bool:
-            return self._cancelled or bool(cancel_check and cancel_check())
+            return bool(cancel_check and cancel_check())
 
         saw_text = False
         try:
@@ -225,8 +227,15 @@ class TranslationService:
                 translated_text=translated_text,
                 source_language=source_lang,
                 target_language=target_lang,
-                status=(TranslationStatus.CANCELLED if self._cancelled
-                        else TranslationStatus.COMPLETED),
+                status=TranslationStatus.COMPLETED,
+            )
+        except OllamaCancelledError:
+            return TranslationResult(
+                text,
+                "".join(translated_parts),
+                source_lang,
+                target_lang,
+                TranslationStatus.CANCELLED,
             )
         except OllamaError as e:
             return TranslationResult(
@@ -240,7 +249,7 @@ class TranslationService:
 
     def cancel(self) -> None:
         """Cancel an ongoing streaming translation."""
-        self._cancelled = True
+        self.client.cancel()
         logger.debug("Translation cancellation requested.")
 
     def lookup_word(self, attempt: str, meaning: str, language: str = "English") -> Iterator[str]:
@@ -304,6 +313,7 @@ class TranslationService:
 
         Called when the user changes settings in the UI.
         """
+        self.cancel()
         self.settings = settings
         self.client = OllamaClient(host=settings.ollama.host)
         logger.info(f"Settings updated, model: {settings.ollama.model}")
