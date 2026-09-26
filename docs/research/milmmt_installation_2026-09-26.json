@@ -244,15 +244,27 @@
     "src/lingoflow/infrastructure/macos/clipboard.py": "2ef031511c57730168a07e56d961950e82ec02b1a81259ae1debb33ea7a3ae41"
   },
   "completed": true,
-  "gui_launch": "Installed application launched; Set up LingoFlow window observed through native UI.",
-  "gui_permissions": {
+  "gui_launch": "Normal app launch succeeded as PID 15699 after the direct-binary validation process ended; menu-bar-only app has no ordinary window.",
+  "permission_action": "No OS privacy settings changed and no manual reauthorization is required after normal app launch.",
+  "regression_tests": {
+    "full_suite": 165,
+    "cocoa_window_suite": 59
+  },
+  "installed_cli_smoke": {
+    "status": "not_executed",
+    "reason": "The packaged entrypoint dispatches to GUI main, not run_cli. --test-translate started the GUI and the test timed out after 90 seconds. No CLI translation success is claimed."
+  },
+  "direct_binary_gui_permissions": {
     "accessibility": "needs_setup",
     "input_monitoring": "needs_setup",
     "screen_recording": "granted"
   },
-  "permission_action": "Left onboarding open for the user; no OS privacy permissions were changed.",
-  "regression_tests": {
-    "full_suite": 165,
-    "cocoa_window_suite": 59
-  }
+  "normal_app_permissions": "Existing required hotkey permissions accepted; native event tap created and listener started. Screen recording was granted in the bundle preflight.",
+  "normal_app_startup_evidence": [
+    "2026-09-26 18:19:54 | INFO     | lingoflow.app:118 | Starting LingoFlow v0.2.1",
+    "2026-09-26 18:19:54 | INFO     | lingoflow.core.translator:144 | TranslationService initialized with model: hf.co/mradermacher/MiLMMT-46-4B-v1.0-GGUF:Q4_K_M",
+    "2026-09-26 18:19:55 | INFO     | lingoflow.infrastructure.macos.hotkeys:307 | Native macOS hotkey listener started",
+    "2026-09-26 18:19:55 | INFO     | lingoflow.ui.main_window:263 | Hotkeys registered and listening"
+  ],
+  "current_model_verified_after_gui_launch": true
 }
