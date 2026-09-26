@@ -282,6 +282,24 @@ class OnboardingSettings(SettingsModel):
     )
 
 
+class SpeechSettings(SettingsModel):
+    """Installed system voices; an empty voice name chooses a suitable default."""
+
+    source_locale: str = "en-US"
+    source_voice: str = ""
+    target_voice: str = ""
+    rate: int = Field(default=175, ge=80, le=300)
+
+    @field_validator("source_locale")
+    @classmethod
+    def validate_locale(cls, value: str) -> str:
+        from lingoflow.core.speech import LANGUAGE_LOCALES
+
+        if value not in {*LANGUAGE_LOCALES.values(), "en-GB"}:
+            raise ValueError("unsupported speech language")
+        return value
+
+
 class PrivacySettings(SettingsModel):
     """Privacy and troubleshooting settings."""
 
@@ -314,6 +332,7 @@ class AppSettings(SettingsModel):
     ocr: OCRSettings = Field(default_factory=OCRSettings)
     onboarding: OnboardingSettings = Field(default_factory=OnboardingSettings)
     privacy: PrivacySettings = Field(default_factory=PrivacySettings)
+    speech: SpeechSettings = Field(default_factory=SpeechSettings)
 
     # =========================================================
     # Persistence Methods

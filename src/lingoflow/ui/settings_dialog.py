@@ -28,6 +28,8 @@ from PyQt6.QtWidgets import (
 
 from lingoflow.config.constants import SUPPORTED_LANGUAGES
 from lingoflow.config.settings import AppSettings, OllamaSettings
+from lingoflow.core.speech import LANGUAGE_LOCALES
+from lingoflow.infrastructure.macos.speech import MacOSSpeechService
 from lingoflow.infrastructure.ollama_client import OllamaClient, OllamaError
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.utils.logger import get_logger
@@ -62,10 +64,16 @@ class SettingsDialog(QDialog):
         self._network_tasks = TaskRunner()
         self._active_connection_task_id: Optional[int] = None
         self._active_models_task_id: Optional[int] = None
+        self._speech = MacOSSpeechService.shared()
 
         self._setup_window()
         self._setup_ui()
         self._load_settings()
+        self._speech.voices_changed.connect(self._update_speech_voice_choices)
+        self.speech_locale_combo.currentIndexChanged.connect(self._update_speech_voice_choices)
+        self.source_lang_combo.currentIndexChanged.connect(self._update_speech_voice_choices)
+        self.target_lang_combo.currentIndexChanged.connect(self._update_speech_voice_choices)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
         self.connection_test_finished.connect(self._on_connection_test_finished)
         self.models_refresh_finished.connect(self._on_models_refresh_finished)
 
@@ -97,6 +105,8 @@ class SettingsDialog(QDialog):
         self.tabs.addTab(self._create_languages_tab(), "Languages")
         self.tabs.addTab(self._create_hotkeys_tab(), "Hotkeys")
         self.tabs.addTab(self._create_appearance_tab(), "Appearance")
+        self._speech_tab = self._create_speech_tab()
+        self.tabs.addTab(self._speech_tab, "Speech")
 
         # Button row
         button_layout = QHBoxLayout()
@@ -301,6 +311,63 @@ class SettingsDialog(QDialog):
 
         return tab
 
+    def _create_speech_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QFormLayout(tab)
+        self.speech_locale_combo = QComboBox()
+        self.speech_locale_combo.addItem("English (US)", "en-US")
+        self.speech_locale_combo.addItem("English (UK)", "en-GB")
+        for language, locale in LANGUAGE_LOCALES.items():
+            if language != "English":
+                self.speech_locale_combo.addItem(language, locale)
+        layout.addRow("Auto-source language / accent:", self.speech_locale_combo)
+        self.source_voice_combo = QComboBox()
+        self.target_voice_combo = QComboBox()
+        layout.addRow("Source voice:", self.source_voice_combo)
+        layout.addRow("Translation voice:", self.target_voice_combo)
+        self.speech_rate_spin = QSpinBox()
+        self.speech_rate_spin.setRange(80, 300)
+        self.speech_rate_spin.setSuffix(" words/min")
+        layout.addRow("Speaking rate:", self.speech_rate_spin)
+        refresh = QPushButton("Refresh installed voices")
+        refresh.clicked.connect(self._speech.refresh_voices)
+        layout.addRow(refresh)
+        note = QLabel(
+            "Uses downloaded macOS voices. For more voices, open System Settings → "
+            "Accessibility → Read & Speak. Source and translation use separate voices."
+        )
+        note.setWordWrap(True)
+        layout.addRow(note)
+        return tab
+
+    def _on_tab_changed(self, index: int) -> None:
+        if self.tabs.widget(index) is self._speech_tab:
+            self._speech.refresh_voices()
+
+    def _update_speech_voice_choices(self, *_args) -> None:
+        source = self.source_lang_combo.currentData()
+        preferred_locale = self.speech_locale_combo.currentData()
+        source_locale = LANGUAGE_LOCALES.get(source, preferred_locale)
+        if source == "English" and preferred_locale.startswith("en-"):
+            source_locale = preferred_locale
+        target = self.target_lang_combo.currentData()
+        target_locale = LANGUAGE_LOCALES.get(target, "")
+        if target == "English" and preferred_locale.startswith("en-"):
+            target_locale = preferred_locale
+        for combo, locale, saved in [
+            (self.source_voice_combo, source_locale, self.settings.speech.source_voice),
+            (self.target_voice_combo, target_locale, self.settings.speech.target_voice),
+        ]:
+            current = combo.currentData() if combo.count() else saved
+            combo.clear()
+            combo.addItem("Automatic", "")
+            for voice in self._speech.voices:
+                if voice.locale == locale:
+                    combo.addItem(voice.name, voice.name)
+            if current and combo.findData(current) < 0:
+                combo.addItem(f"{current} (unavailable for this language)", current)
+            combo.setCurrentIndex(max(0, combo.findData(current)))
+
     def _create_appearance_tab(self) -> QWidget:
         """Create the Appearance settings tab."""
         tab = QWidget()
@@ -395,6 +462,13 @@ class SettingsDialog(QDialog):
         # Privacy
         self.allow_content_logging_check.setChecked(s.privacy.allow_content_logging)
         self.keep_ocr_captures_check.setChecked(s.privacy.keep_ocr_captures)
+        self.speech_locale_combo.setCurrentIndex(
+            self.speech_locale_combo.findData(s.speech.source_locale)
+        )
+        self.speech_rate_spin.setValue(s.speech.rate)
+        self.source_voice_combo.clear()
+        self.target_voice_combo.clear()
+        self._update_speech_voice_choices()
 
         logger.debug("Settings loaded into UI")
 
@@ -612,6 +686,12 @@ class SettingsDialog(QDialog):
 
         data["privacy"]["allow_content_logging"] = self.allow_content_logging_check.isChecked()
         data["privacy"]["keep_ocr_captures"] = self.keep_ocr_captures_check.isChecked()
+        data["speech"] = {
+            "source_locale": self.speech_locale_combo.currentData(),
+            "source_voice": self.source_voice_combo.currentData() or "",
+            "target_voice": self.target_voice_combo.currentData() or "",
+            "rate": self.speech_rate_spin.value(),
+        }
 
         try:
             return AppSettings.model_validate(data)

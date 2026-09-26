@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-26",
+  "voice": "Samantha (English (US))",
+  "locale": "en-US",
+  "synthesis_exit_code": 0,
+  "audio_bytes": 121770,
+  "speaker_playback": false,
+  "voice_downloads": false,
+  "notes": "System voice catalog and synthetic-text audio-file generation verified; no subjective audio quality claim."
+}

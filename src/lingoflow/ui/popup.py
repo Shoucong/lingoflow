@@ -7,6 +7,7 @@ Displays source text and streaming translation results.
 import platform
 from pathlib import Path
 from typing import Optional
+from uuid import uuid4
 
 from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCursor, QTextCursor
@@ -30,6 +31,8 @@ from lingoflow.config.constants import (
     SUPPORTED_LANGUAGES,
 )
 from lingoflow.config.settings import AppSettings
+from lingoflow.core.speech import LANGUAGE_LOCALES, SpeechRequest
+from lingoflow.infrastructure.macos.speech import MacOSSpeechService
 from lingoflow.ui.window_controller import PopupWindowController
 from lingoflow.utils.logger import get_logger
 
@@ -85,12 +88,17 @@ class TranslationPopup(QWidget):
     retry_requested = pyqtSignal(str)
 
     def __init__(
-        self, settings: Optional[AppSettings] = None, window_state_path: Path | None = None
+        self,
+        settings: Optional[AppSettings] = None,
+        window_state_path: Path | None = None,
+        speech_service: MacOSSpeechService | None = None,
     ):
         super().__init__()
 
         self.settings = settings or AppSettings.load()
         self.signals = TranslationSignals()
+        self.speech = speech_service or MacOSSpeechService.shared()
+        self._speech_owner = uuid4().hex
 
         self._source_text = ""
         self._translated_text = ""
@@ -125,8 +133,10 @@ class TranslationPopup(QWidget):
         """Configure window properties."""
         # Native decorations provide reliable dragging and edge/corner resizing.
         self.setWindowFlags(
-            Qt.WindowType.Window | Qt.WindowType.WindowTitleHint
-            | Qt.WindowType.WindowCloseButtonHint | Qt.WindowType.WindowMinimizeButtonHint
+            Qt.WindowType.Window
+            | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.WindowCloseButtonHint
+            | Qt.WindowType.WindowMinimizeButtonHint
             | Qt.WindowType.WindowMaximizeButtonHint
         )
         self.setWindowTitle("LingoFlow")
@@ -227,6 +237,21 @@ class TranslationPopup(QWidget):
         self.text_splitter.setSizes([120, 300])
         container_layout.addWidget(self.text_splitter, 1)
 
+        speech_layout = QHBoxLayout()
+        self.speak_source_btn = QPushButton("Speak source")
+        self.speak_source_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.speak_source_btn.setToolTip("Read the selected source text, or the whole source")
+        self.speak_source_btn.clicked.connect(self._speak_source)
+        speech_layout.addWidget(self.speak_source_btn)
+        self.speak_translation_btn = QPushButton("Speak translation")
+        self.speak_translation_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.speak_translation_btn.clicked.connect(self._speak_translation)
+        speech_layout.addWidget(self.speak_translation_btn)
+        self.speech_status = QLabel("")
+        self.speech_status.setWordWrap(True)
+        speech_layout.addWidget(self.speech_status, 1)
+        container_layout.addLayout(speech_layout)
+
         # --- Footer: Copy button and status ---
         footer_layout = QHBoxLayout()
         footer_layout.setSpacing(8)
@@ -277,6 +302,13 @@ class TranslationPopup(QWidget):
         self.translation_text.verticalScrollBar().rangeChanged.connect(self._update_latest_button)
         self.translation_text.selectionChanged.connect(self._update_latest_button)
         self._update_latest_button()
+        self.speech.state_changed.connect(self._update_speech_buttons)
+        self.speech.failed.connect(self._speech_failed)
+        self.source_text.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.source_text.customContextMenuRequested.connect(self._source_context_menu)
+        self.translation_text.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.translation_text.customContextMenuRequested.connect(self._translation_context_menu)
+        self._update_speech_buttons()
 
     def _get_stylesheet(self) -> str:
         """Return the popup stylesheet."""
@@ -393,6 +425,8 @@ class TranslationPopup(QWidget):
             target_language: Target language (uses current selection if None)
             source_language: Source language display (uses settings if None)
         """
+        self.speech.stop(self._speech_owner)
+        self.speech_status.clear()
         self._source_text = source_text
         self._translated_text = ""
         self._dismiss_emitted = False
@@ -416,6 +450,7 @@ class TranslationPopup(QWidget):
         self.show()
         self.raise_()
         self._start_outside_click_monitor()
+        self._update_speech_buttons()
 
         if self.settings.privacy.allow_content_logging:
             logger.debug(f"Popup shown with text: {source_text[:80]}...")
@@ -486,6 +521,7 @@ class TranslationPopup(QWidget):
         output_cursor.insertText(chunk)
         self._translated_text += chunk
         self.copy_btn.setEnabled(bool(self._translated_text))
+        self._update_speech_buttons()
 
         reader_cursor.setPosition(anchor)
         reader_cursor.setPosition(position, QTextCursor.MoveMode.KeepAnchor)
@@ -502,11 +538,14 @@ class TranslationPopup(QWidget):
         self.translation_text.setPlaceholderText("Waiting for the model…")
         self.stop_btn.setEnabled(True)
         self.copy_btn.setEnabled(bool(self._translated_text))
+        self.speech.stop(self._speech_owner)
+        self._update_speech_buttons()
 
     def _on_translation_finished(self) -> None:
         """Handle translation completion."""
         self._is_translating = False
         self.stop_btn.setEnabled(False)
+        self._update_speech_buttons()
 
         # Show character count
         char_count = len(self._translated_text)
@@ -521,6 +560,7 @@ class TranslationPopup(QWidget):
         self._is_translating = False
         self._status_clear_timer.stop()
         self.stop_btn.setEnabled(False)
+        self._update_speech_buttons()
         self.status_label.setText("Failed · partial result" if self._translated_text else "Failed")
         self.status_label.setToolTip(message)
         self.copy_btn.setEnabled(bool(self._translated_text))
@@ -531,6 +571,7 @@ class TranslationPopup(QWidget):
         self._is_translating = False
         self._status_clear_timer.stop()
         self.stop_btn.setEnabled(False)
+        self._update_speech_buttons()
         self.status_label.setText("Stopped · partial result")
         self.copy_btn.setEnabled(bool(self._translated_text))
 
@@ -596,6 +637,9 @@ class TranslationPopup(QWidget):
             try:
                 cursor_pos = QCursor.pos()
                 if self.frameGeometry().contains(cursor_pos):
+                    return False
+
+                if QApplication.activePopupWidget() is not None:
                     return False
 
                 combo_popup = self.target_combo.view().window()
@@ -684,6 +728,83 @@ class TranslationPopup(QWidget):
         self.pin_btn.setText("Pinned" if pinned else "Pin")
         self._start_outside_click_monitor()
 
+    def _speak_source(self) -> None:
+        self._speak("source")
+
+    def _speak_translation(self) -> None:
+        self._speak("translation")
+
+    def _speak(self, kind: str) -> None:
+        if self.speech.is_active(self._speech_owner, kind):
+            self.speech.stop(self._speech_owner)
+            return
+        source = kind == "source"
+        widget = self.source_text if source else self.translation_text
+        text = widget.textCursor().selectedText().replace("\u2029", "\n")
+        text = text or (self.get_source_text() if source else self._translated_text)
+        language = (
+            self.settings.translation.source_language if source else self.get_target_language()
+        )
+        if language in {"auto", "English"}:
+            locale = self.settings.speech.source_locale
+        else:
+            locale = LANGUAGE_LOCALES.get(language, "")
+        if language == "English" and not locale.startswith("en-"):
+            locale = "en-US"
+        self.speech_status.clear()
+        self.speech.speak(
+            SpeechRequest(
+                owner=self._speech_owner,
+                kind=kind,
+                text=text,
+                locale=locale,
+                voice=(
+                    self.settings.speech.source_voice
+                    if source
+                    else self.settings.speech.target_voice
+                ),
+                rate=self.settings.speech.rate,
+            )
+        )
+
+    def _update_speech_buttons(self) -> None:
+        self.speak_source_btn.setText(
+            "Stop source" if self.speech.is_active(self._speech_owner, "source") else "Speak source"
+        )
+        self.speak_translation_btn.setText(
+            "Stop translation"
+            if self.speech.is_active(self._speech_owner, "translation")
+            else "Speak translation"
+        )
+        self.speak_source_btn.setEnabled(bool(self._source_text))
+        self.speak_translation_btn.setEnabled(
+            bool(self._translated_text) and not self._is_translating
+        )
+
+    def _speech_failed(self, owner: str, message: str) -> None:
+        if owner == self._speech_owner:
+            self.speech_status.setText(message)
+
+    def _source_context_menu(self, position) -> None:
+        menu = self.source_text.createStandardContextMenu()
+        menu.addSeparator()
+        action = menu.addAction("Speak selected text")
+        action.setEnabled(self.source_text.textCursor().hasSelection())
+        action.triggered.connect(self._speak_source)
+        menu.exec(self.source_text.mapToGlobal(position))
+        menu.deleteLater()
+
+    def _translation_context_menu(self, position) -> None:
+        menu = self.translation_text.createStandardContextMenu()
+        menu.addSeparator()
+        action = menu.addAction("Speak selected text")
+        action.setEnabled(
+            self.translation_text.textCursor().hasSelection() and not self._is_translating
+        )
+        action.triggered.connect(self._speak_translation)
+        menu.exec(self.translation_text.mapToGlobal(position))
+        menu.deleteLater()
+
     def _auto_dismiss_allowed(self) -> bool:
         return (
             self.settings.ui.hide_on_focus_loss
@@ -699,8 +820,12 @@ class TranslationPopup(QWidget):
             self.dismiss()
 
     def _dismiss_if_inactive(self) -> None:
-        if (self.isVisible() and not self.isActiveWindow()
-                and not self.target_combo.view().window().isVisible()):
+        if (
+            self.isVisible()
+            and not self.isActiveWindow()
+            and QApplication.activePopupWidget() is None
+            and not self.target_combo.view().window().isVisible()
+        ):
             self._dismiss_from_outside()
 
     def _scroll_to_latest(self) -> None:
@@ -733,7 +858,8 @@ class TranslationPopup(QWidget):
         super().changeEvent(event)
         if (
             event.type() == QEvent.Type.ActivationChange
-            and hasattr(self, "window_controller") and not self._closing
+            and hasattr(self, "window_controller")
+            and not self._closing
         ):
             self._inactive_timer.start(0)
 
@@ -741,6 +867,8 @@ class TranslationPopup(QWidget):
         # Minimizing and native flag changes are not cancellation requests.
         if hasattr(self, "_outside_click_monitor_timer"):
             self._stop_outside_click_monitor()
+        if hasattr(self, "window_controller") and not self.window_controller.reconfiguring:
+            self.speech.stop(self._speech_owner)
         super().hideEvent(event)
 
     def showEvent(self, event) -> None:  # noqa: N802
@@ -751,6 +879,7 @@ class TranslationPopup(QWidget):
     def closeEvent(self, event) -> None:  # noqa: N802
         """Handle window close."""
         self._closing = True
+        self.speech.stop(self._speech_owner)
         self._inactive_timer.stop()
         self.window_controller.save()
         self._status_clear_timer.stop()
