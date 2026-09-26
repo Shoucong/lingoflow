@@ -48,7 +48,6 @@ def run(output: Path) -> None:
         app = QApplication([])
         app.setQuitOnLastWindowClosed(False)
         settings = AppSettings()
-        settings.ui.hide_on_focus_loss = False
         settings.ui.theme = "light"
         evidence = {
             "version": constants.APP_VERSION,

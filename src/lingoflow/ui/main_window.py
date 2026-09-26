@@ -27,6 +27,7 @@ from lingoflow.infrastructure.macos.permissions import MacOSPermissionService
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.infrastructure.translation_service import create_translation_service
 from lingoflow.ui import messages
+from lingoflow.ui.menu_windows import AboutWindow, MenuWindowPresenter, activate_application
 from lingoflow.ui.ocr_workflow import OCRWorkflow
 from lingoflow.ui.onboarding_dialog import OnboardingDialog
 from lingoflow.ui.popup import TranslationPopup
@@ -59,6 +60,7 @@ class MainSignals(QObject):
     translation_error = pyqtSignal(int, str)  # task id, message
     translation_completed = pyqtSignal(int)  # task id
     translation_finished = pyqtSignal(int)  # translation task id
+    translation_source_detected = pyqtSignal(int, str)  # task id, source language
     ocr_recognizing = pyqtSignal(int)
     ocr_finished = pyqtSignal(int, object)  # task id, OCRResult
 
@@ -101,6 +103,8 @@ class MainController(QObject):
         # UI components
         self.tray_controller: TrayController | None = None
         self._onboarding_dialog: OnboardingDialog | None = None
+        self._about_window: AboutWindow | None = None
+        self.menu_windows = MenuWindowPresenter(self._activate_app_for_dialog)
 
         # State
         self._app_state = AppStateTracker()
@@ -117,6 +121,7 @@ class MainController(QObject):
             signals=self.signals,
             notifier=self.tray_controller,
             popup_factory=lambda settings: TranslationPopup(settings),
+            on_settings_requested=self._show_settings,
         )
         self.ocr_workflow = OCRWorkflow(
             settings=self.settings,
@@ -130,9 +135,7 @@ class MainController(QObject):
         self.settings_coordinator = SettingsCoordinator(
             settings=self.settings,
             on_settings_changed=self._on_settings_changed,
-            dismiss_popup=self._dismiss_popup,
-            activate_app=self._activate_app_for_dialog,
-            raise_dialog=self._raise_dialog,
+            present=self._raise_dialog,
         )
         self._setup_signals()
         self._setup_hotkeys()
@@ -220,6 +223,9 @@ class MainController(QObject):
         self.signals.translation_error.connect(self._on_translation_error)
         self.signals.translation_completed.connect(self._on_translation_completed)
         self.signals.translation_finished.connect(self._on_translation_finished)
+        self.signals.translation_source_detected.connect(
+            self.translation_workflow.on_source_detected
+        )
         self.signals.ocr_finished.connect(self._on_ocr_finished)
         self.signals.ocr_recognizing.connect(self.ocr_workflow.on_recognizing)
 
@@ -300,7 +306,8 @@ class MainController(QObject):
     def _on_ocr_requested(self) -> None:
         """Handle OCR request (main thread)."""
         self.translation_workflow.cancel_active("New OCR requested")
-        self.translation_workflow.dismiss_popup("Starting screenshot capture")
+        # A pinned reading window stays and receives the recognized text.
+        self.translation_workflow.dismiss_popup("Starting screenshot capture", keep_pinned=True)
         self.ocr_workflow.request_ocr()
 
     def _open_input(self) -> None:
@@ -402,8 +409,7 @@ class MainController(QObject):
     def handle_external_launch(self) -> None:
         """Handle a second launch while this instance is already running."""
         if self._onboarding_dialog:
-            self._activate_app_for_dialog()
-            self._onboarding_dialog.show_for_user()
+            self._present_onboarding(self._onboarding_dialog)
             return
 
         if self._settings_dialog_open:
@@ -420,9 +426,9 @@ class MainController(QObject):
     # Menu Actions
     # -------------------------------------------------------------------------
 
-    def _show_settings(self) -> None:
-        """Show the settings dialog."""
-        self.settings_coordinator.show()
+    def _show_settings(self, section: str | None = None) -> None:
+        """Show the settings dialog, optionally at a section such as "speech"."""
+        self.settings_coordinator.show(section or None)
 
     def _on_settings_closed(self, dialog: SettingsDialog) -> None:
         """Clear settings dialog state after a modeless settings window closes."""
@@ -430,29 +436,11 @@ class MainController(QObject):
 
     def _activate_app_for_dialog(self) -> None:
         """Bring this tray app forward before showing a real dialog on macOS."""
-        if platform.system() != "Darwin":
-            return
-
-        try:
-            from AppKit import NSApplication
-
-            NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
-        except Exception as e:
-            logger.debug(f"Could not activate app for dialog: {e}")
+        activate_application()
 
     def _raise_dialog(self, dialog) -> None:
-        """Show and foreground an existing dialog."""
-        if dialog is None:
-            return
-
-        try:
-            self._activate_app_for_dialog()
-            if not dialog.isVisible():
-                dialog.show()
-            dialog.raise_()
-            dialog.activateWindow()
-        except RuntimeError:
-            pass
+        """Show and foreground a menu window with the shared presentation policy."""
+        self.menu_windows.present(dialog)
 
     def _on_settings_changed(self, new_settings: AppSettings) -> None:
         """Handle settings changes."""
@@ -478,8 +466,7 @@ class MainController(QObject):
             return
 
         if self._onboarding_dialog:
-            self._activate_app_for_dialog()
-            self._onboarding_dialog.show_for_user()
+            self._present_onboarding(self._onboarding_dialog)
             return
 
         permissions_ready = self.permission_service.required_permissions_ready()
@@ -490,8 +477,11 @@ class MainController(QObject):
         self._onboarding_dialog = dialog
         dialog.finished.connect(lambda _: self._on_onboarding_finished(dialog))
         dialog.restart_requested.connect(self._restart_app)
-        self._activate_app_for_dialog()
-        dialog.show_for_user()
+        self._present_onboarding(dialog)
+
+    def _present_onboarding(self, dialog: OnboardingDialog) -> None:
+        dialog.prepare_for_user()
+        self.menu_windows.present(dialog)
 
     def _on_onboarding_finished(self, dialog: OnboardingDialog) -> None:
         """Persist first-run setup state after the setup window closes."""
@@ -512,19 +502,13 @@ class MainController(QObject):
         dialog.deleteLater()
 
     def _show_about(self) -> None:
-        """Show about dialog."""
-        QMessageBox.about(
-            None,
-            f"About {APP_NAME}",
-            f"<h3>{APP_NAME}</h3>"
-            f"<p>Version {APP_VERSION}</p>"
-            f"<p>A lightweight, Ollama-powered translation app with OCR support.</p>"
-            f"<p>Built with PyQt6 and Apple Vision.</p>"
-            f"<hr>"
-            f"<p><b>Hotkeys:</b></p>"
-            f"<p>• {self._format_hotkey('translate')} - Translate selected text</p>"
-            f"<p>• {self._format_hotkey('ocr')} - OCR screenshot</p>",
-        )
+        """Show the reusable About window in front, with one click."""
+        hotkeys = (self._format_hotkey("translate"), self._format_hotkey("ocr"))
+        if self._about_window is None:
+            self._about_window = AboutWindow(self.settings, hotkeys)
+        else:
+            self._about_window.update_content(self.settings, hotkeys)
+        self.menu_windows.present(self._about_window)
 
     def _restart_app(self) -> None:
         """Best-effort restart after macOS privacy permission changes."""
@@ -569,6 +553,8 @@ class MainController(QObject):
         if self._onboarding_dialog:
             self._onboarding_dialog.close()
             self._onboarding_dialog = None
+        if self._about_window:
+            self._about_window.close()
 
         self._task_runner.shutdown()
 
@@ -613,7 +599,7 @@ class MainController(QObject):
         elif self.settings.ollama.model not in models:
             self._show_notification(
                 messages.MODEL_NOT_FOUND_TITLE,
-                "Choose an installed model in Settings, or install the configured model in Ollama.",
+                messages.MODEL_NOT_FOUND_MESSAGE,
             )
             self._update_status("Model unavailable")
         else:

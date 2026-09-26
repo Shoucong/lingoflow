@@ -19,9 +19,9 @@ def milmmt_prompt(text: str, source: str, target: str) -> str:
         "Chinese(Traditional)": "Chinese (Traditional)",
     }
     if source == "auto" or source not in SUPPORTED_LANGUAGES:
-        raise TranslationError("Choose the Text Source language in Settings → Languages.")
+        raise TranslationError("请在“设置 → 通用 → 原文语言”中选择原文语言。")
     if target == "auto" or target not in SUPPORTED_LANGUAGES:
-        raise TranslationError("Choose a supported Translate To language in Settings → Languages.")
+        raise TranslationError("请在“设置 → 通用 → 译文语言”中选择支持的语言。")
     source, target = names.get(source, source), names.get(target, target)
     return f"Translate this from {source} to {target}:\n{source}: {text}\n{target}:"
 

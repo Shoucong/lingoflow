@@ -108,7 +108,7 @@ def test_unrecognized_language_requires_source_selection_instead_of_guessing():
     service = make_service(
         lambda request: pytest.fail("Must not send from auto"), lambda text: None
     )
-    with pytest.raises(TranslationError, match="Choose Text Source"):
+    with pytest.raises(TranslationError, match="原文语言"):
         list(service.translate_stream("Unsupported source language."))
 
 
@@ -159,7 +159,7 @@ def test_milmmt_resume_retries_only_failed_segment_without_chat_context():
 
     service = make_service(handler, detect)
     source = " ".join(f"Paragraph {index} has exact values [12]." for index in range(300))
-    with pytest.raises(TranslationError, match="Part 2"):
+    with pytest.raises(TranslationError, match="第 2/"):
         list(service.translate_stream(source, on_checkpoint=checkpoints.append))
     saved = checkpoints[-1]
     assert len(saved.completed) == 1

@@ -37,6 +37,7 @@ def test_model_review_and_layout_settings_round_trip(qtbot) -> None:
             },
             "translation": {"preset": "academic", "custom_prompt": "Preserve all numbers."},
             "ocr": {"review_before_translation": False, "enhance_image": False},
+            # The legacy hide_on_focus_loss key still loads and is ignored.
             "ui": {"bilingual_layout": "side_by_side", "hide_on_focus_loss": False},
         }
     )
@@ -77,7 +78,7 @@ def test_refresh_does_not_silently_replace_missing_model(qtbot) -> None:
     dialog._active_models_task_id = 17
     dialog._on_models_refresh_finished(17, ["other-model"], "")
     assert dialog.model_combo.currentText() == "my-chosen-model"
-    assert "missing" in dialog.connection_status.text()
+    assert "未安装" in dialog.connection_status.text()
 
 
 def test_cancel_settings_invalidates_pending_model_refresh(qtbot, monkeypatch) -> None:

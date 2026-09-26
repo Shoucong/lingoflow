@@ -91,7 +91,6 @@ def test_close_during_cold_start_allows_immediate_reopen(
     settings = AppSettings()
     settings.ollama.model = model
     settings.ollama.host = f"http://127.0.0.1:{server.server_port}"
-    settings.ui.hide_on_focus_loss = False
     monkeypatch.setattr(TranslationPopup, "_start_outside_click_monitor", lambda self: None)
     popups = []
 

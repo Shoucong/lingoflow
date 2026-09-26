@@ -29,6 +29,7 @@ class TranslationSignals(Protocol):
     translation_error: object
     translation_completed: object
     translation_finished: object
+    translation_source_detected: object
 
 
 class TranslationWorkflow:
@@ -44,6 +45,7 @@ class TranslationWorkflow:
         signals: TranslationSignals,
         notifier: Notifier,
         popup_factory: Callable[[AppSettings], TranslationPopup],
+        on_settings_requested: Callable[[str], None] | None = None,
     ) -> None:
         self.settings = settings
         self.translator = translator
@@ -53,6 +55,7 @@ class TranslationWorkflow:
         self._signals = signals
         self._notifier = notifier
         self._popup_factory = popup_factory
+        self._on_settings_requested = on_settings_requested
 
         self.popup: TranslationPopup | None = None
         self.active_task: BackgroundTask | None = None
@@ -119,8 +122,8 @@ class TranslationWorkflow:
                 self._notifier.update_status("Ready")
             else:
                 self._notifier.show_notification(
-                    "Selection unavailable",
-                    "Could not read the selection. Check Accessibility permissions.",
+                    messages.SELECTION_UNAVAILABLE_TITLE,
+                    messages.SELECTION_UNAVAILABLE_MESSAGE,
                 )
                 self._notifier.update_status("Ready")
             return
@@ -211,6 +214,9 @@ class TranslationWorkflow:
                             task.task_id,
                             saved,
                         ),
+                        on_source_detected=lambda language: (
+                            self._signals.translation_source_detected.emit(task.task_id, language)
+                        ),
                     ):
                         if task.is_cancelled():
                             logger.info("Translation cancelled")
@@ -233,7 +239,7 @@ class TranslationWorkflow:
 
                     if emitted_text:
                         raise TranslationError(
-                            "Connection interrupted. Partial output retained; retry when ready."
+                            "连接中断，已保留部分译文，可稍后重试。"
                         ) from e
                     retry_count += 1
                     if retry_count <= max_retries:
@@ -265,7 +271,7 @@ class TranslationWorkflow:
                 return
 
             logger.error(f"Translation error: {e}")
-            self._signals.translation_error.emit(task.task_id, f"Translation failed: {e}")
+            self._signals.translation_error.emit(task.task_id, f"翻译失败：{e}")
 
         finally:
             if not task.is_cancelled():
@@ -294,6 +300,11 @@ class TranslationWorkflow:
             self.session.checkpoint = checkpoint
             if self.popup:
                 self.popup.set_progress(len(checkpoint.completed), checkpoint.total)
+
+    def on_source_detected(self, task_id: int, language: str) -> None:
+        """Show the locally identified source language for the active request."""
+        if self.is_active_task(task_id) and self.popup:
+            self.popup.set_detected_source_language(language)
 
     def on_cleared(self, task_id: int) -> None:
         """Clear active popup translation output."""
@@ -327,10 +338,18 @@ class TranslationWorkflow:
             self.popup.closed.connect(self.on_popup_closed)
             self.popup.stop_requested.connect(self.stop_from_popup)
             self.popup.retry_requested.connect(self.retry_from_popup)
+            if self._on_settings_requested:
+                self.popup.settings_requested.connect(self._on_settings_requested)
 
-    def dismiss_popup(self, reason: str) -> None:
+    def dismiss_popup(self, reason: str, keep_pinned: bool = False) -> None:
         """Dismiss the popup even if macOS has hidden it."""
         if not self.popup:
+            return
+        try:
+            if keep_pinned and getattr(self.popup, "is_pinned", False):
+                return
+        except RuntimeError:
+            self.popup = None
             return
 
         logger.debug(reason)

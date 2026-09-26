@@ -63,6 +63,7 @@ class LLMProvider(Protocol):
         cancel_check: Callable[[], bool] | None = None,
         checkpoint: TranslationCheckpoint | None = None,
         on_checkpoint: Callable[[TranslationCheckpoint], None] | None = None,
+        on_source_detected: Callable[[str], None] | None = None,
     ) -> Iterator[str]:
         """Yield translated text chunks."""
 

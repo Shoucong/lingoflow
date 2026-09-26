@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -12,6 +13,19 @@ from lingoflow.config.settings import AppSettings
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+STATUS_TEXT = {
+    "Ready": "就绪",
+    "Translating...": "正在翻译…",
+    "Capturing...": "正在截图…",
+    "Recognizing...": "正在识别文字…",
+    "Reading selection...": "正在读取选中文字…",
+    "Review text": "等待编辑原文",
+    "Failed": "翻译失败",
+    "Ollama offline": "Ollama 未运行",
+    "Model unavailable": "模型不可用",
+}
+BUSY_STATUSES = {"Translating...", "Capturing...", "Recognizing...", "Reading selection..."}
 
 
 def format_hotkey(settings: AppSettings, action: str) -> str:
@@ -53,10 +67,30 @@ class TrayController:
         self._on_input = on_input
 
         self.tray_icon = QSystemTrayIcon()
+        self.menu: QMenu | None = None
         self.status_action: QAction | None = None
         self.translate_action: QAction | None = None
         self.ocr_action: QAction | None = None
         self._setup()
+
+    def _menu_action(self, name: str, callback: Callable[[], None]) -> Callable[[], None]:
+        """Run a menu command on the next event-loop pass, after the menu closes.
+
+        ``triggered`` is delivered while AppKit is still finishing the status
+        item's menu tracking. Commands that activate the app and order a window
+        front are therefore queued once instead of running inside that context.
+        """
+
+        def trigger(*_args) -> None:
+            logger.debug("Menu action %s selected", name)
+            QTimer.singleShot(0, lambda: self._run_menu_action(name, callback))
+
+        return trigger
+
+    @staticmethod
+    def _run_menu_action(name: str, callback: Callable[[], None]) -> None:
+        logger.debug("Menu action %s running", name)
+        callback()
 
     def _setup(self) -> None:
         """Create the system tray icon and menu."""
@@ -67,48 +101,53 @@ class TrayController:
                 QApplication.style().StandardPixmap.SP_ComputerIcon
             )
         self.tray_icon.setIcon(icon)
-        self.tray_icon.setToolTip(f"{APP_NAME} - Ready")
+        self.tray_icon.setToolTip(f"{APP_NAME} · 就绪")
 
         menu = QMenu()
+        self.menu = menu
+        menu.aboutToShow.connect(lambda: logger.debug("Status menu opening"))
+        menu.aboutToHide.connect(lambda: logger.debug("Status menu closing"))
 
-        self.status_action = QAction("● Ready", menu)
+        self.status_action = QAction("● 就绪", menu)
         self.status_action.setEnabled(False)
         menu.addAction(self.status_action)
 
         menu.addSeparator()
 
         self.translate_action = QAction(self._translate_label(), menu)
-        self.translate_action.triggered.connect(self._on_translate)
+        self.translate_action.triggered.connect(self._menu_action("translate", self._on_translate))
         menu.addAction(self.translate_action)
 
         self.ocr_action = QAction(self._ocr_label(), menu)
-        self.ocr_action.triggered.connect(self._on_ocr)
+        self.ocr_action.triggered.connect(self._menu_action("ocr", self._on_ocr))
         menu.addAction(self.ocr_action)
 
         if self._on_input:
-            input_action = QAction("Translate Typed Text…", menu)
-            input_action.triggered.connect(self._on_input)
+            input_action = QAction("输入文字翻译…", menu)
+            input_action.triggered.connect(self._menu_action("input", self._on_input))
             menu.addAction(input_action)
 
         menu.addSeparator()
 
-        settings_action = QAction("Settings...", menu)
-        settings_action.triggered.connect(self._on_settings)
+        settings_action = QAction("设置…", menu)
+        settings_action.triggered.connect(self._menu_action("settings", self._on_settings))
         menu.addAction(settings_action)
 
         if self._on_permissions:
-            permissions_action = QAction("Setup Permissions...", menu)
-            permissions_action.triggered.connect(self._on_permissions)
+            permissions_action = QAction("权限与诊断…", menu)
+            permissions_action.triggered.connect(
+                self._menu_action("permissions", self._on_permissions)
+            )
             menu.addAction(permissions_action)
 
-        about_action = QAction("About", menu)
-        about_action.triggered.connect(self._on_about)
+        about_action = QAction(f"关于 {APP_NAME}", menu)
+        about_action.triggered.connect(self._menu_action("about", self._on_about))
         menu.addAction(about_action)
 
         menu.addSeparator()
 
-        quit_action = QAction("Quit", menu)
-        quit_action.triggered.connect(self._on_quit)
+        quit_action = QAction(f"退出 {APP_NAME}", menu)
+        quit_action.triggered.connect(self._menu_action("quit", self._on_quit))
         menu.addAction(quit_action)
 
         self.tray_icon.setContextMenu(menu)
@@ -125,16 +164,9 @@ class TrayController:
 
     def update_status(self, status: str) -> None:
         """Update tray icon status."""
-        if status == "Ready":
-            self._set_status("● Ready", f"{APP_NAME} - Ready")
-        elif status == "Translating...":
-            self._set_status("◐ Translating...", f"{APP_NAME} - Translating...")
-        elif status == "Capturing...":
-            self._set_status("◐ Capturing...", f"{APP_NAME} - Capturing...")
-        elif status == "Recognizing...":
-            self._set_status("◐ Recognizing...", f"{APP_NAME} - Recognizing text...")
-        else:
-            self._set_status(f"● {status}", f"{APP_NAME} - {status}")
+        text = STATUS_TEXT.get(status, status)
+        marker = "◐" if status in BUSY_STATUSES else "●"
+        self._set_status(f"{marker} {text}", f"{APP_NAME} · {text}")
 
     def show_notification(self, title: str, message: str) -> None:
         """Show a system notification."""
@@ -157,9 +189,7 @@ class TrayController:
         self.tray_icon.setToolTip(tooltip)
 
     def _translate_label(self) -> str:
-        """Return the current translate action label."""
-        return f"Translate Selection ({format_hotkey(self.settings, 'translate')})"
+        return f"翻译选中文字\t{format_hotkey(self.settings, 'translate')}"
 
     def _ocr_label(self) -> str:
-        """Return the current OCR action label."""
-        return f"OCR Screenshot ({format_hotkey(self.settings, 'ocr')})"
+        return f"截图识别翻译\t{format_hotkey(self.settings, 'ocr')}"

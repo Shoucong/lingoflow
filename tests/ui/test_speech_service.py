@@ -74,7 +74,6 @@ def test_popup_speaks_source_selection_in_configured_accent(speech, qtbot, monke
     service, log = speech
     monkeypatch.setattr(TranslationPopup, "_start_outside_click_monitor", lambda self: None)
     settings = AppSettings()
-    settings.ui.hide_on_focus_loss = False
     settings.speech.source_locale = "en-GB"
     popup = TranslationPopup(settings, tmp_path / "geometry.json", service)
     qtbot.addWidget(popup)

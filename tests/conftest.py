@@ -52,3 +52,23 @@ def isolated_ocr_capture_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     monkeypatch.setattr(constants, "OCR_CAPTURE_DIR", capture_dir)
     monkeypatch.setattr(ocr_module, "OCR_CAPTURE_DIR", capture_dir)
     return capture_dir
+
+
+@pytest.fixture
+def own_popup(qapp):
+    """Close WA_DeleteOnClose popups after a test without touching deleted wrappers."""
+    from PyQt6 import sip
+
+    owned = []
+
+    def register(widget):
+        owned.append(widget)
+        return widget
+
+    yield register
+    for widget in owned:
+        if not sip.isdeleted(widget):
+            widget.dismiss()
+    from PyQt6.QtCore import QCoreApplication, QEvent
+
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)

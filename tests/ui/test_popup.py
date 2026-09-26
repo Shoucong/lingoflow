@@ -6,44 +6,53 @@ pytest.importorskip("PyQt6")
 pytest.importorskip("pytestqt")
 
 from PyQt6.QtGui import QTextCursor
+from PyQt6.QtWidgets import QApplication
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.ui.popup import TranslationPopup
 
 
 @pytest.fixture
-def popup(qtbot, monkeypatch, tmp_path) -> TranslationPopup:
+def popup(qtbot, monkeypatch, tmp_path, own_popup) -> TranslationPopup:
     # Keep tests independent of global macOS event monitors and other windows.
     monkeypatch.setattr(TranslationPopup, "_start_outside_click_monitor", lambda self: None)
-    settings = AppSettings()
-    settings.ui.hide_on_focus_loss = False
-    widget = TranslationPopup(settings, window_state_path=tmp_path / "window-state.json")
-    qtbot.addWidget(widget)
+    widget = TranslationPopup(AppSettings(), window_state_path=tmp_path / "window-state.json")
+    own_popup(widget)
     widget.resize(420, 320)
     widget.show_with_text("Original text")
     return widget
 
 
-def test_popup_uses_configured_source_language_and_can_dismiss(qtbot, monkeypatch) -> None:
+def shown(widget) -> bool:
+    return widget.isVisibleTo(widget.window())
+
+
+def test_popup_uses_readable_language_names_and_can_dismiss(qtbot, monkeypatch, own_popup):
     monkeypatch.setattr(TranslationPopup, "_start_outside_click_monitor", lambda self: None)
     settings = AppSettings()
     settings.translation.source_language = "English"
     settings.translation.target_language = "Japanese"
     popup = TranslationPopup(settings)
-    qtbot.addWidget(popup)
+    own_popup(popup)
 
     popup.show_with_text("Hello")
     popup.append_translation("こんにちは")
-    qtbot.waitUntil(
-        lambda: "こんにちは" in popup.translation_text.toPlainText(),
-        timeout=1000,
-    )
+    qtbot.waitUntil(lambda: "こんにちは" in popup.translation_text.toPlainText(), timeout=1000)
 
-    assert popup.source_label.text() == "English"
+    assert popup.source_label.text() == "英语"
+    assert popup.target_combo.currentText() == "日语"
     assert popup.get_target_language() == "Japanese"
 
     popup.dismiss()
     qtbot.waitUntil(lambda: not popup.isVisible(), timeout=1000)
+
+
+def test_auto_source_shows_auto_until_the_language_is_identified(popup) -> None:
+    assert popup.source_label.text() == "自动"
+    popup.set_detected_source_language("Japanese")
+    assert popup.source_label.text() == "日语"
+    popup.show_with_text("Another request")
+    assert popup.source_label.text() == "自动"
 
 
 @pytest.mark.parametrize(
@@ -159,14 +168,38 @@ def test_retry_clears_old_selection_and_follows_new_translation(popup, qtbot) ->
     assert scrollbar.value() == scrollbar.maximum()
 
 
+def test_actions_appear_only_for_the_current_state(popup) -> None:
+    popup.start_translation()
+    assert popup.status_label.text() == "正在等待模型…"
+    assert shown(popup.stop_btn)
+    assert not shown(popup.retry_btn)
+    assert not shown(popup.copy_btn)
+    assert not shown(popup.speak_translation_btn)
+
+    popup.append_translation("译文")
+    assert popup.status_label.text() == "正在翻译…"
+    assert shown(popup.copy_btn)
+    assert not shown(popup.speak_translation_btn)
+
+    popup.finish_translation()
+    # A finished reading has no disabled button row and no character count.
+    assert popup.status_label.text() == ""
+    assert not shown(popup.stop_btn)
+    assert not shown(popup.retry_btn)
+    assert not shown(popup.latest_btn)
+    assert shown(popup.copy_btn) and shown(popup.speak_translation_btn)
+    assert not popup.findChildren(type(popup.stop_btn), "closeButton")
+
+
 def test_error_preserves_partial_translation(popup) -> None:
     popup.start_translation()
     popup.append_translation("Useful partial text")
     popup.show_error("Connection lost")
     assert popup.translation_text.toPlainText() == "Useful partial text"
-    assert "partial" in popup.status_label.text()
+    assert "部分译文" in popup.status_label.text()
     assert popup.status_label.toolTip() == "Connection lost"
-    assert not popup.stop_btn.isEnabled()
+    assert not shown(popup.stop_btn)
+    assert shown(popup.retry_btn)
 
 
 def test_stop_and_retry_buttons_request_work_without_changing_source(popup, qtbot) -> None:
@@ -174,29 +207,126 @@ def test_stop_and_retry_buttons_request_work_without_changing_source(popup, qtbo
     with qtbot.waitSignal(popup.stop_requested):
         popup.stop_btn.click()
     popup.stop_translation()
-    assert "Stopped" in popup.status_label.text()
+    assert "已停止" in popup.status_label.text()
+    assert popup.retry_btn.text() == "重试"
     with qtbot.waitSignal(popup.retry_requested) as signal:
         popup.retry_btn.click()
     assert signal.args == ["Original text"]
 
 
-def test_review_edits_are_used_for_retry_and_preserve_original(popup, qtbot) -> None:
+def test_stopped_multi_part_translation_offers_to_continue(popup) -> None:
+    popup.start_translation()
+    popup.set_progress(0, 3)
+    popup.append_translation("第一段。")
+    popup.set_progress(1, 3)
+    assert "第 2/3 段" in popup.status_label.text()
+    popup.stop_translation()
+    assert popup.retry_btn.text() == "继续翻译"
+
+
+def test_copy_uses_the_displayed_translation_and_menu_offers_other_forms(popup) -> None:
+    popup.start_translation()
+    popup.append_translation("显示的译文")
+    popup.finish_translation()
+    popup.copy_btn.click()
+    assert QApplication.clipboard().text() == "显示的译文"
+    popup.more_menu.aboutToShow.emit()
+    popup.copy_both_action.trigger()
+    assert QApplication.clipboard().text() == "Original text\n\n显示的译文"
+    popup.copy_source_action.trigger()
+    assert QApplication.clipboard().text() == "Original text"
+
+
+def test_reading_source_is_read_only_and_does_not_block_dismissal(popup) -> None:
+    popup.start_translation()
+    popup.append_translation("译文")
+    popup.finish_translation()
+    assert popup.source_text.isReadOnly()
+    assert not popup.is_reviewing
+    assert popup._auto_dismiss_allowed()
+
+
+def test_typed_input_or_ocr_review_is_an_explicit_edit_mode(popup, qtbot) -> None:
+    popup.show_with_text("OCR text with eror")
     popup.prepare_review()
-    popup.source_text.setPlainText("Corrected OCR text")
     assert popup.is_reviewing
+    assert not popup.source_text.isReadOnly()
+    assert shown(popup.translate_btn) and shown(popup.cancel_edit_btn)
+    assert not shown(popup.pin_btn)
     assert not popup._auto_dismiss_allowed()
+    popup.outside_clicked.emit()
+    assert popup.isVisible()
+
+    popup.source_text.setPlainText("Corrected OCR text")
     with qtbot.waitSignal(popup.retry_requested) as signal:
-        popup.retry_btn.click()
+        popup.translate_btn.click()
     assert signal.args == ["Corrected OCR text"]
     popup.start_translation()
+    assert not popup.is_reviewing
     assert popup.source_text.isReadOnly()
-    popup.append_translation("校正后的译文")
+    assert shown(popup.pin_btn)
+
+
+def test_edit_source_from_reading_can_be_cancelled_without_losing_translation(popup) -> None:
+    popup.start_translation()
+    popup.append_translation("原来的译文")
     popup.finish_translation()
-    popup.source_text.setPlainText("Another correction")
-    assert "Source edited" in popup.status_label.text()
-    assert not popup._status_clear_timer.isActive()
-    popup._restore_source()
+    popup.enter_edit_mode()
+    assert popup.is_reviewing
+    assert not shown(popup.text_splitter.target_panel)
+    popup.source_text.setPlainText("Original text")  # unchanged: no confirmation needed
+    popup._cancel_edit()
+    assert not popup.is_reviewing
     assert popup.get_source_text() == "Original text"
+    assert popup.translation_text.toPlainText() == "原来的译文"
+    assert popup.isVisible()
+
+
+def test_cancelling_modified_edits_asks_before_discarding(popup, monkeypatch) -> None:
+    popup.prepare_review()
+    popup.source_text.setPlainText("Unsubmitted typing")
+    asked = []
+    monkeypatch.setattr(popup, "_confirm_discard", lambda: asked.append(True) or False)
+    popup._cancel_edit()
+    assert asked and popup.isVisible() and popup.get_source_text() == "Unsubmitted typing"
+
+
+def test_editing_is_unavailable_while_translating(popup) -> None:
+    popup.start_translation()
+    popup.enter_edit_mode()
+    assert not popup.is_reviewing
+
+
+def test_long_source_is_collapsed_to_an_expandable_excerpt(popup, qtbot) -> None:
+    source = "A long source paragraph that keeps going.\n" * 40
+    popup.show_with_text(source)
+    qtbot.waitUntil(lambda: shown(popup.expand_source_btn))
+    collapsed = popup.source_text.maximumHeight()
+    assert collapsed < popup.source_text.document().size().height()
+    popup.expand_source_btn.click()
+    assert popup.expand_source_btn.text() == "收起原文"
+    assert popup.source_text.maximumHeight() > collapsed
+    assert popup.get_source_text() == source
+
+
+def test_short_source_needs_no_expand_control(popup, qtbot) -> None:
+    popup.show_with_text("kinase")
+    qtbot.wait(20)
+    assert not shown(popup.expand_source_btn)
+
+
+def test_latest_button_appears_only_after_leaving_the_bottom(popup, qtbot) -> None:
+    popup.start_translation()
+    popup.append_translation("\n".join(f"Line {i}" for i in range(120)))
+    scrollbar = popup.translation_text.verticalScrollBar()
+    qtbot.waitUntil(lambda: scrollbar.maximum() > 0)
+    scrollbar.setValue(scrollbar.maximum())
+    assert not shown(popup.latest_btn)
+    scrollbar.setValue(0)
+    assert shown(popup.latest_btn)
+    popup.latest_btn.click()
+    assert scrollbar.value() == scrollbar.maximum()
+    assert not shown(popup.latest_btn)
 
 
 def test_appearance_settings_change_palette_and_reading_layout(popup) -> None:
@@ -213,6 +343,8 @@ def test_appearance_settings_change_palette_and_reading_layout(popup) -> None:
     popup.update_settings(settings)
     dark = popup.palette().color(QPalette.ColorRole.Window)
     assert dark.lightness() < light.lightness()
+    popup.side_by_side_action.trigger()
+    assert popup.text_splitter.orientation() == Qt.Orientation.Vertical
 
 
 def test_language_change_after_typed_input_emits_translation_request(popup, qtbot) -> None:
@@ -223,5 +355,11 @@ def test_language_change_after_typed_input_emits_translation_request(popup, qtbo
     popup.append_translation("输入文字")
     popup.finish_translation()
     with qtbot.waitSignal(popup.language_changed) as changed:
-        popup.target_combo.setCurrentText("Japanese")
+        popup.target_combo.setCurrentIndex(popup.target_combo.findData("Japanese"))
     assert changed.args == ["Japanese"]
+
+
+def test_speech_settings_are_one_click_from_the_more_menu(popup, qtbot) -> None:
+    with qtbot.waitSignal(popup.settings_requested) as requested:
+        popup.speech_settings_action.trigger()
+    assert requested.args == ["speech"]

@@ -99,6 +99,7 @@ class FakeTranslator:
         cancel_check=None,
         checkpoint=None,
         on_checkpoint=None,
+        on_source_detected=None,
     ):
         self.started.set()
         self.requests.append(
@@ -189,6 +190,9 @@ class FakePopup:
         self.closed = FakeSignal()
         self.stop_requested = FakeSignal()
         self.retry_requested = FakeSignal()
+        self.settings_requested = FakeSignal()
+        self.is_pinned = False
+        self.detected_languages: list[str] = []
         self.target_language = settings.translation.target_language
         self.shown: list[dict[str, object]] = []
         self.chunks: list[str] = []
@@ -236,6 +240,9 @@ class FakePopup:
 
     def show_error(self, message: str) -> None:
         self.errors.append(message)
+
+    def set_detected_source_language(self, language: str) -> None:
+        self.detected_languages.append(language)
 
     def clear_translation(self) -> None:
         self.cleared_count += 1
@@ -373,7 +380,7 @@ def test_translate_selection_shows_popup_and_streams_translation(
         harness.translator.requests[-1]["target_language"]
         == harness.settings.translation.target_language
     )
-    assert "Ready" in harness.controller.tray_icon.tooltip
+    assert "就绪" in harness.controller.tray_icon.tooltip
 
 
 def test_translate_request_without_ollama_notifies_and_does_not_create_popup(
@@ -389,7 +396,7 @@ def test_translate_request_without_ollama_notifies_and_does_not_create_popup(
     qtbot.waitUntil(lambda: bool(harness.controller.tray_icon.messages))
     assert harness.popup is None
     assert harness.controller.tray_icon.messages[-1][0] == messages.OLLAMA_NOT_RUNNING_TITLE
-    assert messages.OLLAMA_OFFLINE_STATUS in harness.controller.tray_icon.tooltip
+    assert "Ollama 未运行" in harness.controller.tray_icon.tooltip
 
 
 def test_translate_request_without_selected_text_notifies(
@@ -454,7 +461,7 @@ def test_ocr_cancelled_restores_ready_without_popup(
 
     qtbot.waitUntil(lambda: not harness.controller._is_processing_ocr)
     assert harness.popup is None
-    assert "Ready" in harness.controller.tray_icon.tooltip
+    assert "就绪" in harness.controller.tray_icon.tooltip
 
 
 def test_ocr_capture_error_notifies_without_starting_worker(
@@ -506,7 +513,7 @@ def test_translation_error_is_shown_in_popup(
     qtbot.waitUntil(lambda: not harness.controller._is_translating, timeout=2000)
 
     assert harness.popup.errors == ["model failed"]
-    assert "Failed" in harness.controller.tray_icon.tooltip
+    assert "翻译失败" in harness.controller.tray_icon.tooltip
 
 
 def test_popup_close_cancels_active_translation(

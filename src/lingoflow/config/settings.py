@@ -249,10 +249,8 @@ class UISettings(SettingsModel):
         default=True,
         description="Show original text in popup",
     )
-    hide_on_focus_loss: bool = Field(
-        default=True,
-        description="Hide popup when it loses focus",
-    )
+    # The former hide_on_focus_loss switch is ignored when old files load: the
+    # popup's pin is the only control deciding whether an unpinned window stays.
     bilingual_layout: Literal["stacked", "side_by_side"] = "stacked"
 
     @field_validator("theme")

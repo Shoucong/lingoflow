@@ -33,7 +33,6 @@ def main():
 
     settings = AppSettings()
     settings.ollama.host = "http://127.0.0.1:11434"
-    settings.ui.hide_on_focus_loss = False
     with httpx.Client(base_url=settings.ollama.host, timeout=3, trust_env=False) as api:
         resident = api.get("/api/ps").raise_for_status().json()["models"]
     assert not any(
