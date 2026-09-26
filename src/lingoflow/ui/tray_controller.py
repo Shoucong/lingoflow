@@ -82,14 +82,14 @@ class TrayController:
         """
 
         def trigger(*_args) -> None:
-            logger.debug("Menu action %s selected", name)
+            logger.info("trace menu: %s selected", name)
             QTimer.singleShot(0, lambda: self._run_menu_action(name, callback))
 
         return trigger
 
     @staticmethod
     def _run_menu_action(name: str, callback: Callable[[], None]) -> None:
-        logger.debug("Menu action %s running", name)
+        logger.info("trace menu: %s running after menu closed", name)
         callback()
 
     def _setup(self) -> None:
@@ -105,8 +105,8 @@ class TrayController:
 
         menu = QMenu()
         self.menu = menu
-        menu.aboutToShow.connect(lambda: logger.debug("Status menu opening"))
-        menu.aboutToHide.connect(lambda: logger.debug("Status menu closing"))
+        menu.aboutToShow.connect(lambda: logger.info("trace menu: opening"))
+        menu.aboutToHide.connect(lambda: logger.info("trace menu: closing"))
 
         self.status_action = QAction("● 就绪", menu)
         self.status_action.setEnabled(False)

@@ -2,8 +2,9 @@
 
 Pinning is per window: it is never read from or written to disk, so every new
 panel starts unpinned. Only the user's preferred size is remembered. A fresh
-panel fits its content (short words stay compact, long text grows and then
-scrolls) until the user resizes it; after that the panel keeps the user's size.
+panel opens at a comfortable standard height, so it does not appear tiny and
+then stretch as the first words arrive; long text grows it further and then
+scrolls. After the user resizes a panel, it keeps the user's size.
 """
 
 from __future__ import annotations
@@ -23,6 +24,8 @@ logger = get_logger(__name__)
 
 DEFAULT_WIDTH = 460
 DEFAULT_MAX_HEIGHT = 520
+# Opening height; automatic sizing only grows beyond it for long text.
+START_HEIGHT = 320
 # Leave space for the system title bar and its frame.
 TITLE_BAR_ALLOWANCE = 32
 
@@ -126,7 +129,7 @@ class PopupWindowController(QObject):
         reserve = min(self.max_auto_height, available.height())
         # Reserve the largest automatic height so growth never needs to move the panel.
         placed = fit_to_screen(QRect(cursor + QPoint(10, 20), QSize(width, reserve)), available)
-        height = min(initial_height or reserve, reserve)
+        height = min(max(initial_height or 0, START_HEIGHT), reserve)
         self._apply_geometry(QRect(placed.topLeft(), QSize(placed.width(), height)), available)
         self._prepared = True
 
@@ -160,7 +163,8 @@ class PopupWindowController(QObject):
         if available is None:
             return
         limit = min(self.max_auto_height, available.bottom() - geometry.top() + 1)
-        height = max(window.minimumHeight(), min(desired, limit))
+        floor = min(START_HEIGHT, limit)
+        height = max(window.minimumHeight(), floor, min(desired, limit))
         if grow_only:
             height = max(height, geometry.height())
         if height != geometry.height():

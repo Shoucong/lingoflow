@@ -74,8 +74,8 @@ class MenuWindowPresenter(QObject):
                 window.show()
             window.raise_()
             window.activateWindow()
-            logger.debug(
-                "Presented %s: visible=%s app_active=%s",
+            logger.info(
+                "trace window: presented %s visible=%s app_active=%s",
                 type(window).__name__,
                 window.isVisible(),
                 application_is_active(),
@@ -91,6 +91,12 @@ class MenuWindowPresenter(QObject):
                 set_stays_on_top(watched, active)
                 if active:
                     watched.raise_()
+                logger.info(
+                    "trace window: %s active=%s app_active=%s",
+                    type(watched).__name__,
+                    active,
+                    application_is_active(),
+                )
         return super().eventFilter(watched, event)
 
 

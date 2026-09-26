@@ -9,7 +9,7 @@ from PyQt6.QtGui import QTextCursor
 from lingoflow.config.settings import AppSettings
 from lingoflow.infrastructure.macos.event_monitor import is_reading_exit
 from lingoflow.ui.popup import TranslationPopup
-from lingoflow.ui.window_controller import fit_to_screen, is_stays_on_top
+from lingoflow.ui.window_controller import START_HEIGHT, fit_to_screen, is_stays_on_top
 
 
 @pytest.fixture
@@ -182,19 +182,22 @@ def test_new_translation_preserves_visible_panel_geometry_and_pin(make_popup):
     assert popup.is_pinned
 
 
-def test_short_text_stays_compact_and_long_text_grows_until_limit(make_popup, qtbot):
+def test_window_opens_at_standard_height_and_grows_only_for_long_text(make_popup, qtbot):
     popup = make_popup("kinase")
+    qtbot.wait(30)
+    start = popup.height()
+    assert start == START_HEIGHT
     popup.start_translation()
     popup.append_translation("激酶")
     popup.finish_translation()
     qtbot.wait(30)
-    compact = popup.height()
-    assert compact < 300
+    # A short translation does not make the window jump in size.
+    assert popup.height() == start
 
     popup.show_with_text("A long paragraph")
     popup.start_translation()
     popup.append_translation("\n".join(f"很长的一段译文 {i}" for i in range(60)))
-    qtbot.waitUntil(lambda: popup.height() > compact, timeout=1000)
+    qtbot.waitUntil(lambda: popup.height() > start, timeout=1000)
     assert popup.height() <= popup.window_controller.max_auto_height
 
 

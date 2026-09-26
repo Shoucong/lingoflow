@@ -475,6 +475,11 @@ class TranslationPopup(QWidget):
             logger.debug(f"Popup shown with text: {source_text[:80]}...")
         else:
             logger.debug(f"Popup shown with source text ({len(source_text)} chars)")
+        logger.info(
+            "trace popup: shown pinned=%s monitors=%s",
+            self.window_controller.pinned,
+            self._native_monitor.active_count,
+        )
 
     def append_translation(self, chunk: str) -> None:
         """Append a translation chunk (thread-safe)."""
@@ -886,6 +891,7 @@ class TranslationPopup(QWidget):
         self.window_controller.set_pinned(pinned)
         self._apply_pin_state()
         self.pinned_changed.emit(pinned)
+        logger.info("trace popup: pinned=%s level=%s", pinned, self._native_level())
 
     def _apply_pin_state(self) -> None:
         """Sync every visible and native trace of the pin from one value."""
@@ -927,18 +933,22 @@ class TranslationPopup(QWidget):
             return
         if self._own_menu_open():
             # That click only closes our open menu or list.
+            logger.info("trace popup: outside click only closed an open menu")
             return
         self.outside_clicked.emit()
 
     def _handle_app_switch(self) -> None:
         """Another regular application became active, e.g. with Command-Tab."""
         if self._auto_dismiss_allowed():
-            logger.debug("Another application became active; closing unpinned popup")
-            self.dismiss()
+            self._dismiss_for("app switch")
 
     def _dismiss_from_outside(self) -> None:
         if self._auto_dismiss_allowed():
-            self.dismiss()
+            self._dismiss_for("outside click")
+
+    def _dismiss_for(self, reason: str) -> None:
+        logger.info("trace popup: closing (%s) state=%s", reason, self._state)
+        self.dismiss()
 
     # =============================================================================
     # Helpers
@@ -1085,11 +1095,24 @@ class TranslationPopup(QWidget):
             if self._mode == PopupMode.EDITING:
                 self._cancel_edit()
             else:
-                self.dismiss()
+                self._dismiss_for("escape")
         else:
             super().keyPressEvent(event)
 
+    def _native_level(self) -> int | None:
+        if QApplication.platformName() != "cocoa":
+            return None  # winId is only an NSView on the native macOS backend
+        try:
+            import objc
+
+            return int(objc.objc_object(c_void_p=int(self.winId())).window().level())
+        except Exception:
+            return None
+
     def hideEvent(self, event) -> None:  # noqa: N802
+        if hasattr(self, "window_controller") and not self._closing and not self.isMinimized():
+            # A visible reading window should only hide when it closes or minimizes.
+            logger.warning("trace popup: hidden while open (possible flash)")
         # Minimizing is not a cancellation request; a closed window stops speaking.
         if hasattr(self, "window_controller") and not self.isMinimized():
             self._stop_outside_click_monitor()
@@ -1122,6 +1145,8 @@ class TranslationPopup(QWidget):
         self._fit_timer.stop()
         self._copy_feedback_timer.stop()
         self._stop_outside_click_monitor()
+        if event.spontaneous():
+            logger.info("trace popup: closing (close button)")
         should_emit_closed = not self._dismiss_emitted and (
             self.isVisible() or self._is_translating or bool(self._source_text)
         )
