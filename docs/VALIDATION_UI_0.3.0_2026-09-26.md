@@ -9,6 +9,8 @@
 | `bd8a300` | 窗口行为、固定、阅读浮窗、编辑模式、菜单窗口、设置分组、中文界面 |
 | `5a8d009` | 修复应用切换监听的 AppKit selector；自检加入固定切换测量；版本 0.3.0 |
 | `f6e2497` | 新窗口以 320 px 标准高度打开（安装后用户反馈）；不含文本内容的窗口事件日志 |
+| 界面语言提交 | 设置 → 通用 → 界面 → 语言：English（默认）/ 中文；修复 `&` 被当作助记符、多余高度分给原文摘要 |
+| 启动修复提交 | 恢复权限菜单项的中文参数（见下文“安装时发现的问题”） |
 
 ## 实现要点
 
@@ -31,13 +33,16 @@
   - 原文默认显示三行摘要，可展开。按钮只在对应状态出现：停止、重试 / 继续翻译、回到末尾。
   - 复制按钮复制当前显示的译文；复制原文、复制双语、并排显示、朗读设置都在“⋯”菜单里。
   - 全部界面改为中文。
-- **设置分组：** 通用 / 朗读 / 模型与高级，原有选项全部保留。
+- **设置分组：** 通用 / 朗读 / 模型与高级（英文界面为 General / Speech / Model & Advanced），原有选项全部保留。
+- **界面语言（安装后用户要求）。** 默认 English，可选中文，适用于阅读窗口、菜单栏、About、设置、权限窗口、
+  通知和翻译错误提示。每条文字在调用处用 `lingoflow.i18n.tr(英文, 中文)` 同时写出。保存后立即生效：
+  菜单栏和已打开的阅读窗口原地刷新文字，固定状态、内容和译文语言不变。旧配置文件没有该字段，按 English 读取。
 
 ## 源码测试
 
 ```sh
-build/venv-macos-0.2.0/bin/python scripts/run_checks.py                      # 197 passed
-build/venv-macos-0.2.0/bin/python scripts/run_checks.py --qt-platform cocoa tests/ui tests/integration  # 95 passed
+build/venv-macos-0.2.0/bin/python scripts/run_checks.py                      # 203 passed
+build/venv-macos-0.2.0/bin/python scripts/run_checks.py --qt-platform cocoa tests/ui tests/integration  # 101 passed
 build/venv-macos-0.2.0/bin/python -m ruff check src tests scripts            # passed
 ```
 
@@ -84,7 +89,17 @@ computer-use 工具无法授权纯菜单栏应用，当前 shell 也没有发送
 | 外部点击 | 流式中和完成后点击外部都会收起并取消请求。 |
 | 用户观感 | 整体认可。反馈新窗口“先很小再变大”不自然，已在 `f6e2497` 改为标准开始高度并重新安装。About 保持中文。 |
 
+## 安装时发现的问题
+
+加入界面语言后第一次安装的包启动即退出。原因是给 `&` 加注释时，行尾注释把同一行的中文参数注释掉了，
+`TrayController` 抛出 TypeError。日志停在 HotkeyManager 初始化之后，没有进入事件循环；直接运行二进制可以看到
+traceback。测试没有发现，是因为测试从不构建可选的“权限与诊断”和“输入文字翻译”菜单项；包内自检也不创建菜单栏。
+已修复，并加入在两种语言下构建完整菜单的回归。重新安装后，日志确认进入事件循环、快捷键监听已启动。
+此后每次安装都检查日志中的 `Application started, entering event loop`，不再只看进程是否存在。
+
 ## 未验证项
+
+- 界面语言：English 与中文的阅读窗口、设置和 About 做过源码渲染检查，安装包中尚未由用户实际切换语言确认。
 
 - 真实点击未覆盖：等待模型阶段的外部点击、用 ⌘Tab 切换应用收起、固定窗与 About 重叠、手动输入时 Esc 的确认。
   这些由回归测试覆盖，但没有真实交互证据。

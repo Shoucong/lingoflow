@@ -73,6 +73,13 @@ as `trace menu:`, `trace window:` and `trace popup:` lines for checking a sessio
 - Move between monitors, unplug a display, and test a full-screen Space. The window must remain reachable.
 - Check light/dark/system theme, opacity, font size, 原文与译文并排 and 显示原文.
 
+## Interface Language
+
+- A fresh install and older settings files show English. Switch Settings → General →
+  Interface → Language to 中文 and save: the menu bar and an open reading window change
+  immediately, keeping pin state, text and target language. Open About and Settings again
+  to confirm they are Chinese; switch back to English.
+
 ## Menu Windows
 
 - With the app in the background and in front, and with a pinned window open, click

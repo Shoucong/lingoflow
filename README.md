@@ -7,6 +7,7 @@ A lightweight macOS translation app powered by Ollama, Apple Vision OCR, and nat
 - **Quick Translation**: Select text and press `Option+D` to translate
 - **OCR Translation**: Press `Option+S` to capture screen region and translate
 - **Streaming Output**: See translations as they generate
+- **Interface Language**: English (default) or Chinese, in Settings → General
 - **Reading Window**: Translation-first layout, per-window pin (unpinned windows close when you click or switch to another app), native dragging/resizing, remembered size and bilingual layout
 - **Long Text**: Complete source, budgeted segments, stop/retry and in-memory resume
 - **Editable Input**: Review OCR, correct source text, or use “Translate Typed Text…” from the menu
