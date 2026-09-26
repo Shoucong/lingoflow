@@ -4,7 +4,7 @@ Settings models using Pydantic.
 Provides type-safe configuration with automatic validation, serialization, and default values.
 """
 
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -131,6 +131,18 @@ class OllamaSettings(SettingsModel):
         default=GENERAL_MODEL,
         description="Model for general purpose tasks",
     )
+    context_window: int = Field(default=8192, ge=2048, le=131072)
+    max_output_tokens: int = Field(default=2048, ge=128, le=32768)
+    temperature: float = Field(default=0.1, ge=0.0, le=2.0)
+    keep_alive: int = Field(default=300, ge=0, le=3600)
+    thinking: Literal["off", "auto", "on"] = "off"
+    read_timeout: float = Field(default=120.0, ge=5.0, le=600.0)
+
+    @model_validator(mode="after")
+    def validate_budget(self) -> "OllamaSettings":
+        if self.max_output_tokens + 512 >= self.context_window:
+            raise ValueError("Context must leave input space beyond the output budget and prompt")
+        return self
 
     @field_validator("host")
     @classmethod
@@ -191,7 +203,7 @@ class TranslationSettings(SettingsModel):
         default=DEFAULT_TARGET_LANG,
         description="Default target language for translations",
     )
-    # For future: custom prompt templates
+    preset: Literal["faithful", "academic"] = "faithful"
     custom_prompt: Optional[str] = Field(
         default=None,
         description="Custom prompt template for translations",
@@ -241,6 +253,7 @@ class UISettings(SettingsModel):
         default=True,
         description="Hide popup when it loses focus",
     )
+    bilingual_layout: Literal["stacked", "side_by_side"] = "stacked"
 
     @field_validator("theme")
     @classmethod
@@ -263,6 +276,7 @@ class OCRSettings(SettingsModel):
         default=True,
         description="Apply image enhancement before OCR",
     )
+    review_before_translation: bool = True
 
     @field_validator("language")
     @classmethod

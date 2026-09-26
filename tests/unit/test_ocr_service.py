@@ -72,9 +72,14 @@ def test_new_capture_path_is_unique_and_managed(isolated_ocr_capture_dir: Path) 
 def test_cancelling_capture_terminates_its_process(isolated_ocr_capture_dir: Path) -> None:
     service = make_service()
     results = []
-    worker = threading.Thread(target=lambda: results.append(service._run_capture(
-        [sys.executable, "-c", "import time; time.sleep(30)"], timeout=5,
-    )))
+    worker = threading.Thread(
+        target=lambda: results.append(
+            service._run_capture(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                timeout=5,
+            )
+        )
+    )
     worker.start()
     try:
         deadline = time.monotonic() + 2
@@ -89,3 +94,32 @@ def test_cancelling_capture_terminates_its_process(isolated_ocr_capture_dir: Pat
     finally:
         service.cancel()
         worker.join(3)
+
+
+def test_image_enhancement_is_applied_and_temporary_derivative_is_removed(
+    isolated_ocr_capture_dir,
+    tmp_path,
+    monkeypatch,
+):
+    from PIL import Image
+
+    from lingoflow.core.ocr import OCRResult
+
+    source = tmp_path / "original.png"
+    Image.new("RGB", (100, 100), "white").save(source)
+    service = make_service()
+    paths = []
+
+    def recognize(path):
+        paths.append(path)
+        assert path.exists()
+        with Image.open(path) as image:
+            assert image.width >= 300
+        return OCRResult("recognized")
+
+    monkeypatch.setattr(service, "_extract_text_apple_vision", recognize)
+    result = service.extract_text(source)
+    assert result.text == "recognized"
+    assert result.source_image_path == str(source)
+    assert paths[0] != source and not paths[0].exists()
+    assert source.exists()

@@ -52,6 +52,7 @@ class MainSignals(QObject):
     status_update = pyqtSignal(str)  # status text
     selection_ready = pyqtSignal(int, str, str)
     startup_checked = pyqtSignal(int, object)
+    translation_checkpoint = pyqtSignal(int, object)
     translation_chunk = pyqtSignal(int, str)  # task id, text chunk
     translation_cleared = pyqtSignal(int)  # task id
     translation_error = pyqtSignal(int, str)  # task id, message
@@ -213,6 +214,7 @@ class MainController(QObject):
         self.signals.show_error.connect(self._show_error_dialog)
         self.signals.status_update.connect(self._update_status)
         self.signals.translation_chunk.connect(self._on_translation_chunk)
+        self.signals.translation_checkpoint.connect(self.translation_workflow.on_checkpoint)
         self.signals.translation_cleared.connect(self._on_translation_cleared)
         self.signals.translation_error.connect(self._on_translation_error)
         self.signals.translation_completed.connect(self._on_translation_completed)
@@ -226,6 +228,7 @@ class MainController(QObject):
             settings=self.settings,
             on_translate=self._on_translate_requested,
             on_ocr=self._on_ocr_requested,
+            on_input=self._open_input,
             on_settings=self._show_settings,
             on_permissions=(
                 (lambda: self._show_onboarding(force=True)) if self.permission_service else None
@@ -298,6 +301,11 @@ class MainController(QObject):
         self.translation_workflow.cancel_active("New OCR requested")
         self.translation_workflow.dismiss_popup("Starting screenshot capture")
         self.ocr_workflow.request_ocr()
+
+    def _open_input(self) -> None:
+        """Open an editable source without requiring a selection or screenshot."""
+        self.ocr_workflow.cancel_active()
+        self.translation_workflow.review_text("")
 
     def _ocr_worker(self, task: BackgroundTask, image_path) -> None:
         """Background worker for OCR text extraction."""

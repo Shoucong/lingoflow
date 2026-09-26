@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Callable, Optional
 
 from lingoflow.config.settings import AppSettings
+from lingoflow.core.text_preparation import TranslationCheckpoint, fingerprint, split_text
 from lingoflow.infrastructure.ollama_client import (
     OllamaCancelledError,
     OllamaClient,
@@ -121,7 +122,10 @@ class TranslationService:
             settings: App settings (loads from disk if not provided)
         """
         self.settings = settings or AppSettings.load()
-        self.client = OllamaClient(host=self.settings.ollama.host)
+        self.client = OllamaClient(
+            host=self.settings.ollama.host,
+            read_timeout=self.settings.ollama.read_timeout,
+        )
 
         logger.info(f"TranslationService initialized with model: {self.settings.ollama.model}")
 
@@ -136,62 +140,132 @@ class TranslationService:
         source_language: Optional[str] = None,
         on_chunk: Optional[Callable[[str], None]] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
+        checkpoint: TranslationCheckpoint | None = None,
+        on_checkpoint: Callable[[TranslationCheckpoint], None] | None = None,
     ) -> Iterator[str]:
-        """
-        Translate text with streaming output.
-
-        Args:
-            text: Text to translate
-            target_language: Target language (uses settings default if None)
-            source_language: Source language ("auto" or specific language)
-            on_chunk: Optional callback for each chunk (for UI updates in future)
-
-        Yields:
-            Translation text chunks as they arrive
-        """
-
+        """Translate complete source segments, retaining only completed retry checkpoints."""
         if cancel_check and cancel_check():
             return
-
-        # Use defaults from settings if not specified
-        target_lang = target_language or self.settings.translation.target_language
-        source_lang = source_language or self.settings.translation.source_language
-
-        # Build prompt
-        system_prompt = self._get_system_prompt()
-        user_prompt = self._build_user_prompt(text, source_lang, target_lang)
-
-        logger.info(f"Starting translation: {source_lang} -> {target_lang}")
-        logger.debug(f"Source text length: {len(text)} chars")
-
-        def should_cancel() -> bool:
-            return bool(cancel_check and cancel_check())
-
-        saw_text = False
+        if not text.strip():
+            raise OllamaError("Enter text to translate.")
+        settings = self.settings.model_copy(deep=True)
+        client = self.client
+        target = target_language or settings.translation.target_language
+        source = source_language or settings.translation.source_language
+        system = settings.translation.custom_prompt or TRANSLATION_SYSTEM_PROMPT
+        if settings.translation.preset == "academic":
+            system += (
+                "\nPreserve citations, equations, symbols, numerical values, units and "
+                "technical abbreviations. Do not add explanations or invent references."
+            )
+        prefix = self._build_user_prompt("", source, target)
+        # Reserve output plus actual prompt bytes, a bounded context hint, and role tokens.
+        overhead = len((system + prefix).encode("utf-8")) + 512
+        budget = min(
+            settings.ollama.context_window - settings.ollama.max_output_tokens - overhead,
+            settings.ollama.max_output_tokens * 2,
+        )
+        if budget < 128:
+            raise OllamaError(
+                "Prompt and output budget leave too little input space. Increase context."
+            )
         try:
-            for chunk in self.client.chat_stream(
-                message=user_prompt,
-                model=self.settings.ollama.model,
-                system_prompt=system_prompt,
-                cancel_check=should_cancel,
-            ):
-                if should_cancel():
-                    logger.info("Translation cancelled")
-                    break
-
-                if chunk.content:
-                    saw_text = saw_text or bool(chunk.content.strip())
-                    if on_chunk:
-                        on_chunk(chunk.content)
-                    yield chunk.content
-            if not should_cancel() and not saw_text:
-                raise OllamaError("The model returned no translation. Check its prompt or retry.")
-        except OllamaConnectionError as e:
-            logger.error(f"Ollama connection error during translation: {e}")
-            raise
-        except OllamaError as e:
-            logger.error(f"Ollama error during translation: {e}")
-            raise
+            segments = split_text(text, budget)
+        except ValueError as error:
+            raise OllamaError(str(error)) from error
+        key = fingerprint(
+            text,
+            {
+                "ollama": settings.ollama.model_dump(),
+                "system": system,
+                "source": source,
+                "target": target,
+            },
+        )
+        completed = (
+            list(checkpoint.completed) if checkpoint and checkpoint.fingerprint == key else []
+        )
+        if len(completed) > len(segments):
+            completed = []
+        if on_checkpoint:
+            on_checkpoint(TranslationCheckpoint(key, tuple(completed), len(segments)))
+        for result in completed:
+            if cancel_check and cancel_check():
+                return
+            if on_chunk:
+                on_chunk(result)
+            yield result
+        options = {
+            "num_ctx": settings.ollama.context_window,
+            "num_predict": settings.ollama.max_output_tokens,
+            "temperature": settings.ollama.temperature,
+        }
+        think = {"auto": None, "off": False, "on": True}[settings.ollama.thinking]
+        for index in range(len(completed), len(segments)):
+            if cancel_check and cancel_check():
+                return
+            segment = segments[index]
+            translated = []
+            pending_space = ""
+            if segment.text.strip():
+                prompt = self._build_user_prompt(segment.text, source, target)
+                if index:
+                    context = (
+                        segments[index - 1]
+                        .text.encode("utf-8")[-256:]
+                        .decode(
+                            "utf-8",
+                            errors="ignore",
+                        )
+                    )
+                    prompt = (
+                        "Previous source context (do not translate again):\n"
+                        + context
+                        + "\nTranslate only the current segment below.\n"
+                        + prompt
+                    )
+                try:
+                    for chunk in client.chat_stream(
+                        message=prompt,
+                        model=settings.ollama.model,
+                        system_prompt=system,
+                        cancel_check=cancel_check,
+                        options=options,
+                        keep_alive=settings.ollama.keep_alive,
+                        think=think,
+                    ):
+                        if cancel_check and cancel_check():
+                            return
+                        combined = pending_space + chunk.content
+                        visible = combined.rstrip()
+                        pending_space = combined[len(visible) :]
+                        if visible:
+                            translated.append(visible)
+                            if on_chunk:
+                                on_chunk(visible)
+                            yield visible
+                except OllamaCancelledError:
+                    raise
+                except OllamaError as error:
+                    error_type = (
+                        OllamaConnectionError
+                        if isinstance(error, OllamaConnectionError)
+                        else OllamaError
+                    )
+                    raise error_type(f"Part {index + 1}/{len(segments)}: {error}") from error
+                if cancel_check and cancel_check():
+                    return
+                if not any(part.strip() for part in translated):
+                    raise OllamaError(
+                        f"Part {index + 1}/{len(segments)}: The model returned no translation."
+                    )
+            if segment.separator:
+                if on_chunk:
+                    on_chunk(segment.separator)
+                yield segment.separator
+            completed.append("".join(translated) + segment.separator)
+            if on_checkpoint:
+                on_checkpoint(TranslationCheckpoint(key, tuple(completed), len(segments)))
 
     def translate(
         self,
@@ -315,7 +389,9 @@ class TranslationService:
         """
         self.cancel()
         self.settings = settings
-        self.client = OllamaClient(host=settings.ollama.host)
+        self.client = OllamaClient(
+            host=settings.ollama.host, read_timeout=settings.ollama.read_timeout
+        )
         logger.info(f"Settings updated, model: {settings.ollama.model}")
 
     # =========================================================

@@ -178,14 +178,29 @@ class OCRService:
                 error_message=f"Image file not found: {image_path}",
             )
 
+        prepared = None
         try:
             with self._vision_gate, objc.autorelease_pool():
                 if cancel_check and cancel_check():
                     return OCRResult(text="", cancelled=True)
-                return self._extract_text_apple_vision(image_path)
+                recognition_path = image_path
+                if self.settings.ocr.enhance_image:
+                    prepared = self._new_capture_path()
+                    with Image.open(image_path) as image:
+                        self._preprocess_image(image).save(prepared, format="PNG")
+                    self._secure_capture_file(prepared)
+                    recognition_path = prepared
+                if cancel_check and cancel_check():
+                    return OCRResult(text="", cancelled=True)
+                result = self._extract_text_apple_vision(recognition_path)
+                result.source_image_path = str(image_path)
+                return result
         except Exception as e:
             logger.error(f"OCR extraction failed: {e}")
             return OCRResult(text="", success=False, error_message=str(e))
+        finally:
+            if prepared is not None:
+                prepared.unlink(missing_ok=True)
 
     def capture_screen_region(self, region: CaptureRegion) -> Path:
         """

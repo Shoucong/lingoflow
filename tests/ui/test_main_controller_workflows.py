@@ -97,6 +97,8 @@ class FakeTranslator:
         source_language: str | None = None,
         on_chunk=None,
         cancel_check=None,
+        checkpoint=None,
+        on_checkpoint=None,
     ):
         self.started.set()
         self.requests.append(
@@ -195,6 +197,7 @@ class FakePopup:
         self.started_count = 0
         self.finished_count = 0
         self.dismissed = False
+        self.is_reviewing = False
         self.updated_settings: list[AppSettings] = []
 
     def show_with_text(
@@ -222,7 +225,13 @@ class FakePopup:
     def finish_translation(self) -> None:
         self.finished_count += 1
 
+    def prepare_review(self) -> None:
+        self.is_reviewing = True
+
     def stop_translation(self) -> None:
+        pass
+
+    def set_progress(self, completed, total) -> None:
         pass
 
     def show_error(self, message: str) -> None:
@@ -276,6 +285,7 @@ class UnsupportedPermissions:
 @pytest.fixture
 def controller_harness(monkeypatch, qapp, isolated_settings_paths) -> ControllerHarness:
     settings = AppSettings()
+    settings.ocr.review_before_translation = False
     clipboard = FakeClipboard()
     translator = FakeTranslator()
     ocr = FakeOCRService()
@@ -329,6 +339,14 @@ def wait_for_idle_translation(qtbot, harness: ControllerHarness) -> None:
         timeout=2000,
     )
     qtbot.waitUntil(lambda: not harness.controller._is_translating, timeout=2000)
+
+
+def test_typed_input_waits_for_user_to_request_translation(controller_harness) -> None:
+    harness = controller_harness
+    harness.controller._open_input()
+    assert harness.popup.is_reviewing
+    assert not harness.translator.requests
+    assert harness.popup.get_source_text() == ""
 
 
 def test_translate_selection_shows_popup_and_streams_translation(
@@ -586,7 +604,9 @@ def test_new_selection_replaces_old_task_and_rejects_late_output(qtbot, controll
 
 
 def test_cancelled_capture_keeps_ui_responsive_and_cleans_late_image(
-    qtbot, controller_harness, monkeypatch,
+    qtbot,
+    controller_harness,
+    monkeypatch,
 ):
     harness = controller_harness
     entered, release = threading.Event(), threading.Event()
@@ -607,3 +627,15 @@ def test_cancelled_capture_keeps_ui_responsive_and_cleans_late_image(
     qtbot.waitUntil(lambda: harness.controller._task_runner.active_count == 0)
     assert harness.popup is None
     assert harness.ocr.cleanup_paths == [harness.ocr.capture_result]
+
+
+def test_ocr_review_waits_for_explicit_translation(qtbot, controller_harness):
+    harness = controller_harness
+    harness.controller.settings.ocr.review_before_translation = True
+    harness.controller._on_ocr_requested()
+    qtbot.waitUntil(lambda: harness.popup is not None)
+    assert harness.popup.is_reviewing
+    assert harness.translator.requests == []
+    harness.popup.retry_requested.emit("corrected OCR text")
+    wait_for_idle_translation(qtbot, harness)
+    assert harness.translator.requests[-1]["text"] == "corrected OCR text"

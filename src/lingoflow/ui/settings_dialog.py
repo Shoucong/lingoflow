@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -19,9 +20,11 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSlider,
     QSpinBox,
     QTabWidget,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -32,6 +35,7 @@ from lingoflow.core.speech import LANGUAGE_LOCALES
 from lingoflow.infrastructure.macos.speech import MacOSSpeechService
 from lingoflow.infrastructure.ollama_client import OllamaClient, OllamaError
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
+from lingoflow.ui.theme import apply_palette
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -69,11 +73,13 @@ class SettingsDialog(QDialog):
         self._setup_window()
         self._setup_ui()
         self._load_settings()
+        apply_palette(self, self.settings.ui.theme)
         self._speech.voices_changed.connect(self._update_speech_voice_choices)
         self.speech_locale_combo.currentIndexChanged.connect(self._update_speech_voice_choices)
         self.source_lang_combo.currentIndexChanged.connect(self._update_speech_voice_choices)
         self.target_lang_combo.currentIndexChanged.connect(self._update_speech_voice_choices)
         self.tabs.currentChanged.connect(self._on_tab_changed)
+        self.theme_combo.currentTextChanged.connect(self._preview_theme)
         self.connection_test_finished.connect(self._on_connection_test_finished)
         self.models_refresh_finished.connect(self._on_models_refresh_finished)
 
@@ -88,6 +94,7 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("LingoFlow Settings")
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
+        self.resize(620, 660)
         self.setModal(False)
         self.setWindowModality(Qt.WindowModality.NonModal)
 
@@ -101,12 +108,11 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.tabs)
 
         # Create tabs
-        self.tabs.addTab(self._create_general_tab(), "General")
-        self.tabs.addTab(self._create_languages_tab(), "Languages")
-        self.tabs.addTab(self._create_hotkeys_tab(), "Hotkeys")
-        self.tabs.addTab(self._create_appearance_tab(), "Appearance")
-        self._speech_tab = self._create_speech_tab()
-        self.tabs.addTab(self._speech_tab, "Speech")
+        self._add_scroll_tab(self._create_general_tab(), "General")
+        self._add_scroll_tab(self._create_languages_tab(), "Languages")
+        self._add_scroll_tab(self._create_hotkeys_tab(), "Hotkeys")
+        self._add_scroll_tab(self._create_appearance_tab(), "Appearance")
+        self._speech_tab = self._add_scroll_tab(self._create_speech_tab(), "Speech")
 
         # Button row
         button_layout = QHBoxLayout()
@@ -126,6 +132,17 @@ class SettingsDialog(QDialog):
         button_layout.addWidget(self.save_btn)
 
         layout.addLayout(button_layout)
+
+    def _add_scroll_tab(self, content: QWidget, title: str) -> QScrollArea:
+        page = QScrollArea()
+        page.setWidgetResizable(True)
+        page.setFrameShape(QScrollArea.Shape.NoFrame)
+        page.setWidget(content)
+        self.tabs.addTab(page, title)
+        return page
+
+    def _preview_theme(self, theme: str) -> None:
+        apply_palette(self, theme.lower())
 
     # =============================================================================
     # Tab Creation
@@ -172,6 +189,33 @@ class SettingsDialog(QDialog):
         ollama_layout.addRow("Model:", model_layout)
 
         layout.addWidget(ollama_group)
+
+        generation = QGroupBox("Model behavior")
+        form = QFormLayout(generation)
+        self.context_spin = QSpinBox()
+        self.context_spin.setRange(2048, 131072)
+        self.context_spin.setSingleStep(1024)
+        form.addRow("Context window (tokens):", self.context_spin)
+        self.output_spin = QSpinBox()
+        self.output_spin.setRange(128, 32768)
+        self.output_spin.setSingleStep(256)
+        form.addRow("Output budget per part:", self.output_spin)
+        self.temperature_spin = QDoubleSpinBox()
+        self.temperature_spin.setRange(0.0, 2.0)
+        self.temperature_spin.setSingleStep(0.05)
+        form.addRow("Temperature:", self.temperature_spin)
+        self.thinking_combo = QComboBox()
+        self.thinking_combo.addItems(["off", "auto", "on"])
+        form.addRow("Thinking (supported models):", self.thinking_combo)
+        self.keep_alive_spin = QSpinBox()
+        self.keep_alive_spin.setRange(0, 3600)
+        self.keep_alive_spin.setSuffix(" s")
+        form.addRow("Keep model loaded:", self.keep_alive_spin)
+        self.timeout_spin = QSpinBox()
+        self.timeout_spin.setRange(5, 600)
+        self.timeout_spin.setSuffix(" s")
+        form.addRow("Generation read timeout:", self.timeout_spin)
+        layout.addWidget(generation)
 
         privacy_group = QGroupBox("Privacy")
         privacy_layout = QFormLayout(privacy_group)
@@ -249,6 +293,8 @@ class SettingsDialog(QDialog):
         self.enhance_image_check = QCheckBox("Enhance image before OCR")
         self.enhance_image_check.setToolTip("Apply contrast and sharpening to improve accuracy")
         ocr_layout.addRow("", self.enhance_image_check)
+        self.ocr_review_check = QCheckBox("Review and edit recognized text before translating")
+        ocr_layout.addRow("", self.ocr_review_check)
 
         layout.addWidget(ocr_group)
 
@@ -265,10 +311,16 @@ class SettingsDialog(QDialog):
         advanced_group = QGroupBox("Advanced")
         advanced_layout = QFormLayout(advanced_group)
 
-        # Custom prompt (future feature)
+        self.preset_combo = QComboBox()
+        self.preset_combo.addItems(["faithful", "academic"])
+        advanced_layout.addRow("Translation style:", self.preset_combo)
         self.custom_prompt_check = QCheckBox("Use custom system prompt")
-        self.custom_prompt_check.setEnabled(False)  # Future feature
         advanced_layout.addRow("", self.custom_prompt_check)
+        self.custom_prompt_input = QTextEdit()
+        self.custom_prompt_input.setAcceptRichText(False)
+        self.custom_prompt_input.setMaximumHeight(120)
+        self.custom_prompt_check.toggled.connect(self.custom_prompt_input.setEnabled)
+        advanced_layout.addRow(self.custom_prompt_input)
 
         layout.addWidget(advanced_group)
 
@@ -413,6 +465,12 @@ class SettingsDialog(QDialog):
         # Show source text
         self.show_source_check = QCheckBox("Show source text in popup")
         popup_layout.addRow("", self.show_source_check)
+        self.hide_focus_check = QCheckBox("Hide an unpinned window after losing focus")
+        popup_layout.addRow("", self.hide_focus_check)
+        self.bilingual_layout_combo = QComboBox()
+        self.bilingual_layout_combo.addItem("Stacked", "stacked")
+        self.bilingual_layout_combo.addItem("Side by side", "side_by_side")
+        popup_layout.addRow("Text layout:", self.bilingual_layout_combo)
 
         layout.addWidget(popup_group)
         layout.addStretch()
@@ -430,6 +488,12 @@ class SettingsDialog(QDialog):
         # General
         self.host_input.setText(s.ollama.host)
         self.model_combo.setCurrentText(s.ollama.model)
+        self.context_spin.setValue(s.ollama.context_window)
+        self.output_spin.setValue(s.ollama.max_output_tokens)
+        self.temperature_spin.setValue(s.ollama.temperature)
+        self.thinking_combo.setCurrentText(s.ollama.thinking)
+        self.keep_alive_spin.setValue(s.ollama.keep_alive)
+        self.timeout_spin.setValue(int(s.ollama.read_timeout))
 
         # Translation
         source_index = self.source_lang_combo.findData(s.translation.source_language)
@@ -439,6 +503,10 @@ class SettingsDialog(QDialog):
         target_index = self.target_lang_combo.findData(s.translation.target_language)
         if target_index >= 0:
             self.target_lang_combo.setCurrentIndex(target_index)
+        self.preset_combo.setCurrentText(s.translation.preset)
+        self.custom_prompt_check.setChecked(bool(s.translation.custom_prompt))
+        self.custom_prompt_input.setPlainText(s.translation.custom_prompt or "")
+        self.custom_prompt_input.setEnabled(bool(s.translation.custom_prompt))
 
         # Hotkeys
         self.translate_hotkey_input.setText(s.hotkeys.translate)
@@ -452,12 +520,17 @@ class SettingsDialog(QDialog):
         self.font_size_spin.setValue(s.ui.font_size)
         self.opacity_slider.setValue(int(s.ui.popup_opacity * 100))
         self.show_source_check.setChecked(s.ui.show_source_text)
+        self.hide_focus_check.setChecked(s.ui.hide_on_focus_loss)
+        self.bilingual_layout_combo.setCurrentIndex(
+            self.bilingual_layout_combo.findData(s.ui.bilingual_layout)
+        )
 
         # OCR
         ocr_index = self.ocr_lang_combo.findData(s.ocr.language)
         if ocr_index >= 0:
             self.ocr_lang_combo.setCurrentIndex(ocr_index)
         self.enhance_image_check.setChecked(s.ocr.enhance_image)
+        self.ocr_review_check.setChecked(s.ocr.review_before_translation)
 
         # Privacy
         self.allow_content_logging_check.setChecked(s.privacy.allow_content_logging)
@@ -534,7 +607,7 @@ class SettingsDialog(QDialog):
         available = False
         message = "Not available"
         try:
-            client = OllamaClient(host=host)
+            client = OllamaClient(host=host, read_timeout=3.0)
             available = client.is_available()
             message = "Connected" if available else "Not available"
         except Exception as e:
@@ -582,7 +655,7 @@ class SettingsDialog(QDialog):
     def _refresh_models_worker(self, task: BackgroundTask, host: str) -> None:
         """Fetch available models in the background."""
         try:
-            client = OllamaClient(host=host)
+            client = OllamaClient(host=host, read_timeout=3.0)
             models = client.list_models()
             model_names = [model.name for model in models]
             if not task.is_cancelled():
@@ -627,8 +700,10 @@ class SettingsDialog(QDialog):
         index = self.model_combo.findText(current_model)
         if index >= 0:
             self.model_combo.setCurrentIndex(index)
-        elif self.model_combo.count() > 0:
-            self.model_combo.setCurrentIndex(0)
+        elif current_model:
+            self.model_combo.setEditText(current_model)
+            self.connection_status.setText("Configured model missing; choose an installed model")
+            return
 
         self.connection_status.setText(f"✓ {self.model_combo.count()} models")
         self.connection_status.setStyleSheet("color: green;")
@@ -664,9 +739,25 @@ class SettingsDialog(QDialog):
         data["ollama"]["model"] = (
             self.model_combo.currentText().strip() or self.settings.ollama.model
         )
+        data["ollama"].update(
+            {
+                "context_window": self.context_spin.value(),
+                "max_output_tokens": self.output_spin.value(),
+                "temperature": self.temperature_spin.value(),
+                "thinking": self.thinking_combo.currentText(),
+                "keep_alive": self.keep_alive_spin.value(),
+                "read_timeout": self.timeout_spin.value(),
+            }
+        )
 
         data["translation"]["source_language"] = self.source_lang_combo.currentData()
         data["translation"]["target_language"] = self.target_lang_combo.currentData()
+        data["translation"]["preset"] = self.preset_combo.currentText()
+        data["translation"]["custom_prompt"] = (
+            (self.custom_prompt_input.toPlainText().strip() or None)
+            if self.custom_prompt_check.isChecked()
+            else None
+        )
 
         translate_hotkey = self.translate_hotkey_input.text().strip()
         if translate_hotkey:
@@ -680,9 +771,12 @@ class SettingsDialog(QDialog):
         data["ui"]["font_size"] = self.font_size_spin.value()
         data["ui"]["popup_opacity"] = self.opacity_slider.value() / 100.0
         data["ui"]["show_source_text"] = self.show_source_check.isChecked()
+        data["ui"]["hide_on_focus_loss"] = self.hide_focus_check.isChecked()
+        data["ui"]["bilingual_layout"] = self.bilingual_layout_combo.currentData()
 
         data["ocr"]["language"] = self.ocr_lang_combo.currentData()
         data["ocr"]["enhance_image"] = self.enhance_image_check.isChecked()
+        data["ocr"]["review_before_translation"] = self.ocr_review_check.isChecked()
 
         data["privacy"]["allow_content_logging"] = self.allow_content_logging_check.isChecked()
         data["privacy"]["keep_ocr_captures"] = self.keep_ocr_captures_check.isChecked()

@@ -5,6 +5,7 @@ Handles all communication with the local Ollama server.
 """
 
 import json
+import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass
 from typing import Optional
@@ -115,6 +116,7 @@ class OllamaClient:
         self,
         host: str = "http://localhost:11434",
         transport: Optional[httpx.BaseTransport] = None,
+        read_timeout: float = OLLAMA_READ_TIMEOUT,
     ):
         """
         Initialize the Ollama client.
@@ -126,9 +128,10 @@ class OllamaClient:
         self.host = host.rstrip("/")
         self._transport = transport
         self._streams = AsyncStreamRunner()
+        self._capabilities = {}
         self._timeout = httpx.Timeout(
             connect=OLLAMA_CONNECT_TIMEOUT,
-            read=OLLAMA_READ_TIMEOUT,
+            read=read_timeout,
             write=10.0,
             pool=5.0,
         )
@@ -148,6 +151,10 @@ class OllamaClient:
         model: str,
         system_prompt: Optional[str] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
+        *,
+        options: dict | None = None,
+        keep_alive: int | None = None,
+        think: bool | None = None,
     ) -> Iterator[OllamaStreamChunk]:
         try:
             yield from self._streams.iterate(
@@ -156,6 +163,9 @@ class OllamaClient:
                     model,
                     system_prompt,
                     cancel_check,
+                    options,
+                    keep_alive,
+                    think,
                 )
             )
         except RequestCancelledError as error:
@@ -167,6 +177,9 @@ class OllamaClient:
         model: str,
         system_prompt: Optional[str] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
+        options: dict | None = None,
+        keep_alive: int | None = None,
+        think: bool | None = None,
     ) -> AsyncIterator[OllamaStreamChunk]:
         """
         Send a chat message and stream the response.
@@ -197,6 +210,11 @@ class OllamaClient:
             "stream": True,
         }
 
+        if options is not None:
+            payload["options"] = options
+        if keep_alive is not None:
+            payload["keep_alive"] = keep_alive
+
         logger.debug(f"Starting streaming chat with model: {model}")
         logger.debug(f"Message length: {len(message)} chars")
 
@@ -206,6 +224,24 @@ class OllamaClient:
             async with httpx.AsyncClient(
                 timeout=self._timeout, transport=self._transport, trust_env=False
             ) as client:
+                if think is not None:
+                    cached = self._capabilities.get(model)
+                    if cached and time.monotonic() - cached[0] < 60:
+                        capabilities = cached[1]
+                    else:
+                        metadata = await client.post(f"{self.host}/api/show", json={"model": model})
+                        self._raise_for_status(metadata, model=model)
+                        try:
+                            capabilities = metadata.json().get("capabilities", [])
+                        except (ValueError, AttributeError) as error:
+                            raise OllamaError("Invalid model metadata from Ollama.") from error
+                        if not isinstance(capabilities, list):
+                            raise OllamaError("Invalid model capabilities from Ollama.")
+                        self._capabilities[model] = (time.monotonic(), capabilities)
+                    if "thinking" in capabilities:
+                        payload["think"] = think
+                    elif think:
+                        raise OllamaModelError("This model does not advertise thinking support.")
                 async with client.stream("POST", url, json=payload) as response:
                     self._raise_for_status(response, model=model)
 

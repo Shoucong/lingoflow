@@ -9,6 +9,7 @@ from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
 from lingoflow.core.ports import ClipboardPort, LLMProvider, Notifier
 from lingoflow.core.session import SessionStatus, TranslationSession
+from lingoflow.core.text_preparation import TranslationCheckpoint
 from lingoflow.infrastructure.ollama_client import OllamaConnectionError, OllamaError
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.ui import messages
@@ -22,6 +23,7 @@ class TranslationSignals(Protocol):
     """Signals emitted by translation workers."""
 
     selection_ready: object
+    translation_checkpoint: object
     translation_chunk: object
     translation_cleared: object
     translation_error: object
@@ -134,7 +136,26 @@ class TranslationWorkflow:
         )
         self.start_translation(text)
 
-    def start_translation(self, text: str) -> None:
+    def review_text(self, text: str) -> None:
+        """Show editable input without sending it to a model until requested."""
+        self.cancel_active("Reviewing text", update_status=False)
+        self.ensure_popup()
+        self.popup.show_with_text(text, source_language=self.settings.translation.source_language)
+        self.popup.prepare_review()
+        self.session = TranslationSession(
+            0,
+            text,
+            self.popup.get_target_language(),
+            SessionStatus.REVIEW,
+        )
+        self._app_state.reset()
+        self._notifier.update_status("Review text")
+
+    def start_translation(
+        self,
+        text: str,
+        checkpoint: TranslationCheckpoint | None = None,
+    ) -> None:
         """Start translation in a background task."""
         if not self.popup:
             return
@@ -153,13 +174,21 @@ class TranslationWorkflow:
             target_lang,
             SessionStatus.TRANSLATING,
         )
-        task.start(lambda current_task: self._translate_worker(current_task, text, target_lang))
+        task.start(
+            lambda current_task: self._translate_worker(
+                current_task,
+                text,
+                target_lang,
+                checkpoint,
+            )
+        )
 
     def _translate_worker(
         self,
         task: BackgroundTask,
         text: str,
         target_language: str,
+        checkpoint: TranslationCheckpoint | None = None,
     ) -> None:
         """Background worker for translation."""
         max_retries = 2
@@ -177,6 +206,11 @@ class TranslationWorkflow:
                         text,
                         target_language=target_language,
                         cancel_check=task.is_cancelled,
+                        checkpoint=checkpoint,
+                        on_checkpoint=lambda saved: self._signals.translation_checkpoint.emit(
+                            task.task_id,
+                            saved,
+                        ),
                     ):
                         if task.is_cancelled():
                             logger.info("Translation cancelled")
@@ -255,6 +289,12 @@ class TranslationWorkflow:
         if self.session and self.session.append(task_id, chunk):
             self.popup.append_translation(chunk)
 
+    def on_checkpoint(self, task_id: int, checkpoint: TranslationCheckpoint) -> None:
+        if self.is_active_task(task_id) and self.session:
+            self.session.checkpoint = checkpoint
+            if self.popup:
+                self.popup.set_progress(len(checkpoint.completed), checkpoint.total)
+
     def on_cleared(self, task_id: int) -> None:
         """Clear active popup translation output."""
         if not self.is_active_task(task_id) or not self.popup:
@@ -332,10 +372,16 @@ class TranslationWorkflow:
     def retry_from_popup(self, text: str) -> None:
         if not text.strip():
             return
+        checkpoint = (
+            self.session.checkpoint
+            if self.session
+            and self.session.status in {SessionStatus.FAILED, SessionStatus.CANCELLED}
+            else None
+        )
         self.cancel_active("Retry requested", update_status=False)
         if self.popup:
             self.popup.clear_translation()
-            self.start_translation(text)
+            self.start_translation(text, checkpoint)
 
     def on_popup_closed(self) -> None:
         """Cancel translation work when the popup is dismissed."""
@@ -345,6 +391,8 @@ class TranslationWorkflow:
 
     def on_popup_language_changed(self, language: str) -> None:
         """Re-translate when user changes target language in popup."""
+        if self.popup and self.popup.is_reviewing:
+            return
         self.cancel_active(
             messages.TARGET_LANGUAGE_CHANGED_CANCEL_REASON,
             update_status=False,

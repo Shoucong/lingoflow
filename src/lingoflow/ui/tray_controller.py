@@ -41,6 +41,7 @@ class TrayController:
         on_about: Callable[[], None],
         on_quit: Callable[[], None],
         on_permissions: Callable[[], None] | None = None,
+        on_input: Callable[[], None] | None = None,
     ) -> None:
         self.settings = settings
         self._on_translate = on_translate
@@ -49,6 +50,7 @@ class TrayController:
         self._on_about = on_about
         self._on_quit = on_quit
         self._on_permissions = on_permissions
+        self._on_input = on_input
 
         self.tray_icon = QSystemTrayIcon()
         self.status_action: QAction | None = None
@@ -82,6 +84,11 @@ class TrayController:
         self.ocr_action = QAction(self._ocr_label(), menu)
         self.ocr_action.triggered.connect(self._on_ocr)
         menu.addAction(self.ocr_action)
+
+        if self._on_input:
+            input_action = QAction("Translate Typed Text…", menu)
+            input_action.triggered.connect(self._on_input)
+            menu.addAction(input_action)
 
         menu.addSeparator()
 

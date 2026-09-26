@@ -168,8 +168,8 @@ def test_invalid_json_maps_to_ollama_error() -> None:
     [
         b'{"message":{"content":"partial"},"done":false}\n',
         b'{"error":"model failure"}\n',
-        b'not-json\n',
-        b'[]\n',
+        b"not-json\n",
+        b"[]\n",
         b'{"message":null,"done":true}\n',
         b'{"message":{"content":1},"done":true}\n',
         b'{"done":"true"}\n',
@@ -183,9 +183,11 @@ def test_invalid_or_incomplete_stream_cannot_succeed(body: bytes) -> None:
 
 
 def test_output_limit_keeps_last_text_before_reporting_incomplete() -> None:
-    client = client_for(lambda request: httpx.Response(
-        200, content=b'{"message":{"content":"partial"},"done":true,"done_reason":"length"}\n'
-    ))
+    client = client_for(
+        lambda request: httpx.Response(
+            200, content=b'{"message":{"content":"partial"},"done":true,"done_reason":"length"}\n'
+        )
+    )
     stream = client.chat_stream("source", "model-a")
     assert next(stream).content == "partial"
     with pytest.raises(OllamaError, match="incomplete"):
@@ -193,7 +195,39 @@ def test_output_limit_keeps_last_text_before_reporting_incomplete() -> None:
 
 
 def test_stream_stops_at_first_completion_marker() -> None:
-    client = client_for(lambda request: httpx.Response(
-        200, content=b'{"done":true}\nnot-another-frame\n'
-    ))
+    client = client_for(
+        lambda request: httpx.Response(200, content=b'{"done":true}\nnot-another-frame\n')
+    )
     assert list(client.chat_stream("source", "model-a"))[-1].done
+
+
+@pytest.mark.parametrize("supports_thinking", [True, False])
+def test_model_controls_reach_api_without_unsupported_thinking(supports_thinking):
+    payloads = []
+
+    def handler(request):
+        if request.url.path == "/api/show":
+            return httpx.Response(
+                200,
+                json={
+                    "capabilities": (
+                        ["completion", "thinking"] if supports_thinking else ["completion"]
+                    )
+                },
+            )
+        payloads.append(json.loads(request.content))
+        return httpx.Response(200, content=b'{"done":true}\n')
+
+    client = client_for(handler)
+    list(
+        client.chat_stream(
+            "source",
+            "model",
+            options={"num_ctx": 8192, "num_predict": 512, "temperature": 0.1},
+            keep_alive=60,
+            think=False,
+        )
+    )
+    assert payloads[0]["options"]["num_predict"] == 512
+    assert payloads[0]["keep_alive"] == 60
+    assert ("think" in payloads[0]) is supports_thinking

@@ -139,7 +139,10 @@ class OCRWorkflow:
         else:
             logger.info(f"OCR extracted text ({len(extracted_text)} chars)")
 
-        self._translation_workflow.translate_text(extracted_text)
+        if self.settings.ocr.review_before_translation:
+            self._translation_workflow.review_text(extracted_text)
+        else:
+            self._translation_workflow.translate_text(extracted_text)
 
     def is_active_task(self, task_id: int) -> bool:
         """Return whether a task still owns the active OCR operation."""

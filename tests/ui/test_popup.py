@@ -178,3 +178,38 @@ def test_stop_and_retry_buttons_request_work_without_changing_source(popup, qtbo
     with qtbot.waitSignal(popup.retry_requested) as signal:
         popup.retry_btn.click()
     assert signal.args == ["Original text"]
+
+
+def test_review_edits_are_used_for_retry_and_preserve_original(popup, qtbot) -> None:
+    popup.prepare_review()
+    popup.source_text.setPlainText("Corrected OCR text")
+    assert popup.is_reviewing
+    assert not popup._auto_dismiss_allowed()
+    with qtbot.waitSignal(popup.retry_requested) as signal:
+        popup.retry_btn.click()
+    assert signal.args == ["Corrected OCR text"]
+    popup.start_translation()
+    assert popup.source_text.isReadOnly()
+    popup.append_translation("校正后的译文")
+    popup.finish_translation()
+    popup.source_text.setPlainText("Another correction")
+    assert "Source edited" in popup.status_label.text()
+    assert not popup._status_clear_timer.isActive()
+    popup._restore_source()
+    assert popup.get_source_text() == "Original text"
+
+
+def test_appearance_settings_change_palette_and_reading_layout(popup) -> None:
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QPalette
+
+    settings = popup.settings.model_copy(deep=True)
+    settings.ui.theme = "light"
+    settings.ui.bilingual_layout = "side_by_side"
+    popup.update_settings(settings)
+    light = popup.palette().color(QPalette.ColorRole.Window)
+    assert popup.text_splitter.orientation() == Qt.Orientation.Horizontal
+    settings.ui.theme = "dark"
+    popup.update_settings(settings)
+    dark = popup.palette().color(QPalette.ColorRole.Window)
+    assert dark.lightness() < light.lightness()

@@ -10,13 +10,14 @@ from typing import Optional
 from uuid import uuid4
 
 from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QCursor, QTextCursor
+from PyQt6.QtGui import QCursor, QKeySequence, QShortcut, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPushButton,
     QSizePolicy,
     QSplitter,
@@ -33,6 +34,7 @@ from lingoflow.config.constants import (
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.speech import LANGUAGE_LOCALES, SpeechRequest
 from lingoflow.infrastructure.macos.speech import MacOSSpeechService
+from lingoflow.ui.theme import apply_palette, colors
 from lingoflow.ui.window_controller import PopupWindowController
 from lingoflow.utils.logger import get_logger
 
@@ -103,6 +105,7 @@ class TranslationPopup(QWidget):
         self._source_text = ""
         self._translated_text = ""
         self._is_translating = False
+        self._review_mode = False
         self._suppress_language_signal = False
         self._dismiss_emitted = False
         self._closing = False
@@ -122,6 +125,7 @@ class TranslationPopup(QWidget):
         self.window_controller = PopupWindowController(self, window_state_path)
         self.pin_btn.setChecked(self.window_controller.pinned)
         self._connect_signals()
+        self._refresh_theme()
 
         logger.debug("TranslationPopup initialized")
 
@@ -217,7 +221,7 @@ class TranslationPopup(QWidget):
         self.source_text = QTextEdit()
         self.source_text.setObjectName("sourceText")
         self.source_text.setAcceptRichText(False)
-        self.source_text.setReadOnly(True)
+        self.source_text.setReadOnly(False)
         self.source_text.setMinimumHeight(40)
         self.source_text.setPlaceholderText("Original text")
         self.source_text.setVisible(self.settings.ui.show_source_text)
@@ -280,7 +284,15 @@ class TranslationPopup(QWidget):
         # Copy button
         self.copy_btn = QPushButton("Copy")
         self.copy_btn.setObjectName("copyButton")
-        self.copy_btn.clicked.connect(self._copy_translation)
+        self.copy_menu = QMenu(self.copy_btn)
+        self.copy_target_action = self.copy_menu.addAction("Copy translation")
+        self.copy_target_action.triggered.connect(self._copy_translation)
+        self.copy_source_action = self.copy_menu.addAction("Copy source")
+        self.copy_source_action.triggered.connect(self._copy_source)
+        self.copy_both_action = self.copy_menu.addAction("Copy bilingual")
+        self.copy_both_action.triggered.connect(self._copy_bilingual)
+        self.copy_menu.aboutToShow.connect(self._update_copy_actions)
+        self.copy_btn.setMenu(self.copy_menu)
         footer_layout.addWidget(self.copy_btn)
 
         container_layout.addLayout(footer_layout)
@@ -309,103 +321,39 @@ class TranslationPopup(QWidget):
         self.translation_text.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.translation_text.customContextMenuRequested.connect(self._translation_context_menu)
         self._update_speech_buttons()
+        self.source_text.textChanged.connect(self._source_edited)
+        self._retry_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
+        self._retry_shortcut.activated.connect(self._on_retry_clicked)
+        QApplication.styleHints().colorSchemeChanged.connect(self._refresh_theme)
 
     def _get_stylesheet(self) -> str:
-        """Return the popup stylesheet."""
-        font_size = self.settings.ui.font_size
-        opacity = self.settings.ui.popup_opacity
-
-        # Convert opacity to alpha (0-255)
-        alpha = int(opacity * 255)
-        bg_color = f"rgba(30, 30, 30, {alpha})"
-
+        theme = colors(self.settings.ui.theme)
+        font = self.settings.ui.font_size
         return f"""
-            #popupContainer {{
-                background-color: {bg_color};
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 10px;
-            }}
-
-            #sourceLabel, #arrowLabel {{
-                color: rgba(255, 255, 255, 0.6);
-                font-size: {font_size - 2}px;
-            }}
-
-            #targetCombo {{
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: {font_size - 2}px;
-            }}
-
-            #targetCombo::drop-down {{
-                border: none;
-            }}
-
-            #targetCombo QAbstractItemView {{
-                background-color: rgb(45, 45, 45);
-                color: white;
-                selection-background-color: rgb(70, 70, 70);
-            }}
-
-            #closeButton {{
-                background-color: transparent;
-                color: rgba(255, 255, 255, 0.6);
-                border: none;
-                font-size: 16px;
-                font-weight: bold;
-            }}
-
-            #closeButton:hover {{
-                color: white;
-                background-color: rgba(255, 0, 0, 0.3);
-                border-radius: 4px;
-            }}
-
-            #sourceText {{
-                background-color: transparent;
-                border: none;
-                color: rgba(255, 255, 255, 0.7);
-                font-size: {font_size - 1}px;
-                padding: 4px 0;
-            }}
-
-            #separator {{
-                background-color: rgba(255, 255, 255, 0.1);
-                max-height: 1px;
-            }}
-
-            #translationText {{
-                background-color: transparent;
-                color: white;
-                border: none;
-                font-size: {font_size}px;
-            }}
-
-            #statusLabel {{
-                color: rgba(255, 255, 255, 0.5);
-                font-size: {font_size - 3}px;
-            }}
-
-            #copyButton {{
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 4px 12px;
-                font-size: {font_size - 2}px;
-            }}
-
-            #copyButton:hover {{
-                background-color: rgba(255, 255, 255, 0.2);
-            }}
-
-            #copyButton:pressed {{
-                background-color: rgba(255, 255, 255, 0.3);
-            }}
+            #popupContainer {{ background: {theme['background']}; color: {theme['text']}; }}
+            QLabel {{ color: {theme['muted']}; font-size: {font - 2}px; }}
+            QTextEdit {{ background: {theme['control']}; color: {theme['text']};
+                border: 1px solid {theme['border']}; border-radius: 4px; padding: 6px;
+                font-size: {font}px; selection-background-color: #2874d0; selection-color: white; }}
+            QPushButton, QComboBox {{ background: {theme['control']}; color: {theme['text']};
+                border: 1px solid {theme['border']}; border-radius: 4px; padding: 4px 8px;
+                font-size: {font - 2}px; }}
+            QPushButton:checked {{ background: #2874d0; color: white; }}
+            QPushButton:disabled {{ color: {theme['muted']}; }}
+            QComboBox QAbstractItemView, QMenu {{ background: {theme['control']};
+                color: {theme['text']}; selection-background-color: #2874d0; }}
+            QSplitter::handle {{ background: {theme['border']}; height: 5px; width: 5px; }}
         """
+
+    def _refresh_theme(self, *_args) -> None:
+        apply_palette(self, self.settings.ui.theme)
+        self.container.setStyleSheet(self._get_stylesheet())
+        self.setWindowOpacity(self.settings.ui.popup_opacity)
+        self.text_splitter.setOrientation(
+            Qt.Orientation.Horizontal
+            if self.settings.ui.bilingual_layout == "side_by_side"
+            else Qt.Orientation.Vertical
+        )
 
     # =============================================================================
     # Public Methods
@@ -428,6 +376,7 @@ class TranslationPopup(QWidget):
         self.speech.stop(self._speech_owner)
         self.speech_status.clear()
         self._source_text = source_text
+        self._review_mode = False
         self._translated_text = ""
         self._dismiss_emitted = False
         self._closing = False
@@ -487,12 +436,31 @@ class TranslationPopup(QWidget):
 
     def get_source_text(self) -> str:
         """Get the current source text."""
-        return self._source_text
+        return self.source_text.toPlainText()
+
+    @property
+    def is_reviewing(self) -> bool:
+        return self._review_mode
+
+    def prepare_review(self) -> None:
+        self._is_translating = False
+        self._review_mode = True
+        self._status_clear_timer.stop()
+        self.source_toggle.setChecked(True)
+        self.source_text.setReadOnly(False)
+        self.retry_btn.setText("Translate")
+        self.retry_btn.setEnabled(bool(self.get_source_text().strip()))
+        self.stop_btn.setEnabled(False)
+        self.translation_text.setPlaceholderText("Your translation will appear here.")
+        self.status_label.setText("Review source, then Translate · ⌘↵")
+        self.status_label.setToolTip("")
+        self.activateWindow()
+        self.source_text.setFocus()
 
     def update_settings(self, settings: AppSettings) -> None:
         """Update popup with new settings."""
         self.settings = settings
-        self.container.setStyleSheet(self._get_stylesheet())
+        self._refresh_theme()
         self.source_toggle.setChecked(settings.ui.show_source_text)
         self._set_target_language(settings.translation.target_language)
         self.source_label.setText(self._format_source_language())
@@ -520,7 +488,7 @@ class TranslationPopup(QWidget):
         output_cursor.movePosition(QTextCursor.MoveOperation.End)
         output_cursor.insertText(chunk)
         self._translated_text += chunk
-        self.copy_btn.setEnabled(bool(self._translated_text))
+        self.copy_btn.setEnabled(bool(self.get_source_text()))
         self._update_speech_buttons()
 
         reader_cursor.setPosition(anchor)
@@ -532,18 +500,22 @@ class TranslationPopup(QWidget):
     def _on_translation_started(self) -> None:
         """Handle translation start."""
         self._is_translating = True
+        self._review_mode = False
+        self.source_text.setReadOnly(True)
+        self.retry_btn.setText("Retry")
         self._status_clear_timer.stop()
         self.status_label.setText("Translating...")
         self.status_label.setToolTip("")
         self.translation_text.setPlaceholderText("Waiting for the model…")
         self.stop_btn.setEnabled(True)
-        self.copy_btn.setEnabled(bool(self._translated_text))
+        self.copy_btn.setEnabled(bool(self.get_source_text()))
         self.speech.stop(self._speech_owner)
         self._update_speech_buttons()
 
     def _on_translation_finished(self) -> None:
         """Handle translation completion."""
         self._is_translating = False
+        self.source_text.setReadOnly(False)
         self.stop_btn.setEnabled(False)
         self._update_speech_buttons()
 
@@ -558,22 +530,28 @@ class TranslationPopup(QWidget):
     def _on_translation_error(self, message: str) -> None:
         """Handle translation error."""
         self._is_translating = False
+        self.source_text.setReadOnly(False)
         self._status_clear_timer.stop()
         self.stop_btn.setEnabled(False)
         self._update_speech_buttons()
         self.status_label.setText("Failed · partial result" if self._translated_text else "Failed")
         self.status_label.setToolTip(message)
-        self.copy_btn.setEnabled(bool(self._translated_text))
+        self.copy_btn.setEnabled(bool(self.get_source_text()))
         self.translation_text.setPlaceholderText(message)
+
+    def set_progress(self, completed: int, total: int) -> None:
+        if self._is_translating and total > 1:
+            self.status_label.setText(f"Translating · {completed}/{total} parts")
 
     def stop_translation(self) -> None:
         """Keep useful partial text without labeling it a completed translation."""
         self._is_translating = False
+        self.source_text.setReadOnly(False)
         self._status_clear_timer.stop()
         self.stop_btn.setEnabled(False)
         self._update_speech_buttons()
         self.status_label.setText("Stopped · partial result")
-        self.copy_btn.setEnabled(bool(self._translated_text))
+        self.copy_btn.setEnabled(bool(self.get_source_text()))
 
     def _on_stop_clicked(self) -> None:
         self.stop_requested.emit()
@@ -714,6 +692,32 @@ class TranslationPopup(QWidget):
         finally:
             self._suppress_language_signal = False
 
+    def _source_edited(self) -> None:
+        self.speech.stop(self._speech_owner)
+        if not self._is_translating and self.get_source_text() != self._source_text:
+            self._review_mode = True
+            self._status_clear_timer.stop()
+            self.status_label.setText("Source edited · translate again · ⌘↵")
+            self.status_label.setToolTip("")
+            self.retry_btn.setText("Translate edits")
+        self.retry_btn.setEnabled(bool(self.get_source_text().strip()))
+        self.copy_btn.setEnabled(bool(self.get_source_text()))
+        self._update_speech_buttons()
+
+    def _restore_source(self) -> None:
+        self.source_text.setPlainText(self._source_text)
+
+    def _update_copy_actions(self) -> None:
+        self.copy_source_action.setEnabled(bool(self.get_source_text()))
+        self.copy_target_action.setEnabled(bool(self._translated_text))
+        self.copy_both_action.setEnabled(bool(self._translated_text))
+
+    def _copy_source(self) -> None:
+        QApplication.clipboard().setText(self.get_source_text())
+
+    def _copy_bilingual(self) -> None:
+        QApplication.clipboard().setText(self.get_source_text() + "\n\n" + self._translated_text)
+
     def _copy_translation(self) -> None:
         """Copy translation to clipboard."""
         if self._translated_text:
@@ -776,7 +780,7 @@ class TranslationPopup(QWidget):
             if self.speech.is_active(self._speech_owner, "translation")
             else "Speak translation"
         )
-        self.speak_source_btn.setEnabled(bool(self._source_text))
+        self.speak_source_btn.setEnabled(bool(self.get_source_text().strip()))
         self.speak_translation_btn.setEnabled(
             bool(self._translated_text) and not self._is_translating
         )
@@ -788,6 +792,9 @@ class TranslationPopup(QWidget):
     def _source_context_menu(self, position) -> None:
         menu = self.source_text.createStandardContextMenu()
         menu.addSeparator()
+        restore = menu.addAction("Restore original source")
+        restore.setEnabled(not self._is_translating and self.get_source_text() != self._source_text)
+        restore.triggered.connect(self._restore_source)
         action = menu.addAction("Speak selected text")
         action.setEnabled(self.source_text.textCursor().hasSelection())
         action.triggered.connect(self._speak_source)
@@ -811,6 +818,7 @@ class TranslationPopup(QWidget):
             and not self.window_controller.pinned
             and not self.window_controller.reconfiguring
             and not self._is_translating
+            and not self._review_mode
             and not self._closing
             and not self.isMinimized()
         )

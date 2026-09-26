@@ -32,6 +32,7 @@ class FakeOllamaClient:
         model: str,
         system_prompt: str | None = None,
         cancel_check=None,
+        **options,
     ) -> Iterator[OllamaStreamChunk]:
         self.calls.append(
             {
@@ -110,3 +111,42 @@ def test_empty_model_response_is_an_error() -> None:
     service = service_with_fake_client(FakeOllamaClient([OllamaStreamChunk("", True)]))
     with pytest.raises(OllamaError, match="no translation"):
         list(service.translate_stream("hello"))
+
+
+def test_long_translation_retries_only_incomplete_parts():
+    class SegmentedClient:
+        def __init__(self):
+            self.calls = []
+            self.fail_at = 2
+
+        def chat_stream(self, message, **kwargs):
+            self.calls.append(message)
+            if len(self.calls) == self.fail_at:
+                yield OllamaStreamChunk("unfinished", False)
+                raise OllamaError("interrupted")
+            yield OllamaStreamChunk("complete", True)
+
+    client = SegmentedClient()
+    service = TranslationService(AppSettings())
+    service.client = client
+    source = "A paragraph with exact values [12]. " * 300
+    checkpoints = []
+    with pytest.raises(OllamaError, match="Part 2"):
+        list(service.translate_stream(source, on_checkpoint=checkpoints.append))
+    saved = checkpoints[-1]
+    assert len(saved.completed) == 1
+    assert "unfinished" not in "".join(saved.completed)
+    first_prompt = client.calls[0]
+    result = "".join(service.translate_stream(source, checkpoint=saved))
+    assert result.startswith(saved.completed[0])
+    assert client.calls.count(first_prompt) == 1
+    assert len(client.calls) == saved.total + 1
+
+
+def test_changed_source_invalidates_a_checkpoint():
+    client = FakeOllamaClient([OllamaStreamChunk("translated", True)])
+    service = service_with_fake_client(client)
+    checkpoints = []
+    list(service.translate_stream("first", on_checkpoint=checkpoints.append))
+    list(service.translate_stream("different", checkpoint=checkpoints[-1]))
+    assert len(client.calls) == 2

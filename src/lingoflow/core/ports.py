@@ -9,6 +9,7 @@ from typing import Protocol, runtime_checkable
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.hotkey import HotkeyAction
 from lingoflow.core.ocr import OCRResult
+from lingoflow.core.text_preparation import TranslationCheckpoint
 
 
 @runtime_checkable
@@ -36,6 +37,8 @@ class LLMProvider(Protocol):
         source_language: str | None = None,
         on_chunk: Callable[[str], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
+        checkpoint: TranslationCheckpoint | None = None,
+        on_checkpoint: Callable[[TranslationCheckpoint], None] | None = None,
     ) -> Iterator[str]:
         """Yield translated text chunks."""
 
