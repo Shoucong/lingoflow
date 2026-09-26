@@ -165,6 +165,7 @@ class TranslationService:
         def should_cancel() -> bool:
             return self._cancelled or bool(cancel_check and cancel_check())
 
+        saw_text = False
         try:
             for chunk in self.client.chat_stream(
                 message=user_prompt,
@@ -177,9 +178,12 @@ class TranslationService:
                     break
 
                 if chunk.content:
+                    saw_text = saw_text or bool(chunk.content.strip())
                     if on_chunk:
                         on_chunk(chunk.content)
                     yield chunk.content
+            if not should_cancel() and not saw_text:
+                raise OllamaError("The model returned no translation. Check its prompt or retry.")
         except OllamaConnectionError as e:
             logger.error(f"Ollama connection error during translation: {e}")
             raise
@@ -208,9 +212,9 @@ class TranslationService:
         """
         target_lang = target_language or self.settings.translation.target_language
         source_lang = source_language or self.settings.translation.source_language
+        translated_parts = []
         try:
             # Collect all chunks
-            translated_parts = []
             for chunk in self.translate_stream(text, target_lang, source_lang):
                 translated_parts.append(chunk)
 
@@ -221,12 +225,13 @@ class TranslationService:
                 translated_text=translated_text,
                 source_language=source_lang,
                 target_language=target_lang,
-                status=TranslationStatus.COMPLETED,
+                status=(TranslationStatus.CANCELLED if self._cancelled
+                        else TranslationStatus.COMPLETED),
             )
         except OllamaError as e:
             return TranslationResult(
                 source_text=text,
-                translated_text="",
+                translated_text="".join(translated_parts),
                 source_language=source_lang,
                 target_language=target_lang,
                 status=TranslationStatus.ERROR,

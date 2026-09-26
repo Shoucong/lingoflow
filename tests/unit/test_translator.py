@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+import pytest
+
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.translator import (
     TranslationService,
@@ -9,6 +11,7 @@ from lingoflow.core.translator import (
 )
 from lingoflow.infrastructure.ollama_client import (
     OllamaConnectionError,
+    OllamaError,
     OllamaStreamChunk,
 )
 
@@ -101,3 +104,9 @@ def test_translate_stream_stops_when_external_cancel_check_is_true() -> None:
     chunks = list(service.translate_stream("hello", cancel_check=lambda: True))
 
     assert chunks == []
+
+
+def test_empty_model_response_is_an_error() -> None:
+    service = service_with_fake_client(FakeOllamaClient([OllamaStreamChunk("", True)]))
+    with pytest.raises(OllamaError, match="no translation"):
+        list(service.translate_stream("hello"))

@@ -157,3 +157,24 @@ def test_retry_clears_old_selection_and_follows_new_translation(popup, qtbot) ->
     assert popup._translated_text == replacement
     assert not popup.translation_text.textCursor().hasSelection()
     assert scrollbar.value() == scrollbar.maximum()
+
+
+def test_error_preserves_partial_translation(popup) -> None:
+    popup.start_translation()
+    popup.append_translation("Useful partial text")
+    popup.show_error("Connection lost")
+    assert popup.translation_text.toPlainText() == "Useful partial text"
+    assert "partial" in popup.status_label.text()
+    assert popup.status_label.toolTip() == "Connection lost"
+    assert not popup.stop_btn.isEnabled()
+
+
+def test_stop_and_retry_buttons_request_work_without_changing_source(popup, qtbot) -> None:
+    popup.start_translation()
+    with qtbot.waitSignal(popup.stop_requested):
+        popup.stop_btn.click()
+    popup.stop_translation()
+    assert "Stopped" in popup.status_label.text()
+    with qtbot.waitSignal(popup.retry_requested) as signal:
+        popup.retry_btn.click()
+    assert signal.args == ["Original text"]

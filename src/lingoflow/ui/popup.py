@@ -81,6 +81,8 @@ class TranslationPopup(QWidget):
     language_changed = pyqtSignal(str)
     closed = pyqtSignal()
     outside_clicked = pyqtSignal()
+    stop_requested = pyqtSignal()
+    retry_requested = pyqtSignal(str)
 
     def __init__(
         self, settings: Optional[AppSettings] = None, window_state_path: Path | None = None
@@ -232,9 +234,18 @@ class TranslationPopup(QWidget):
         # Status label
         self.status_label = QLabel("")
         self.status_label.setObjectName("statusLabel")
+        self.status_label.setWordWrap(True)
         footer_layout.addWidget(self.status_label)
 
         footer_layout.addStretch()
+
+        self.stop_btn = QPushButton("Stop")
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.clicked.connect(self._on_stop_clicked)
+        footer_layout.addWidget(self.stop_btn)
+        self.retry_btn = QPushButton("Retry")
+        self.retry_btn.clicked.connect(self._on_retry_clicked)
+        footer_layout.addWidget(self.retry_btn)
 
         self.latest_btn = QPushButton("Latest")
         self.latest_btn.setToolTip("Clear the selection and follow new output")
@@ -474,6 +485,7 @@ class TranslationPopup(QWidget):
         output_cursor.movePosition(QTextCursor.MoveOperation.End)
         output_cursor.insertText(chunk)
         self._translated_text += chunk
+        self.copy_btn.setEnabled(bool(self._translated_text))
 
         reader_cursor.setPosition(anchor)
         reader_cursor.setPosition(position, QTextCursor.MoveMode.KeepAnchor)
@@ -484,12 +496,17 @@ class TranslationPopup(QWidget):
     def _on_translation_started(self) -> None:
         """Handle translation start."""
         self._is_translating = True
+        self._status_clear_timer.stop()
         self.status_label.setText("Translating...")
-        self.copy_btn.setEnabled(False)
+        self.status_label.setToolTip("")
+        self.translation_text.setPlaceholderText("Waiting for the model…")
+        self.stop_btn.setEnabled(True)
+        self.copy_btn.setEnabled(bool(self._translated_text))
 
     def _on_translation_finished(self) -> None:
         """Handle translation completion."""
         self._is_translating = False
+        self.stop_btn.setEnabled(False)
 
         # Show character count
         char_count = len(self._translated_text)
@@ -502,11 +519,26 @@ class TranslationPopup(QWidget):
     def _on_translation_error(self, message: str) -> None:
         """Handle translation error."""
         self._is_translating = False
-        self.status_label.setText(f"Error: {message}")
-        self.copy_btn.setEnabled(True)
+        self._status_clear_timer.stop()
+        self.stop_btn.setEnabled(False)
+        self.status_label.setText("Failed · partial result" if self._translated_text else "Failed")
+        self.status_label.setToolTip(message)
+        self.copy_btn.setEnabled(bool(self._translated_text))
+        self.translation_text.setPlaceholderText(message)
 
-        # Show error in translation area
-        self.translation_text.setPlainText(f"⚠️ {message}")
+    def stop_translation(self) -> None:
+        """Keep useful partial text without labeling it a completed translation."""
+        self._is_translating = False
+        self._status_clear_timer.stop()
+        self.stop_btn.setEnabled(False)
+        self.status_label.setText("Stopped · partial result")
+        self.copy_btn.setEnabled(bool(self._translated_text))
+
+    def _on_stop_clicked(self) -> None:
+        self.stop_requested.emit()
+
+    def _on_retry_clicked(self) -> None:
+        self.retry_requested.emit(self.get_source_text())
 
     def _on_translation_cleared(self) -> None:
         """Handle clearing translation output (for retries)."""

@@ -181,6 +181,8 @@ class FakePopup:
         self.settings = settings
         self.language_changed = FakeSignal()
         self.closed = FakeSignal()
+        self.stop_requested = FakeSignal()
+        self.retry_requested = FakeSignal()
         self.target_language = settings.translation.target_language
         self.shown: list[dict[str, object]] = []
         self.chunks: list[str] = []
@@ -378,7 +380,7 @@ def test_translate_request_without_selected_text_notifies(
     )
 
 
-def test_translate_request_truncates_very_long_selection(
+def test_translate_request_preserves_very_long_selection(
     qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
@@ -389,8 +391,7 @@ def test_translate_request_truncates_very_long_selection(
     wait_for_idle_translation(qtbot, harness)
 
     shown_text = harness.popup.shown[-1]["source_text"]
-    assert len(shown_text) == 5003
-    assert str(shown_text).endswith("...")
+    assert shown_text == "a" * 5100
     assert harness.translator.requests[-1]["text"] == shown_text
 
 

@@ -90,11 +90,6 @@ class TranslationWorkflow:
 
         selected_text = selected_text.strip()
 
-        max_length = 5000
-        if len(selected_text) > max_length:
-            logger.warning(f"Text too long ({len(selected_text)} chars), truncating")
-            selected_text = selected_text[:max_length] + "..."
-
         if self.settings.privacy.allow_content_logging:
             logger.info(f"Translating selected text: {selected_text[:80]}...")
         else:
@@ -242,6 +237,8 @@ class TranslationWorkflow:
             self.popup = self._popup_factory(self.settings)
             self.popup.language_changed.connect(self.on_popup_language_changed)
             self.popup.closed.connect(self.on_popup_closed)
+            self.popup.stop_requested.connect(self.stop_from_popup)
+            self.popup.retry_requested.connect(self.retry_from_popup)
 
     def dismiss_popup(self, reason: str) -> None:
         """Dismiss the popup even if macOS has hidden it."""
@@ -277,6 +274,19 @@ class TranslationWorkflow:
 
         if update_status:
             self._notifier.update_status("Ready")
+
+    def stop_from_popup(self) -> None:
+        self.cancel_active("Stopped by user")
+        if self.popup:
+            self.popup.stop_translation()
+
+    def retry_from_popup(self, text: str) -> None:
+        if not text.strip():
+            return
+        self.cancel_active("Retry requested", update_status=False)
+        if self.popup:
+            self.popup.clear_translation()
+            self.start_translation(text)
 
     def on_popup_closed(self) -> None:
         """Cancel translation work when the popup is dismissed."""

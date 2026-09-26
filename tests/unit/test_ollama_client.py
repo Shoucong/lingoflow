@@ -69,6 +69,7 @@ def test_chat_sends_non_streaming_payload_and_parses_response() -> None:
             json={
                 "model": "model-a",
                 "message": {"content": "translated"},
+                "done": True,
                 "total_duration": 10,
                 "eval_count": 2,
             },
@@ -160,3 +161,39 @@ def test_invalid_json_maps_to_ollama_error() -> None:
 
     with pytest.raises(OllamaError, match="invalid JSON"):
         client.chat("hello", model="model-a")
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"message":{"content":"partial"},"done":false}\n',
+        b'{"error":"model failure"}\n',
+        b'not-json\n',
+        b'[]\n',
+        b'{"message":null,"done":true}\n',
+        b'{"message":{"content":1},"done":true}\n',
+        b'{"done":"true"}\n',
+        b'{"done":true,"done_reason":"length"}\n',
+    ],
+)
+def test_invalid_or_incomplete_stream_cannot_succeed(body: bytes) -> None:
+    client = client_for(lambda request: httpx.Response(200, content=body))
+    with pytest.raises(OllamaError):
+        list(client.chat_stream("source", "model-a"))
+
+
+def test_output_limit_keeps_last_text_before_reporting_incomplete() -> None:
+    client = client_for(lambda request: httpx.Response(
+        200, content=b'{"message":{"content":"partial"},"done":true,"done_reason":"length"}\n'
+    ))
+    stream = client.chat_stream("source", "model-a")
+    assert next(stream).content == "partial"
+    with pytest.raises(OllamaError, match="incomplete"):
+        next(stream)
+
+
+def test_stream_stops_at_first_completion_marker() -> None:
+    client = client_for(lambda request: httpx.Response(
+        200, content=b'{"done":true}\nnot-another-frame\n'
+    ))
+    assert list(client.chat_stream("source", "model-a"))[-1].done

@@ -43,6 +43,7 @@ class OllamaStreamChunk:
 
     content: str
     done: bool
+    done_reason: str | None = None
 
 
 @dataclass
@@ -175,28 +176,33 @@ class OllamaClient:
                 with client.stream("POST", url, json=payload) as response:
                     self._raise_for_status(response, model=model)
 
+                    saw_done = False
                     for line in response.iter_lines():
                         if cancel_check and cancel_check():
-                            logger.info("Streaming chat cancelled")
-                            break
-
+                            return
                         if not line:
                             continue
-
                         try:
                             data = json.loads(line)
-                            content = data.get("message", {}).get("content", "")
-                            done = data.get("done", False)
-
-                            if content or done:
-                                yield OllamaStreamChunk(content=content, done=done)
-
-                            if done:
-                                logger.debug("Streaming complete.")
-
-                        except json.JSONDecodeError:
-                            logger.error(f"Failed to parse stream chunk ({len(line)} chars)")
-                            continue
+                        except json.JSONDecodeError as error:
+                            raise OllamaError("Ollama returned an invalid stream frame.") from error
+                        content, done, reason = self._parse_frame(data)
+                        if content:
+                            yield OllamaStreamChunk(content=content, done=False)
+                        if done:
+                            if reason not in {None, "", "stop"}:
+                                raise OllamaError(
+                                    "Translation is incomplete (generation ended: "
+                                    f"{reason}). Increase the output budget or retry."
+                                )
+                            saw_done = True
+                            yield OllamaStreamChunk(content="", done=True, done_reason=reason)
+                            break
+                    if not saw_done and not (cancel_check and cancel_check()):
+                        raise OllamaError(
+                            "Connection ended before translation completed. "
+                            "Partial output retained."
+                        )
         except (OllamaConnectionError, OllamaTimeoutError, OllamaModelError, OllamaError):
             raise
         except httpx.RequestError as e:
@@ -245,8 +251,11 @@ class OllamaClient:
                 except ValueError as e:
                     raise OllamaError("Ollama returned an invalid JSON response.") from e
 
+                content, done, reason = self._parse_frame(data)
+                if not done or reason not in {None, "", "stop"}:
+                    raise OllamaError("Ollama returned an incomplete response.")
                 return OllamaResponse(
-                    content=data.get("message", {}).get("content", ""),
+                    content=content,
                     model=data.get("model", model),
                     done=True,
                     total_duration=data.get("total_duration"),
@@ -326,6 +335,23 @@ class OllamaClient:
             return model in model_names
         except OllamaError:
             return False
+
+    @staticmethod
+    def _parse_frame(data: object) -> tuple[str, bool, str | None]:
+        if not isinstance(data, dict):
+            raise OllamaError("Ollama returned an invalid response object.")
+        if data.get("error") is not None:
+            # Do not echo arbitrary server text, which may contain the input.
+            raise OllamaError("Ollama reported a generation error. Check the model/server.")
+        message = data.get("message", {})
+        done = data.get("done", False)
+        reason = data.get("done_reason")
+        if not isinstance(message, dict) or not isinstance(done, bool):
+            raise OllamaError("Ollama returned an invalid response frame.")
+        content = message.get("content", "")
+        if not isinstance(content, str) or (reason is not None and not isinstance(reason, str)):
+            raise OllamaError("Ollama returned invalid text or completion metadata.")
+        return content, done, reason
 
     def _raise_for_status(
         self,
