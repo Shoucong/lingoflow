@@ -63,6 +63,12 @@ For a faster packaging pass when `dist/LingoFlow.app` already exists:
 LINGOFLOW_SKIP_APP_BUILD=1 scripts/build_dmg.sh
 ```
 
+`LINGOFLOW_DIST_DIR` applies to both scripts, so an isolated build can be packaged with:
+
+```sh
+LINGOFLOW_SKIP_APP_BUILD=1 LINGOFLOW_DIST_DIR="$PWD/dist/refactor-20260926" scripts/build_dmg.sh
+```
+
 ## Signing
 
 For a stable local identity, the following optional command creates and trusts a

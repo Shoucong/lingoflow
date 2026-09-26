@@ -4,11 +4,13 @@
 
 本次结论来自本地源码、现有自动测试、少量隔离复现，以及公开 GitHub 仓库与关键源码。基线提交为 `f39985f2ede8841dcd9f6cef2d1f04cce7183acc`，最后提交日期为 2026-05-26；开始检查时工作区干净。应用源代码共 29 个 Python 文件、约 6457 行，包含注释和空行。
 
-实施进度（2026-09-26）：M1 中的选区和流式阅读修复已落地。新译文通过独立末尾光标追加，保留读者光标、选区方向和范围；选词或向上阅读时停止跟随，清除选区并滚回底部后恢复跟随。原文固定按纯文本显示，保留 `<b>…</b>` 等字面内容。新增 14 项回归用例，全套 73 项通过，Qt Cocoa 原生后端的 15 项弹窗用例通过，Ruff 检查通过。Cocoa 测试需要在受限沙箱外运行；使用临时配置并禁用全局事件监听，不涉及真实 Ollama 推理或系统权限修改。下方问题表保留调研时的证据，拖动/缩放、5000 字符截断、流协议完成状态及朗读仍按后续步骤实施。
+实施状态已更新：本规划中的 Python/PyQt6 核心改造与本机自动验证已落实。当前结果见
+[实施记录](IMPLEMENTATION_STATUS.md) 和 [0.2.0 验收报告](VALIDATION_2026-09-26.md)。
+代码按步骤提交；产物位于 `dist/refactor-20260926/`。安装权限、外部应用、多屏和睡眠唤醒等
+人工验收边界在报告中逐项说明。
 
-本次交付已在开发环境（PyQt6 6.11.0）及打包环境（PyQt6 6.10.2）分别通过同一套 73 项回归测试和 15 项 Cocoa 弹窗测试。已使用现有 PyInstaller 6.20.0 生成 [选区修复测试版 LingoFlow.app](/Users/shoucong/Desktop/Projects/Lingoflow/dist/selection-fix-20260926/LingoFlow.app)，构建日志位于 [selection-fix-20260926.log](/Users/shoucong/Desktop/Projects/Lingoflow/build/selection-fix-20260926.log)，深度严格签名校验通过。此包为 arm64、ad-hoc 本地签名测试包，未替换已安装的应用；测试时应先退出正在运行的旧版，避免单实例机制唤起旧进程。真实模型、全局快捷键、安装后的权限及人工鼠标操作仍按 [手工验收清单](/Users/shoucong/Desktop/Projects/Lingoflow/manual_tests/README.md) 核验。
-
-调研期间只新增本规划与 GitHub 元数据快照。没有修改应用源码，没有安装对标应用，没有启动真实模型推理，也没有更改系统权限或签名。自动测试的配置、日志及缓存路径被重定向到临时目录。以下“复现”均指离屏 Qt 或模拟 HTTP 环境，不能替代真实 macOS 窗口验收。
+**以下保留改造前的调研基线。** 问题、行号、测试数量和“下一步”描述对应 `f39985f` 时的
+状态，不代表 0.2.0 仍有相同缺陷。单独的选区修复包保留在 `dist/selection-fix-20260926/`。
 
 **当前仓库的基础值得保留。** 5 月的工作已经引入 `TranslationWorkflow`、`OCRWorkflow`、`SettingsCoordinator`、`TrayController`、`AppStateTracker` 和副作用接口，也有配置校验、原子保存、旧配置迁移、单实例、截图清理及 macOS 打包脚本。本次重新运行现有测试，结果为 **59 passed in 1.29s**。测试主要保护服务与流程，弹窗专门测试只有一项，未覆盖拖动、缩放、文本选择和系统焦点。
 
@@ -125,7 +127,7 @@ flowchart LR
 
 Python 首版建议采用 `SpeechService → MacOSSpeechBackend → /usr/bin/say`。用 Qt 的 `QProcess` 异步启动并监听完成/错误信号；通过标准输入传文本，不拼接 shell 命令、不在 UI 线程等待进程退出、不生成临时音频文件。服务持有并回收自己的进程，停止旧进程完成后再启动最新请求，防止声音重叠和迟到回调覆盖按钮状态。[Qt QProcess 文档](https://doc.qt.io/qt-6/qprocess.html)
 
-接口只需要可用声音查询、播放、停止和状态通知；播放状态独立于翻译忙闲状态。现有 [HotkeyAction.PRONOUNCE](/Users/shoucong/Desktop/Projects/Lingoflow/src/lingoflow/core/hotkey.py:28) 只是预留枚举，本轮源码检索未找到对应服务或按钮；首版先完成界面入口，有需要时再配置全局快捷键。
+接口只需要可用声音查询、播放、停止和状态通知；播放状态独立于翻译忙闲状态。现有 `HotkeyAction.PRONOUNCE` 只是预留枚举，本轮源码检索未找到对应服务或按钮；首版先完成界面入口，有需要时再配置全局快捷键。
 
 使用已下载的系统声音实现离线播放。新声音可能需要先从 Apple 下载，安装完成后再供应用选择。后续需要暂停/继续、逐词高亮等能力时，可以在相同接口后换成 PyObjC 调用 `AVSpeechSynthesizer`；迁移 Swift 时也可直接使用该 API。[Apple 系统声音设置](https://support.apple.com/guide/mac-help/change-the-voice-your-mac-uses-to-speak-text-mchlp2290/mac)、[Apple 语音合成接口](https://developer.apple.com/documentation/avfaudio/avspeechsynthesizer)
 
@@ -169,4 +171,4 @@ M1 和 M2 的边界可以按实现依赖调整；P0 的结果完整性修复不�
 
 个人自用阶段可以暂缓公开分发、公证和自动更新、云端模型聚合、插件市场、账号同步、整本 PDF 排版翻译及复杂多任务队列。当前签名、配置迁移和安装后权限验证仍保留，因为它们直接影响你自己的持续使用。
 
-下一步继续完成 **M1 的拖动、缩放与窗口尺寸记忆**，随后处理输入截断和流式完成状态，再交付基础离线朗读。选区修复是 M1 的第一项交付，不代表整个 M1 已完成。
+上述顺序已用于本轮逐步实施；最终交付及尚需人工操作的项目以 [0.2.0 验收报告](VALIDATION_2026-09-26.md) 为准。

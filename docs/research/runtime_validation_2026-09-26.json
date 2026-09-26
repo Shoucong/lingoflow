@@ -1,0 +1,24 @@
+{
+  "model": "huihui_ai/hunyuan-mt-abliterated:7b-chimera",
+  "cancellation": [
+    {
+      "phase": "before_first_text",
+      "seconds": 0.028253500000573695,
+      "partial_chars": 0,
+      "active_requests_after": 0
+    },
+    {
+      "phase": "during_stream",
+      "seconds": 0.003275249997386709,
+      "partial_chars": 1,
+      "active_requests_after": 0
+    }
+  ],
+  "recovery_translation": "该窗口可以调整大小。",
+  "tasks_exercised": 250,
+  "retained_active_tasks": 0,
+  "retained_diagnostics": 100,
+  "python_threads_before": 1,
+  "python_threads_after": 1,
+  "completed": true
+}
