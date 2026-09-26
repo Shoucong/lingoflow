@@ -17,11 +17,6 @@ def main() -> int:
     os.environ["QT_QPA_PLATFORM"] = options.qt_platform
     root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(root / "src"))
-    # Allow the build interpreter to reuse test-only tools from the project venv.
-    for site in (root / ".venv" / "lib").glob("python*/site-packages"):
-        if str(site) not in sys.path:
-            sys.path.append(str(site))
-
     from lingoflow.config import constants
 
     with tempfile.TemporaryDirectory(prefix="lingoflow-checks-") as directory:

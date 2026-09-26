@@ -2,15 +2,16 @@
 """PyInstaller spec for LingoFlow.app."""
 
 from pathlib import Path
+import tomllib
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 
 APP_NAME = "LingoFlow"
-APP_VERSION = "0.1.0"
 BUNDLE_ID = "com.shoucong.lingoflow"
 
 ROOT_DIR = Path(SPECPATH).resolve().parents[1]
+APP_VERSION = tomllib.loads((ROOT_DIR / "pyproject.toml").read_text())["project"]["version"]
 ENTRYPOINT = ROOT_DIR / "packaging" / "macos" / "lingoflow_entry.py"
 ENTITLEMENTS = ROOT_DIR / "packaging" / "macos" / "entitlements.plist"
 ICON_PATH = ROOT_DIR / "assets" / "LingoFlow.icns"
@@ -32,7 +33,7 @@ a = Analysis(
     [str(ENTRYPOINT)],
     pathex=[str(ROOT_DIR / "src")],
     binaries=[],
-    datas=[(str(ASSETS_DIR), "assets")] if ASSETS_DIR.exists() else [],
+    datas=([(str(ASSETS_DIR), "assets")] if ASSETS_DIR.exists() else []) + copy_metadata("lingoflow"),
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -112,7 +113,7 @@ app = BUNDLE(
         "CFBundleIdentifier": BUNDLE_ID,
         "CFBundlePackageType": "APPL",
         "LSApplicationCategoryType": "public.app-category.productivity",
-        "LSMinimumSystemVersion": "12.0",
+        "LSMinimumSystemVersion": "13.0",
         "LSUIElement": True,
         "NSHighResolutionCapable": True,
         "NSHumanReadableCopyright": "Copyright (c) 2026 Shoucong Jiao",

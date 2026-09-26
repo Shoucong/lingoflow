@@ -7,36 +7,41 @@ A lightweight macOS translation app powered by Ollama, Apple Vision OCR, and nat
 - **Quick Translation**: Select text and press `Option+D` to translate
 - **OCR Translation**: Press `Option+S` to capture screen region and translate
 - **Streaming Output**: See translations as they generate
-- **Local & Private**: All processing done locally via Ollama
+- **Reading Window**: Native dragging/resizing, pinning, saved geometry and adjustable bilingual layout
+- **Long Text**: Complete source, budgeted segments, stop/retry and in-memory resume
+- **Editable Input**: Review OCR, correct source text, or use “Translate Typed Text…” from the menu
+- **Pronunciation**: Select a word or read the whole source/translation with installed macOS voices
+- **Local by Default**: Ollama on localhost, Apple Vision and system speech; text/history logging is off by default
 
 ## Requirements
 
-- macOS
-- Python 3.10+
+- macOS 13+ (the pinned Qt runtime minimum); validated on Apple Silicon
+- Python 3.12 for development; the app bundle includes its runtime
 - Ollama with a language model installed
 - Accessibility, Input Monitoring, and Screen Recording permissions
 
 ## Installation
 ```bash
-conda create -n lingoflow python=3.10 -y
-conda activate lingoflow
-pip install -e ".[dev]"
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --require-hashes -r requirements/macos-py312.lock
+.venv/bin/python -m pip install --no-deps --no-build-isolation -e .
 ```
 
 ## Usage
 ```bash
-lingoflow
+.venv/bin/lingoflow
 ```
 
 ## macOS App Bundle
 ```bash
-python -m pip install -e ".[package]"
-scripts/setup_local_signing_identity.sh
 scripts/build_macos_app.sh
 open dist/LingoFlow.app
 ```
 
 The app bundle is configured as a menu bar app, so it should not show a Dock icon when launched from Finder.
+The lock file targets CPython 3.12 on macOS arm64, including wheel hashes and
+build/test tools. Other architectures need a separately validated lock.
+See [packaging notes](packaging/macos/README.md) for signing and bundle self-checks.
 
 To build a drag-to-Applications DMG:
 
@@ -47,6 +52,19 @@ open dist/LingoFlow.dmg
 
 Settings are stored in `~/Library/Application Support/LingoFlow/settings.json`.
 Logs are written to `~/Library/Logs/LingoFlow/lingoflow.log`.
+Window geometry is stored separately in `window-state.json` beside settings.
+Existing settings migrate with defaults for the new fields.
+
+## Validation
+
+```sh
+.venv/bin/python scripts/run_checks.py
+.venv/bin/python scripts/run_checks.py --qt-platform cocoa tests/ui
+```
+
+See [architecture](docs/ARCHITECTURE.md), [implementation status](docs/IMPLEMENTATION_STATUS.md)
+and [manual acceptance](manual_tests/README.md). Native widget tests do not certify
+external-app selection, permissions after installation, physical multi-screen behavior or sleep/wake.
 
 ## License
 
