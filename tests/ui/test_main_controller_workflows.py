@@ -297,7 +297,7 @@ def controller_harness(monkeypatch, qapp, isolated_settings_paths) -> Controller
         "load",
         classmethod(lambda cls: settings),
     )
-    monkeypatch.setattr(main_window, "TranslationService", lambda _settings, **kwargs: translator)
+    monkeypatch.setattr(main_window, "create_translation_service", lambda _settings: translator)
     monkeypatch.setattr(main_window, "OCRService", lambda _settings: ocr)
     monkeypatch.setattr(main_window, "ClipboardManager", lambda: clipboard)
     monkeypatch.setattr(main_window, "HotkeyManager", lambda _settings: hotkeys)

@@ -133,7 +133,7 @@ class OllamaSettings(SettingsModel):
     )
     context_window: int = Field(default=8192, ge=2048, le=131072)
     max_output_tokens: int = Field(default=2048, ge=128, le=32768)
-    temperature: float = Field(default=0.1, ge=0.0, le=2.0)
+    temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     keep_alive: int = Field(default=300, ge=0, le=3600)
     thinking: Literal["off", "auto", "on"] = "off"
     read_timeout: float = Field(default=120.0, ge=5.0, le=600.0)

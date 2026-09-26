@@ -27,6 +27,7 @@ def test_model_review_and_layout_settings_round_trip(qtbot) -> None:
     settings = AppSettings.model_validate(
         {
             "ollama": {
+                "model": "generic-chat-model",
                 "context_window": 16384,
                 "max_output_tokens": 4096,
                 "temperature": 0.25,
@@ -45,6 +46,28 @@ def test_model_review_and_layout_settings_round_trip(qtbot) -> None:
     assert built is not None
     for section in ["ollama", "translation", "ocr", "ui"]:
         assert getattr(built, section) == getattr(settings, section)
+
+
+def test_milmmt_controls_match_effective_profile_and_generic_model_can_restore_custom_prompt(qtbot):
+    settings = AppSettings()
+    settings.translation.custom_prompt = "Preserve this preference for general models."
+    settings.translation.preset = "academic"
+    settings.ollama.temperature = 0.8
+    settings.ollama.thinking = "on"
+    dialog = SettingsDialog(settings)
+    qtbot.addWidget(dialog)
+    assert not dialog.temperature_spin.isEnabled()
+    assert not dialog.thinking_combo.isEnabled()
+    assert not dialog.preset_combo.isEnabled()
+    assert not dialog.custom_prompt_input.isEnabled()
+    built = dialog._build_settings_from_ui()
+    assert built.ollama.temperature == 0
+    assert built.ollama.thinking == "off"
+    assert built.translation.custom_prompt == settings.translation.custom_prompt
+    dialog.model_combo.setEditText("generic-chat-model")
+    assert dialog.temperature_spin.isEnabled() and dialog.custom_prompt_input.isEnabled()
+    assert dialog.preset_combo.isEnabled() and dialog.thinking_combo.isEnabled()
+    assert dialog.custom_prompt_input.toPlainText() == settings.translation.custom_prompt
 
 
 def test_refresh_does_not_silently_replace_missing_model(qtbot) -> None:

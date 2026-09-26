@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 from lingoflow.config.constants import SUPPORTED_LANGUAGES
 from lingoflow.config.settings import AppSettings, OllamaSettings
 from lingoflow.core.speech import LANGUAGE_LOCALES
+from lingoflow.core.translation_profiles import is_milmmt_model
 from lingoflow.infrastructure.macos.speech import MacOSSpeechService
 from lingoflow.infrastructure.ollama_client import OllamaClient, OllamaError
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
@@ -73,6 +74,8 @@ class SettingsDialog(QDialog):
         self._setup_window()
         self._setup_ui()
         self._load_settings()
+        self.model_combo.currentTextChanged.connect(self._update_model_controls)
+        self.custom_prompt_check.toggled.connect(self._update_model_controls)
         apply_palette(self, self.settings.ui.theme)
         self._speech.voices_changed.connect(self._update_speech_voice_choices)
         self.speech_locale_combo.currentIndexChanged.connect(self._update_speech_voice_choices)
@@ -215,6 +218,12 @@ class SettingsDialog(QDialog):
         self.timeout_spin.setRange(5, 600)
         self.timeout_spin.setSuffix(" s")
         form.addRow("Generation read timeout:", self.timeout_spin)
+        self.model_profile_note = QLabel(
+            "MiLMMT uses its recommended translation format and deterministic output. "
+            "Style, custom prompts and thinking controls are available with other models."
+        )
+        self.model_profile_note.setWordWrap(True)
+        form.addRow(self.model_profile_note)
         layout.addWidget(generation)
 
         privacy_group = QGroupBox("Privacy")
@@ -260,6 +269,10 @@ class SettingsDialog(QDialog):
             display_name = "Auto-detect" if lang == "auto" else lang
             self.source_lang_combo.addItem(display_name, lang)
         lang_layout.addRow("Text Source:", self.source_lang_combo)
+        self.source_lang_combo.setToolTip(
+            "MiLMMT detects the source locally. Isolated Latin words are treated as English. "
+            "Choose a language here for ambiguous short text."
+        )
 
         # Target language
         self.target_lang_combo = QComboBox()
@@ -542,8 +555,24 @@ class SettingsDialog(QDialog):
         self.source_voice_combo.clear()
         self.target_voice_combo.clear()
         self._update_speech_voice_choices()
+        self._update_model_controls()
 
         logger.debug("Settings loaded into UI")
+
+    def _update_model_controls(self, *_args) -> None:
+        fixed = is_milmmt_model(self.model_combo.currentText())
+        for widget in (
+            self.temperature_spin,
+            self.thinking_combo,
+            self.preset_combo,
+            self.custom_prompt_check,
+        ):
+            widget.setEnabled(not fixed)
+        self.custom_prompt_input.setEnabled(not fixed and self.custom_prompt_check.isChecked())
+        self.model_profile_note.setVisible(fixed)
+        if fixed:
+            self.temperature_spin.setValue(0)
+            self.thinking_combo.setCurrentText("off")
 
     def _save_settings(self) -> None:
         """Save UI values to settings."""

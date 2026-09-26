@@ -25,6 +25,7 @@ A lightweight macOS translation app powered by Ollama, Apple Vision OCR, and nat
 python3.12 -m venv .venv
 .venv/bin/python -m pip install --require-hashes -r requirements/macos-py312.lock
 .venv/bin/python -m pip install --no-deps --no-build-isolation -e .
+ollama pull hf.co/mradermacher/MiLMMT-46-4B-v1.0-GGUF:Q4_K_M
 ```
 
 ## Usage
@@ -54,6 +55,16 @@ Settings are stored in `~/Library/Application Support/LingoFlow/settings.json`.
 Logs are written to `~/Library/Logs/LingoFlow/lingoflow.log`.
 Window geometry is stored separately in `window-state.json` beside settings.
 Existing settings migrate with defaults for the new fields.
+
+The default translation model is **MiLMMT-46-4B-v1.0 Q4_K_M**. It uses the
+[official completion format and greedy decoding](https://github.com/xiaomi-research/gemmax#-translation-prompt),
+with local source-language detection for Auto-detect. Isolated Latin terms default to English;
+choose Text Source explicitly for ambiguous short text. Chinese variant names are mapped to
+the model's exact supported language names. Same-language input is returned unchanged.
+Each long-text segment uses the official prompt independently. MiLMMT does not use chat-style
+system prompts, academic presets or previous-segment instruction text; the UI disables those
+controls while retaining custom prompts for other models. Cancellation and resume remain available.
+Existing saved model choices are retained; selecting the MiLMMT tag enables its adapter automatically.
 
 ## Validation
 

@@ -15,7 +15,7 @@ APP_NAME = "LingoFlow"
 try:
     APP_VERSION = version("lingoflow")
 except PackageNotFoundError:
-    APP_VERSION = "0.2.0"
+    APP_VERSION = "0.2.1"
 APP_AUTHOR = "Shoucong Jiao"
 BUNDLE_IDENTIFIER = "com.shoucong.lingoflow"
 
@@ -53,7 +53,8 @@ APP_ICON_FILE = ASSETS_DIR / "LingoFlow.icns"
 # Ollama Defaults
 # ===========================================================
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
-DEFAULT_MODEL = "huihui_ai/hunyuan-mt-abliterated:7b-chimera"
+MILMMT_MODEL = "hf.co/mradermacher/MiLMMT-46-4B-v1.0-GGUF:Q4_K_M"
+DEFAULT_MODEL = MILMMT_MODEL
 GENERAL_MODEL = "gemma3:4b"
 OLLAMA_CHAT_ENDPOINT = "/api/chat"
 OLLAMA_TAGS_ENDPOINT = "/api/tags"

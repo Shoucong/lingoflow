@@ -1,9 +1,8 @@
 """Model-specific translation formats, independent of UI and transport."""
 
+from lingoflow.config.constants import MILMMT_MODEL as MILMMT_MODEL
 from lingoflow.config.constants import SUPPORTED_LANGUAGES
 from lingoflow.core.errors import TranslationError
-
-MILMMT_MODEL = "hf.co/mradermacher/MiLMMT-46-4B-v1.0-GGUF:Q4_K_M"
 
 
 def is_milmmt_model(model: str) -> bool:
