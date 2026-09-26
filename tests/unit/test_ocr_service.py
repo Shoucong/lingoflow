@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.core.ocr import OCRService
+from lingoflow.infrastructure.macos.ocr import OCRService
 
 
 def make_service(keep_captures: bool = False) -> OCRService:
@@ -74,7 +74,7 @@ def test_cancelling_capture_terminates_its_process(isolated_ocr_capture_dir: Pat
     results = []
     worker = threading.Thread(
         target=lambda: results.append(
-            service._run_capture(
+            service.capture.run(
                 [sys.executable, "-c", "import time; time.sleep(30)"],
                 timeout=5,
             )
@@ -83,14 +83,14 @@ def test_cancelling_capture_terminates_its_process(isolated_ocr_capture_dir: Pat
     worker.start()
     try:
         deadline = time.monotonic() + 2
-        while service._capture_process is None and time.monotonic() < deadline:
+        while service.capture.process is None and time.monotonic() < deadline:
             time.sleep(0.01)
-        assert service._capture_process is not None
+        assert service.capture.process is not None
         service.cancel()
         worker.join(2)
         assert not worker.is_alive()
         assert results[0].returncode == -1
-        assert service._capture_process is None
+        assert service.capture.process is None
     finally:
         service.cancel()
         worker.join(3)
@@ -103,14 +103,14 @@ def test_image_enhancement_is_applied_and_temporary_derivative_is_removed(
 ):
     from PIL import Image
 
-    from lingoflow.core.ocr import OCRResult
+    from lingoflow.infrastructure.macos.ocr import OCRResult
 
     source = tmp_path / "original.png"
     Image.new("RGB", (100, 100), "white").save(source)
     service = make_service()
     paths = []
 
-    def recognize(path):
+    def recognize(path, cancel_check=None):
         paths.append(path)
         assert path.exists()
         with Image.open(path) as image:

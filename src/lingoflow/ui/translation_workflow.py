@@ -7,10 +7,10 @@ from typing import Protocol
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
+from lingoflow.core.errors import ProviderConnectionError, TranslationError
 from lingoflow.core.ports import ClipboardPort, LLMProvider, Notifier
 from lingoflow.core.session import SessionStatus, TranslationSession
 from lingoflow.core.text_preparation import TranslationCheckpoint
-from lingoflow.infrastructure.ollama_client import OllamaConnectionError, OllamaError
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.ui import messages
 from lingoflow.ui.popup import TranslationPopup
@@ -226,13 +226,13 @@ class TranslationWorkflow:
                     logger.info("Translation completed")
                     break
 
-                except OllamaConnectionError as e:
+                except ProviderConnectionError as e:
                     if task.is_cancelled():
                         logger.info("Translation cancelled")
                         return
 
                     if emitted_text:
-                        raise OllamaError(
+                        raise TranslationError(
                             "Connection interrupted. Partial output retained; retry when ready."
                         ) from e
                     retry_count += 1
@@ -251,7 +251,7 @@ class TranslationWorkflow:
                             messages.OLLAMA_CONNECT_TRANSLATION_ERROR,
                         )
 
-        except OllamaError as e:
+        except TranslationError as e:
             if task.is_cancelled():
                 logger.info("Translation cancelled")
                 return

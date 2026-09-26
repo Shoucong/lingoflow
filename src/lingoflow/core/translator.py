@@ -10,13 +10,13 @@ from enum import Enum
 from typing import Callable, Optional
 
 from lingoflow.config.settings import AppSettings
-from lingoflow.core.text_preparation import TranslationCheckpoint, fingerprint, split_text
-from lingoflow.infrastructure.ollama_client import (
-    OllamaCancelledError,
-    OllamaClient,
-    OllamaConnectionError,
-    OllamaError,
+from lingoflow.core.errors import (
+    ProviderConnectionError,
+    TranslationCancelledError,
+    TranslationError,
 )
+from lingoflow.core.ports import ChatProvider
+from lingoflow.core.text_preparation import TranslationCheckpoint, fingerprint, split_text
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -103,7 +103,7 @@ class TranslationService:
     streaming and non-streaming translation methods.
 
     Examples:
-        service = TranslationService()
+        service = TranslationService(settings, client=provider)
 
         # Streaming (for UI)
         for chunk in service.translate_stream("Hello world", "Chinese(Simplified)")
@@ -114,7 +114,13 @@ class TranslationService:
         print(result.translated_text)
     """
 
-    def __init__(self, settings: Optional[AppSettings] = None):
+    def __init__(
+        self,
+        settings: Optional[AppSettings] = None,
+        *,
+        client: ChatProvider | None = None,
+        client_factory: Callable[[AppSettings], ChatProvider] | None = None,
+    ):
         """
         Initialize the translation service.
 
@@ -122,10 +128,10 @@ class TranslationService:
             settings: App settings (loads from disk if not provided)
         """
         self.settings = settings or AppSettings.load()
-        self.client = OllamaClient(
-            host=self.settings.ollama.host,
-            read_timeout=self.settings.ollama.read_timeout,
-        )
+        if client is None and client_factory is None:
+            raise TypeError("TranslationService requires a client or client_factory")
+        self._client_factory = client_factory
+        self.client = client if client is not None else client_factory(self.settings)
 
         logger.info(f"TranslationService initialized with model: {self.settings.ollama.model}")
 
@@ -147,7 +153,7 @@ class TranslationService:
         if cancel_check and cancel_check():
             return
         if not text.strip():
-            raise OllamaError("Enter text to translate.")
+            raise TranslationError("Enter text to translate.")
         settings = self.settings.model_copy(deep=True)
         client = self.client
         target = target_language or settings.translation.target_language
@@ -166,13 +172,13 @@ class TranslationService:
             settings.ollama.max_output_tokens * 2,
         )
         if budget < 128:
-            raise OllamaError(
+            raise TranslationError(
                 "Prompt and output budget leave too little input space. Increase context."
             )
         try:
             segments = split_text(text, budget)
         except ValueError as error:
-            raise OllamaError(str(error)) from error
+            raise TranslationError(str(error)) from error
         key = fingerprint(
             text,
             {
@@ -244,19 +250,19 @@ class TranslationService:
                             if on_chunk:
                                 on_chunk(visible)
                             yield visible
-                except OllamaCancelledError:
+                except TranslationCancelledError:
                     raise
-                except OllamaError as error:
+                except TranslationError as error:
                     error_type = (
-                        OllamaConnectionError
-                        if isinstance(error, OllamaConnectionError)
-                        else OllamaError
+                        ProviderConnectionError
+                        if isinstance(error, ProviderConnectionError)
+                        else TranslationError
                     )
                     raise error_type(f"Part {index + 1}/{len(segments)}: {error}") from error
                 if cancel_check and cancel_check():
                     return
                 if not any(part.strip() for part in translated):
-                    raise OllamaError(
+                    raise TranslationError(
                         f"Part {index + 1}/{len(segments)}: The model returned no translation."
                     )
             if segment.separator:
@@ -303,7 +309,7 @@ class TranslationService:
                 target_language=target_lang,
                 status=TranslationStatus.COMPLETED,
             )
-        except OllamaCancelledError:
+        except TranslationCancelledError:
             return TranslationResult(
                 text,
                 "".join(translated_parts),
@@ -311,7 +317,7 @@ class TranslationService:
                 target_lang,
                 TranslationStatus.CANCELLED,
             )
-        except OllamaError as e:
+        except TranslationError as e:
             return TranslationResult(
                 source_text=text,
                 translated_text="".join(translated_parts),
@@ -378,7 +384,7 @@ class TranslationService:
         try:
             models = self.client.list_models()
             return [m.name for m in models]
-        except OllamaError:
+        except TranslationError:
             return []
 
     def update_settings(self, settings: AppSettings) -> None:
@@ -389,9 +395,8 @@ class TranslationService:
         """
         self.cancel()
         self.settings = settings
-        self.client = OllamaClient(
-            host=settings.ollama.host, read_timeout=settings.ollama.read_timeout
-        )
+        if self._client_factory is not None:
+            self.client = self._client_factory(settings)
         logger.info(f"Settings updated, model: {settings.ollama.model}")
 
     # =========================================================

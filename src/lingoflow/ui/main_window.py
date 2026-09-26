@@ -18,12 +18,14 @@ from PyQt6.QtWidgets import QApplication, QMessageBox
 from lingoflow.config.constants import APP_NAME, APP_VERSION
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
-from lingoflow.core.hotkey import HotkeyAction, HotkeyManager
-from lingoflow.core.ocr import OCRResult, OCRService
+from lingoflow.core.models import HotkeyAction, OCRResult
 from lingoflow.core.ports import ClipboardPort, HotkeyBackend, LLMProvider, OCRBackend
 from lingoflow.core.translator import TranslationService
-from lingoflow.infrastructure.clipboard import ClipboardManager
-from lingoflow.infrastructure.macos_permissions import MacOSPermissionService
+from lingoflow.infrastructure.macos.clipboard import ClipboardManager
+from lingoflow.infrastructure.macos.hotkeys import HotkeyManager
+from lingoflow.infrastructure.macos.ocr import OCRService
+from lingoflow.infrastructure.macos.permissions import MacOSPermissionService
+from lingoflow.infrastructure.ollama_client import create_ollama_client
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.ui import messages
 from lingoflow.ui.ocr_workflow import OCRWorkflow
@@ -89,7 +91,9 @@ class MainController(QObject):
         self.signals = MainSignals()
 
         # Core services
-        self.translator: LLMProvider = TranslationService(self.settings)
+        self.translator: LLMProvider = TranslationService(
+            self.settings, client_factory=create_ollama_client
+        )
         self.ocr_service: OCRBackend = OCRService(self.settings)
         self.clipboard: ClipboardPort = ClipboardManager()
         self.hotkey_manager: HotkeyBackend = HotkeyManager(self.settings)

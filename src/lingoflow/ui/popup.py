@@ -4,7 +4,6 @@ Translation popup window for LingoFlow.
 Displays source text and streaming translation results.
 """
 
-import platform
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -19,9 +18,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMenu,
     QPushButton,
-    QSizePolicy,
-    QSplitter,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -33,8 +29,10 @@ from lingoflow.config.constants import (
 )
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.speech import LANGUAGE_LOCALES, SpeechRequest
+from lingoflow.infrastructure.macos.event_monitor import OutsideClickMonitor
 from lingoflow.infrastructure.macos.speech import MacOSSpeechService
 from lingoflow.ui.theme import apply_palette, colors
+from lingoflow.ui.translation_view import TranslationView
 from lingoflow.ui.window_controller import PopupWindowController
 from lingoflow.utils.logger import get_logger
 
@@ -109,7 +107,7 @@ class TranslationPopup(QWidget):
         self._suppress_language_signal = False
         self._dismiss_emitted = False
         self._closing = False
-        self._macos_event_monitors = []
+        self._native_monitor = OutsideClickMonitor()
         self._status_clear_timer = QTimer(self)
         self._status_clear_timer.setSingleShot(True)
         self._status_clear_timer.timeout.connect(self._clear_status)
@@ -216,29 +214,10 @@ class TranslationPopup(QWidget):
 
         container_layout.addLayout(header_layout)
 
-        self.text_splitter = QSplitter(Qt.Orientation.Vertical)
-        self.text_splitter.setChildrenCollapsible(False)
-        self.source_text = QTextEdit()
-        self.source_text.setObjectName("sourceText")
-        self.source_text.setAcceptRichText(False)
-        self.source_text.setReadOnly(False)
-        self.source_text.setMinimumHeight(40)
-        self.source_text.setPlaceholderText("Original text")
+        self.text_splitter = TranslationView()
+        self.source_text = self.text_splitter.source
+        self.translation_text = self.text_splitter.target
         self.source_text.setVisible(self.settings.ui.show_source_text)
-        self.text_splitter.addWidget(self.source_text)
-
-        # --- Translation output ---
-        self.translation_text = QTextEdit()
-        self.translation_text.setObjectName("translationText")
-        self.translation_text.setReadOnly(True)
-        self.translation_text.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.translation_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.translation_text.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        self.translation_text.setMinimumHeight(80)
-        self.text_splitter.addWidget(self.translation_text)
-        self.text_splitter.setSizes([120, 300])
         container_layout.addWidget(self.text_splitter, 1)
 
         speech_layout = QHBoxLayout()
@@ -474,28 +453,10 @@ class TranslationPopup(QWidget):
         if not chunk:
             return
 
-        reader_cursor = self.translation_text.textCursor()
-        # Save numeric positions: live QTextCursors move when text is inserted
-        # at their boundary, including selections ending at the document end.
-        anchor, position = reader_cursor.anchor(), reader_cursor.position()
-        scrollbar = self.translation_text.verticalScrollBar()
-        scroll_position = scrollbar.value()
-        follow_output = (
-            scroll_position >= scrollbar.maximum() - 2 and not reader_cursor.hasSelection()
-        )
-
-        output_cursor = QTextCursor(self.translation_text.document())
-        output_cursor.movePosition(QTextCursor.MoveOperation.End)
-        output_cursor.insertText(chunk)
+        self.text_splitter.append_output(chunk)
         self._translated_text += chunk
         self.copy_btn.setEnabled(bool(self.get_source_text()))
         self._update_speech_buttons()
-
-        reader_cursor.setPosition(anchor)
-        reader_cursor.setPosition(position, QTextCursor.MoveMode.KeepAnchor)
-        self.translation_text.setTextCursor(reader_cursor)
-        # setTextCursor can scroll to the selection, so restore the viewport last.
-        scrollbar.setValue(scrollbar.maximum() if follow_output else scroll_position)
 
     def _on_translation_started(self) -> None:
         """Handle translation start."""
@@ -588,90 +549,29 @@ class TranslationPopup(QWidget):
     def _start_outside_click_monitor(self) -> None:
         """Close the popup on outside clicks that Qt does not deliver on macOS."""
         self._stop_outside_click_monitor()
-        if platform.system() != "Darwin" or not self.settings.ui.hide_on_focus_loss:
+        if not self.settings.ui.hide_on_focus_loss:
             return
 
         self._outside_click_monitor_timer.start(350)
 
     def _install_outside_click_monitor(self) -> None:
-        """Install native outside-click monitors after show-time events settle."""
-        if self._closing or not self.isVisible():
+        if not self._closing and self.isVisible():
+            self._native_monitor.start(self._handle_native_mouse)
+
+    def _handle_native_mouse(self) -> None:
+        if not self._auto_dismiss_allowed():
             return
-
-        try:
-            from AppKit import (
-                NSEvent,
-                NSEventMaskLeftMouseDown,
-                NSEventMaskOtherMouseDown,
-                NSEventMaskRightMouseDown,
-            )
-        except Exception as e:
-            logger.debug(f"macOS outside-click monitor unavailable: {e}")
+        cursor = QCursor.pos()
+        if self.frameGeometry().contains(cursor) or QApplication.activePopupWidget() is not None:
             return
-
-        mask = NSEventMaskLeftMouseDown | NSEventMaskRightMouseDown | NSEventMaskOtherMouseDown
-
-        def is_outside_popup() -> bool:
-            try:
-                cursor_pos = QCursor.pos()
-                if self.frameGeometry().contains(cursor_pos):
-                    return False
-
-                if QApplication.activePopupWidget() is not None:
-                    return False
-
-                combo_popup = self.target_combo.view().window()
-                if (
-                    combo_popup
-                    and combo_popup.isVisible()
-                    and combo_popup.frameGeometry().contains(cursor_pos)
-                ):
-                    return False
-
-                return True
-            except RuntimeError:
-                return False
-
-        def global_handler(event) -> None:
-            if is_outside_popup() and self._auto_dismiss_allowed():
-                self.outside_clicked.emit()
-
-        def local_handler(event):
-            if is_outside_popup() and self._auto_dismiss_allowed():
-                self.outside_clicked.emit()
-            return event
-
-        try:
-            global_monitor = NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(
-                mask,
-                global_handler,
-            )
-            local_monitor = NSEvent.addLocalMonitorForEventsMatchingMask_handler_(
-                mask,
-                local_handler,
-            )
-            self._macos_event_monitors = [
-                monitor for monitor in (global_monitor, local_monitor) if monitor
-            ]
-        except Exception as e:
-            logger.debug(f"Could not install macOS outside-click monitor: {e}")
-            self._macos_event_monitors = []
+        combo = self.target_combo.view().window()
+        if combo and combo.isVisible() and combo.frameGeometry().contains(cursor):
+            return
+        self.outside_clicked.emit()
 
     def _stop_outside_click_monitor(self) -> None:
-        """Remove native outside-click monitors."""
         self._outside_click_monitor_timer.stop()
-        if not self._macos_event_monitors:
-            return
-
-        try:
-            from AppKit import NSEvent
-
-            for monitor in self._macos_event_monitors:
-                NSEvent.removeMonitor_(monitor)
-        except Exception as e:
-            logger.debug(f"Could not remove macOS outside-click monitor: {e}")
-        finally:
-            self._macos_event_monitors = []
+        self._native_monitor.close()
 
     def _format_source_language(self, language: Optional[str] = None) -> str:
         """Format source language for the popup header."""

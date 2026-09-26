@@ -46,7 +46,7 @@ def isolated_settings_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 def isolated_ocr_capture_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Point OCR captures at a temp directory for one test."""
     import lingoflow.config.constants as constants
-    import lingoflow.core.ocr as ocr_module
+    import lingoflow.infrastructure.macos.ocr as ocr_module
 
     capture_dir = tmp_path / "OCR Captures"
     monkeypatch.setattr(constants, "OCR_CAPTURE_DIR", capture_dir)

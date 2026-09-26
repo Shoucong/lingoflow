@@ -4,12 +4,35 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from lingoflow.config.settings import AppSettings
-from lingoflow.core.hotkey import HotkeyAction
-from lingoflow.core.ocr import OCRResult
+from lingoflow.core.models import HotkeyAction, ModelChunk, ModelInfo, OCRResult
 from lingoflow.core.text_preparation import TranslationCheckpoint
+
+if TYPE_CHECKING:
+    from lingoflow.config.settings import AppSettings
+
+
+class ChatProvider(Protocol):
+    """Text generation transport injected into the translation service."""
+
+    def chat_stream(
+        self,
+        message: str,
+        model: str,
+        system_prompt: str | None = None,
+        cancel_check: Callable[[], bool] | None = None,
+        *,
+        options: dict | None = None,
+        keep_alive: int | None = None,
+        think: bool | None = None,
+    ) -> Iterator[ModelChunk]: ...
+
+    def cancel(self) -> None: ...
+
+    def is_available(self) -> bool: ...
+
+    def list_models(self) -> list[ModelInfo]: ...
 
 
 @runtime_checkable

@@ -53,8 +53,7 @@ def service_with_fake_client(fake_client: FakeOllamaClient) -> TranslationServic
     settings = AppSettings()
     settings.translation.source_language = "English"
     settings.translation.target_language = "Japanese"
-    service = TranslationService(settings)
-    service.client = fake_client
+    service = TranslationService(settings, client=fake_client)
     return service
 
 
@@ -127,8 +126,7 @@ def test_long_translation_retries_only_incomplete_parts():
             yield OllamaStreamChunk("complete", True)
 
     client = SegmentedClient()
-    service = TranslationService(AppSettings())
-    service.client = client
+    service = TranslationService(AppSettings(), client=client)
     source = "A paragraph with exact values [12]. " * 300
     checkpoints = []
     with pytest.raises(OllamaError, match="Part 2"):

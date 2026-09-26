@@ -9,24 +9,15 @@ keystrokes into the foreground app.
 
 import threading
 from dataclasses import dataclass
-from enum import Enum
 from typing import Callable, Dict, Optional
 
 import Quartz
 
 from lingoflow.config.settings import AppSettings
+from lingoflow.core.models import HotkeyAction
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-class HotkeyAction(Enum):
-    """Predefined hotkey actions."""
-
-    TRANSLATE = "translate"
-    OCR = "ocr"
-    PRONOUNCE = "pronounce"
-    WORD_LOOKUP = "word_lookup"
 
 
 @dataclass

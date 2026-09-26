@@ -7,7 +7,6 @@ Handles all communication with the local Ollama server.
 import json
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
-from dataclasses import dataclass
 from typing import Optional
 
 import httpx
@@ -18,81 +17,32 @@ from lingoflow.config.constants import (
     OLLAMA_READ_TIMEOUT,
     OLLAMA_TAGS_ENDPOINT,
 )
+from lingoflow.core.errors import (
+    ProviderConnectionError,
+    ProviderModelError,
+    ProviderTimeoutError,
+    TranslationCancelledError,
+    TranslationError,
+)
+from lingoflow.core.models import ModelChunk, ModelInfo, ModelResponse
 from lingoflow.infrastructure.async_stream import AsyncStreamRunner, RequestCancelledError
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# ===========================================================
-# Data Classes
-# ===========================================================
+# Preserve the adapter's public names while sharing portable domain types.
+OllamaResponse = ModelResponse
+OllamaStreamChunk = ModelChunk
+OllamaModel = ModelInfo
+OllamaError = TranslationError
+OllamaCancelledError = TranslationCancelledError
+OllamaConnectionError = ProviderConnectionError
+OllamaModelError = ProviderModelError
+OllamaTimeoutError = ProviderTimeoutError
 
 
-@dataclass
-class OllamaResponse:
-    """Represents a complete (non-streaming) response from Ollama"""
-
-    content: str
-    model: str
-    done: bool
-    total_duration: Optional[int] = None
-    eval_count: Optional[int] = None
-
-
-@dataclass
-class OllamaStreamChunk:
-    """Represents a single chunk from a streaming response."""
-
-    content: str
-    done: bool
-    done_reason: str | None = None
-
-
-@dataclass
-class OllamaModel:
-    """Represents an available Ollama model."""
-
-    name: str
-    size: int
-    modified_at: str
-
-
-# ===========================================================
-# Exceptions
-# ===========================================================
-
-
-class OllamaError(Exception):
-    """Base exception for Ollama-related errors."""
-
-    pass
-
-
-class OllamaCancelledError(OllamaError):
-    """Request explicitly stopped by its owner."""
-
-
-class OllamaConnectionError(OllamaError):
-    """Failed to connect to Ollama server."""
-
-    pass
-
-
-class OllamaModelError(OllamaError):
-    """Model-related error (not found, failed to load, etc)."""
-
-    pass
-
-
-class OllamaTimeoutError(OllamaError):
-    """Request timed out."""
-
-    pass
-
-
-# ===========================================================
-# Ollama Client
-# ===========================================================
+def create_ollama_client(settings):
+    return OllamaClient(host=settings.ollama.host, read_timeout=settings.ollama.read_timeout)
 
 
 class OllamaClient:
@@ -351,7 +301,7 @@ class OllamaClient:
 
         try:
             with self._new_client() as client:
-                response = client.get(url)
+                response = client.get(url, timeout=3.0)
                 self._raise_for_status(response)
                 try:
                     data = response.json()

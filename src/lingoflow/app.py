@@ -225,8 +225,9 @@ def run_cli() -> None:
 
     if args.test_translate:
         from lingoflow.core.translator import TranslationService
+        from lingoflow.infrastructure.ollama_client import create_ollama_client
 
-        service = TranslationService()
+        service = TranslationService(client_factory=create_ollama_client)
         print(f"Translating: {args.test_translate}")
         print("Result: ", end="", flush=True)
         for chunk in service.translate_stream(args.test_translate):
@@ -235,7 +236,7 @@ def run_cli() -> None:
         return
 
     if args.test_ocr:
-        from lingoflow.core.ocr import OCRService
+        from lingoflow.infrastructure.macos.ocr import OCRService
 
         service = OCRService()
         print("Select a screen region...")

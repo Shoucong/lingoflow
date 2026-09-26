@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from lingoflow.infrastructure.macos_permissions import (
+from lingoflow.infrastructure.macos.permissions import (
     MacOSPermissionService,
     PermissionCheck,
     PermissionState,

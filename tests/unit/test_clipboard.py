@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from AppKit import NSPasteboardItem, NSPasteboardTypeString
 
-from lingoflow.infrastructure.clipboard import ClipboardManager
+from lingoflow.infrastructure.macos.clipboard import ClipboardManager
 
 
 class Pasteboard:

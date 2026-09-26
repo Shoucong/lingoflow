@@ -14,7 +14,7 @@ pytest.importorskip("pytestqt")
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState
-from lingoflow.core.ocr import OCRResult, ScreenCaptureError
+from lingoflow.infrastructure.macos.ocr import OCRResult, ScreenCaptureError
 from lingoflow.infrastructure.ollama_client import OllamaError
 from lingoflow.ui import main_window, messages, tray_controller
 from lingoflow.ui.main_window import MainController
@@ -297,7 +297,7 @@ def controller_harness(monkeypatch, qapp, isolated_settings_paths) -> Controller
         "load",
         classmethod(lambda cls: settings),
     )
-    monkeypatch.setattr(main_window, "TranslationService", lambda _settings: translator)
+    monkeypatch.setattr(main_window, "TranslationService", lambda _settings, **kwargs: translator)
     monkeypatch.setattr(main_window, "OCRService", lambda _settings: ocr)
     monkeypatch.setattr(main_window, "ClipboardManager", lambda: clipboard)
     monkeypatch.setattr(main_window, "HotkeyManager", lambda _settings: hotkeys)

@@ -7,7 +7,8 @@ from typing import Protocol
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
-from lingoflow.core.ocr import OCRResult, ScreenCaptureError
+from lingoflow.core.errors import ScreenCaptureError
+from lingoflow.core.models import OCRResult
 from lingoflow.core.ports import Notifier, OCRBackend
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.ui import messages

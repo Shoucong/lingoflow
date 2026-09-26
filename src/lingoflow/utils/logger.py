@@ -106,9 +106,6 @@ def get_logger(name: str) -> logging.Logger:
         logger = get_logger(__name__)
         logger.info("Something happened")
     """
-    if not _initialized:
-        setup_logging()
-
     # Create child logger under our app's namespace
     # This ensures all our loggers inherit the same configuration
     if name.startswith("lingoflow"):

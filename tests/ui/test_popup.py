@@ -25,7 +25,7 @@ def popup(qtbot, monkeypatch, tmp_path) -> TranslationPopup:
 
 
 def test_popup_uses_configured_source_language_and_can_dismiss(qtbot, monkeypatch) -> None:
-    monkeypatch.setattr("lingoflow.ui.popup.platform.system", lambda: "Linux")
+    monkeypatch.setattr(TranslationPopup, "_start_outside_click_monitor", lambda self: None)
     settings = AppSettings()
     settings.translation.source_language = "English"
     settings.translation.target_language = "Japanese"
