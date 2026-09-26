@@ -1,0 +1,59 @@
+{
+  "app_version": "0.3.0",
+  "frozen": true,
+  "qt_platform": "cocoa",
+  "qt_runtime": "6.11.1",
+  "window_cycles": 30,
+  "monitors_per_window": [
+    2
+  ],
+  "rss_kib_first_last": [
+    174080,
+    182048
+  ],
+  "pin_toggles": {
+    "toggles": 20,
+    "levels": [
+      8,
+      0,
+      8,
+      0,
+      8,
+      0,
+      8,
+      0,
+      8,
+      0,
+      8,
+      0,
+      8,
+      0,
+      8,
+      0,
+      8,
+      0,
+      8,
+      0
+    ],
+    "same_native_window": true,
+    "hide_show_events": [],
+    "geometry_unchanged": true,
+    "scroll_unchanged": true,
+    "selection_unchanged": true
+  },
+  "vision_ok": true,
+  "permission_preflight_direct_binary": [
+    {
+      "key": "accessibility",
+      "state": "missing"
+    },
+    {
+      "key": "input_monitoring",
+      "state": "missing"
+    },
+    {
+      "key": "screen_recording",
+      "state": "missing"
+    }
+  ]
+}

@@ -10,9 +10,11 @@ inference. No Windows backend is maintained.
 | `core/translator.py`, `text_preparation.py` | Prompt/profile selection, lossless source partitioning, output completeness and resumable segments. Transport is injected. |
 | `infrastructure/ollama_client.py`, `async_stream.py` | HTTP, model capability query, strict stream parsing and cancellation that interrupts pending I/O. |
 | `infrastructure/macos/` | AX/pasteboard selection, Quartz hotkeys, permissions, screenshot process, Vision, speech and native mouse monitors. Screenshot and recognition have separate owners. |
-| `ui/translation_view.py` | Editable source and streaming output; append preserves selection and scroll position. |
-| `ui/window_controller.py` | Size, placement, screen bounds, pinning and geometry persistence. |
-| `ui/popup.py` | Reading controls, speech actions, presentation state and window dismissal policy. |
+| `ui/translation_view.py` | Source excerpt and streaming output panels; append preserves selection and scroll position. |
+| `ui/window_controller.py` | Placement near the pointer, start/automatic height, screen bounds, remembered size and in-place pin level. Pin state is never persisted. |
+| `ui/popup.py` | Reading and edit modes, state-dependent actions, speech, and the single dismissal decision (`_auto_dismiss_allowed`). |
+| `infrastructure/macos/event_monitor.py` | Global mouse monitor and app-activation observer for leaving the reading context; clicks inside LingoFlow never count. |
+| `ui/menu_windows.py` | One presentation path for About/Settings/permissions: run after the status menu closes, activate, show, front, focus; float while active. |
 | `ui/*_workflow.py`, `main_window.py` | Coordinate tasks, reject late request IDs and assemble services. |
 
 Cancellation invalidates the UI request ID first, then stops owned network/native
