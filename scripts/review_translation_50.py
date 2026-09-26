@@ -64,6 +64,10 @@ def summarize(raw, suite, key, reviews):
         decoded[(location["profile_id"], location["case_id"])] = {"review_id": review_id, **rating}
     profiles = []
     for profile in raw["profiles"]:
+        label = profile["label"]
+        quantization = profile["installed"]["details"]["quantization_level"]
+        if quantization not in label:
+            label = f"{label} · {quantization}"
         results = [
             {**row, "review": decoded[(profile["id"], row["id"])]} for row in profile["cases"]
         ]
@@ -92,7 +96,7 @@ def summarize(raw, suite, key, reviews):
         profiles.append(
             {
                 "id": profile["id"],
-                "label": profile["label"],
+                "label": label,
                 "model": profile["model"],
                 "digest": profile["installed"]["digest"],
                 "installed_bytes": profile["installed"]["size"],
