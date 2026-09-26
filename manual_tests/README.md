@@ -73,6 +73,16 @@ as `trace menu:`, `trace window:` and `trace popup:` lines for checking a sessio
 - Move between monitors, unplug a display, and test a full-screen Space. The window must remain reachable.
 - Check light/dark/system theme, opacity, font size, 原文与译文并排 and 显示原文.
 
+## Word Lookup
+
+- Select one English word in a PDF and press the hotkey: a dictionary card appears at once
+  with UK/US phonetics, parts of speech and numbered senses; the model gloss follows.
+- Try inflected and irregular forms (inhibited, ran, mice, criteria) and a technical term
+  missing from the bilingual dictionary (kinase): English definition with the model term first.
+- Click 🔊 for UK and US pronunciation and "N more senses". Copy copies the card text.
+- ⋯ → Translate with Model gives an ordinary translation; two or more words always use the model.
+- Turn off Settings → General → Translation → dictionary lookup and confirm single words use the model.
+
 ## Interface Language
 
 - A fresh install and older settings files show English. Switch Settings → General →
