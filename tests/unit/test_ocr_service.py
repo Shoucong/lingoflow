@@ -123,3 +123,13 @@ def test_image_enhancement_is_applied_and_temporary_derivative_is_removed(
     assert result.source_image_path == str(source)
     assert paths[0] != source and not paths[0].exists()
     assert source.exists()
+
+
+def test_mixed_language_options_list_the_cjk_model_first() -> None:
+    # Vision's English model cannot read CJK text; its CJK models also read Latin letters.
+    from lingoflow.config.settings import AppSettings
+    from lingoflow.infrastructure.macos.ocr import OCRService
+
+    assert OCRService.LANGUAGE_MAP["eng+chi_sim"] == ["zh-Hans", "en-US"]
+    assert OCRService.LANGUAGE_MAP["eng+jpn"] == ["ja-JP", "en-US"]
+    assert AppSettings().ocr.language == "eng+chi_sim"

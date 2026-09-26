@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.1 — 2026-09-27
+
+- **Chinese OCR fixed.** The default "English + Chinese" option asked Apple Vision for
+  English first; Vision then used its Latin-script model, which returned nothing for
+  Chinese-only captures and garbled mixed lines. Chinese is now listed first (Vision's
+  Chinese model also reads Latin letters) with automatic language detection enabled.
+  Measured on rendered text in two fonts and sizes (character accuracy):
+
+  | Setting | Chinese | Mixed | English |
+  | --- | --- | --- | --- |
+  | English, Chinese (0.4.0) | 0% | 64–70% | 100% |
+  | Chinese, English + auto detection (0.4.1) | 98–100% | 90–95% | 96–100% |
+
+  The same fix applies to "English + Japanese". Probe: `scripts/probe_ocr_languages.py`.
+  The bundle self-check now also recognizes a Chinese line.
+
 ## 0.4.0 — 2026-09-27
 
 - **Word lookup card.** Selecting one English word (or one Chinese word with an English

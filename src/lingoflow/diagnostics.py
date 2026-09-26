@@ -119,17 +119,24 @@ def run(output: Path) -> None:
         assert dialog._build_settings_from_ui() is not None
         dialog.close()
 
-        image = Image.new("RGB", (1300, 190), "white")
+        image = Image.new("RGB", (1300, 260), "white")
         draw = ImageDraw.Draw(image)
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 42)
         draw.text((25, 25), "LingoFlow local OCR test", font=font, fill="black")
         draw.text((25, 95), "Keep value 12.5 and citation [12].", font=font, fill="black")
+        chinese_font = Path("/System/Library/Fonts/Hiragino Sans GB.ttc")
+        if chinese_font.exists():
+            # English-first language order used to return nothing for Chinese text.
+            font_zh = ImageFont.truetype(str(chinese_font), 42)
+            draw.text((25, 170), "蛋白激酶调控细胞通路。", font=font_zh, fill="black")
         image_path = root / "synthetic.png"
         image.save(image_path)
         ocr = OCRService(settings)
         started = time.perf_counter()
         recognized = ocr.extract_text(image_path)
         assert recognized.success and "12.5" in recognized.text and "[12]" in recognized.text
+        if chinese_font.exists():
+            assert "蛋白激酶" in recognized.text, recognized.text
         evidence["vision"] = {
             "text": recognized.text,
             "confidence": recognized.confidence,

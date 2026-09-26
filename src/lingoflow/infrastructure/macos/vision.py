@@ -61,9 +61,12 @@ class VisionRecognizer:
             request.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelAccurate)
             request.setUsesLanguageCorrection_(True)
 
-            # Set recognition languages
+            # Set recognition languages; automatic detection (macOS 13+) keeps
+            # English-only captures accurate when a CJK language is listed first.
             apple_languages = languages
             request.setRecognitionLanguages_(apple_languages)
+            if hasattr(request, "setAutomaticallyDetectsLanguage_"):
+                request.setAutomaticallyDetectsLanguage_(True)
 
             logger.debug(f"Vision request with languages: {apple_languages}")
 
