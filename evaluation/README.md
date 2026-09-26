@@ -13,12 +13,20 @@ and a final marker. Keep fixture changes explicit so recorded hashes stay meanin
 .venv/bin/python scripts/check_runtime.py \
   --model huihui_ai/hunyuan-mt-abliterated:7b-chimera \
   --output build/runtime.json
+QT_QPA_PLATFORM=cocoa .venv/bin/python scripts/check_cold_start_reopen.py \
+  --output build/cold-start-reopen.json
 ```
 
 Only models already installed on loopback Ollama are used. No model download or
 remote inference is performed. The runners construct defaults instead of loading
 personal settings. Evaluation retains the synthetic inputs/outputs in its report;
 normal application content logging remains disabled by default.
+
+The cold-start/reopen check requires the default model to be absent from `/api/ps`;
+it does not unload resident models. It sends synthetic text, waits until the chat
+request body has been sent, closes the native popup before any output, and immediately
+triggers a second selection. Clipboard capture and the physical global keyboard
+event are replaced with a synthetic selection and the same Qt trigger signal.
 
 The legacy profile reproduces the original translation prompt, omitted generation
 options, and the selection entry's 5,000-character cap. It uses the new strict
