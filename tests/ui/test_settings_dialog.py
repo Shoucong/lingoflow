@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 import pytest
 
 pytest.importorskip("PyQt6")
@@ -53,3 +55,32 @@ def test_refresh_does_not_silently_replace_missing_model(qtbot) -> None:
     dialog._on_models_refresh_finished(17, ["other-model"], "")
     assert dialog.model_combo.currentText() == "my-chosen-model"
     assert "missing" in dialog.connection_status.text()
+
+
+def test_cancel_settings_invalidates_pending_model_refresh(qtbot, monkeypatch) -> None:
+    started, release = threading.Event(), threading.Event()
+
+    class SlowClient:
+        def __init__(self, **kwargs):
+            pass
+
+        def list_models(self):
+            started.set()
+            release.wait(2)
+            return []
+
+    monkeypatch.setattr("lingoflow.ui.settings_dialog.OllamaClient", SlowClient)
+    dialog = SettingsDialog(AppSettings())
+    qtbot.addWidget(dialog)
+    dialog.show()
+    dialog._refresh_models()
+    qtbot.waitUntil(started.is_set)
+    tasks = list(dialog._network_tasks._tasks.values())
+    try:
+        dialog.reject()
+        assert all(task.is_cancelled() for task in tasks)
+        assert dialog._active_models_task_id is None
+    finally:
+        release.set()
+        for task in tasks:
+            task._thread.join(2)

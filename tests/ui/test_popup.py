@@ -213,3 +213,15 @@ def test_appearance_settings_change_palette_and_reading_layout(popup) -> None:
     popup.update_settings(settings)
     dark = popup.palette().color(QPalette.ColorRole.Window)
     assert dark.lightness() < light.lightness()
+
+
+def test_language_change_after_typed_input_emits_translation_request(popup, qtbot) -> None:
+    popup.show_with_text("")
+    popup.prepare_review()
+    popup.source_text.setPlainText("Typed input")
+    popup.start_translation()
+    popup.append_translation("输入文字")
+    popup.finish_translation()
+    with qtbot.waitSignal(popup.language_changed) as changed:
+        popup.target_combo.setCurrentText("Japanese")
+    assert changed.args == ["Japanese"]

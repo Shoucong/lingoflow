@@ -806,7 +806,16 @@ class SettingsDialog(QDialog):
             lines.append(f"{location}: {message}" if location else message)
         return "\n".join(lines)
 
-    def closeEvent(self, event) -> None:  # noqa: N802
-        """Cancel outstanding settings workers on close."""
+    def _cancel_network_tasks(self) -> None:
+        self._active_connection_task_id = None
+        self._active_models_task_id = None
         self._network_tasks.cancel_all()
+
+    def done(self, result: int) -> None:
+        """Save, Cancel and Escape also invalidate outstanding network results."""
+        self._cancel_network_tasks()
+        super().done(result)
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        self._cancel_network_tasks()
         super().closeEvent(event)

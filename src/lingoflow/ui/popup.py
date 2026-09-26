@@ -530,7 +530,7 @@ class TranslationPopup(QWidget):
         """Handle target language change."""
         logger.debug(f"Target language changed to: {language}")
         # Only emit if popup is visible, has source text, and not a programmatic change
-        if self.isVisible() and self._source_text and not self._suppress_language_signal:
+        if self.isVisible() and self.get_source_text() and not self._suppress_language_signal:
             self.language_changed.emit(language)
 
     def dismiss(self) -> None:
