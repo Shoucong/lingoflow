@@ -1,0 +1,802 @@
+{
+  "R001": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E01"
+  },
+  "R002": {
+    "profile_id": "milmmt",
+    "case_id": "E01"
+  },
+  "R003": {
+    "profile_id": "hy_mt2",
+    "case_id": "E01"
+  },
+  "R004": {
+    "profile_id": "translategemma",
+    "case_id": "E01"
+  },
+  "R005": {
+    "profile_id": "milmmt",
+    "case_id": "E02"
+  },
+  "R006": {
+    "profile_id": "hy_mt2",
+    "case_id": "E02"
+  },
+  "R007": {
+    "profile_id": "translategemma",
+    "case_id": "E02"
+  },
+  "R008": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E02"
+  },
+  "R009": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E03"
+  },
+  "R010": {
+    "profile_id": "milmmt",
+    "case_id": "E03"
+  },
+  "R011": {
+    "profile_id": "translategemma",
+    "case_id": "E03"
+  },
+  "R012": {
+    "profile_id": "hy_mt2",
+    "case_id": "E03"
+  },
+  "R013": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E04"
+  },
+  "R014": {
+    "profile_id": "hy_mt2",
+    "case_id": "E04"
+  },
+  "R015": {
+    "profile_id": "milmmt",
+    "case_id": "E04"
+  },
+  "R016": {
+    "profile_id": "translategemma",
+    "case_id": "E04"
+  },
+  "R017": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E05"
+  },
+  "R018": {
+    "profile_id": "hy_mt2",
+    "case_id": "E05"
+  },
+  "R019": {
+    "profile_id": "translategemma",
+    "case_id": "E05"
+  },
+  "R020": {
+    "profile_id": "milmmt",
+    "case_id": "E05"
+  },
+  "R021": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E06"
+  },
+  "R022": {
+    "profile_id": "hy_mt2",
+    "case_id": "E06"
+  },
+  "R023": {
+    "profile_id": "translategemma",
+    "case_id": "E06"
+  },
+  "R024": {
+    "profile_id": "milmmt",
+    "case_id": "E06"
+  },
+  "R025": {
+    "profile_id": "hy_mt2",
+    "case_id": "E07"
+  },
+  "R026": {
+    "profile_id": "milmmt",
+    "case_id": "E07"
+  },
+  "R027": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E07"
+  },
+  "R028": {
+    "profile_id": "translategemma",
+    "case_id": "E07"
+  },
+  "R029": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E08"
+  },
+  "R030": {
+    "profile_id": "translategemma",
+    "case_id": "E08"
+  },
+  "R031": {
+    "profile_id": "hy_mt2",
+    "case_id": "E08"
+  },
+  "R032": {
+    "profile_id": "milmmt",
+    "case_id": "E08"
+  },
+  "R033": {
+    "profile_id": "translategemma",
+    "case_id": "E09"
+  },
+  "R034": {
+    "profile_id": "hy_mt2",
+    "case_id": "E09"
+  },
+  "R035": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E09"
+  },
+  "R036": {
+    "profile_id": "milmmt",
+    "case_id": "E09"
+  },
+  "R037": {
+    "profile_id": "hy_mt2",
+    "case_id": "E10"
+  },
+  "R038": {
+    "profile_id": "milmmt",
+    "case_id": "E10"
+  },
+  "R039": {
+    "profile_id": "translategemma",
+    "case_id": "E10"
+  },
+  "R040": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E10"
+  },
+  "R041": {
+    "profile_id": "hy_mt2",
+    "case_id": "E11"
+  },
+  "R042": {
+    "profile_id": "translategemma",
+    "case_id": "E11"
+  },
+  "R043": {
+    "profile_id": "milmmt",
+    "case_id": "E11"
+  },
+  "R044": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E11"
+  },
+  "R045": {
+    "profile_id": "translategemma",
+    "case_id": "E12"
+  },
+  "R046": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E12"
+  },
+  "R047": {
+    "profile_id": "milmmt",
+    "case_id": "E12"
+  },
+  "R048": {
+    "profile_id": "hy_mt2",
+    "case_id": "E12"
+  },
+  "R049": {
+    "profile_id": "hy_mt2",
+    "case_id": "E13"
+  },
+  "R050": {
+    "profile_id": "translategemma",
+    "case_id": "E13"
+  },
+  "R051": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E13"
+  },
+  "R052": {
+    "profile_id": "milmmt",
+    "case_id": "E13"
+  },
+  "R053": {
+    "profile_id": "milmmt",
+    "case_id": "E14"
+  },
+  "R054": {
+    "profile_id": "translategemma",
+    "case_id": "E14"
+  },
+  "R055": {
+    "profile_id": "hy_mt2",
+    "case_id": "E14"
+  },
+  "R056": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E14"
+  },
+  "R057": {
+    "profile_id": "milmmt",
+    "case_id": "E15"
+  },
+  "R058": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E15"
+  },
+  "R059": {
+    "profile_id": "hy_mt2",
+    "case_id": "E15"
+  },
+  "R060": {
+    "profile_id": "translategemma",
+    "case_id": "E15"
+  },
+  "R061": {
+    "profile_id": "translategemma",
+    "case_id": "E16"
+  },
+  "R062": {
+    "profile_id": "milmmt",
+    "case_id": "E16"
+  },
+  "R063": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E16"
+  },
+  "R064": {
+    "profile_id": "hy_mt2",
+    "case_id": "E16"
+  },
+  "R065": {
+    "profile_id": "milmmt",
+    "case_id": "E17"
+  },
+  "R066": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E17"
+  },
+  "R067": {
+    "profile_id": "translategemma",
+    "case_id": "E17"
+  },
+  "R068": {
+    "profile_id": "hy_mt2",
+    "case_id": "E17"
+  },
+  "R069": {
+    "profile_id": "milmmt",
+    "case_id": "E18"
+  },
+  "R070": {
+    "profile_id": "hy_mt2",
+    "case_id": "E18"
+  },
+  "R071": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E18"
+  },
+  "R072": {
+    "profile_id": "translategemma",
+    "case_id": "E18"
+  },
+  "R073": {
+    "profile_id": "milmmt",
+    "case_id": "E19"
+  },
+  "R074": {
+    "profile_id": "translategemma",
+    "case_id": "E19"
+  },
+  "R075": {
+    "profile_id": "hy_mt2",
+    "case_id": "E19"
+  },
+  "R076": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E19"
+  },
+  "R077": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E20"
+  },
+  "R078": {
+    "profile_id": "translategemma",
+    "case_id": "E20"
+  },
+  "R079": {
+    "profile_id": "milmmt",
+    "case_id": "E20"
+  },
+  "R080": {
+    "profile_id": "hy_mt2",
+    "case_id": "E20"
+  },
+  "R081": {
+    "profile_id": "milmmt",
+    "case_id": "E21"
+  },
+  "R082": {
+    "profile_id": "translategemma",
+    "case_id": "E21"
+  },
+  "R083": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E21"
+  },
+  "R084": {
+    "profile_id": "hy_mt2",
+    "case_id": "E21"
+  },
+  "R085": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E22"
+  },
+  "R086": {
+    "profile_id": "hy_mt2",
+    "case_id": "E22"
+  },
+  "R087": {
+    "profile_id": "translategemma",
+    "case_id": "E22"
+  },
+  "R088": {
+    "profile_id": "milmmt",
+    "case_id": "E22"
+  },
+  "R089": {
+    "profile_id": "hy_mt2",
+    "case_id": "E23"
+  },
+  "R090": {
+    "profile_id": "milmmt",
+    "case_id": "E23"
+  },
+  "R091": {
+    "profile_id": "translategemma",
+    "case_id": "E23"
+  },
+  "R092": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E23"
+  },
+  "R093": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E24"
+  },
+  "R094": {
+    "profile_id": "milmmt",
+    "case_id": "E24"
+  },
+  "R095": {
+    "profile_id": "hy_mt2",
+    "case_id": "E24"
+  },
+  "R096": {
+    "profile_id": "translategemma",
+    "case_id": "E24"
+  },
+  "R097": {
+    "profile_id": "milmmt",
+    "case_id": "E25"
+  },
+  "R098": {
+    "profile_id": "hy_mt2",
+    "case_id": "E25"
+  },
+  "R099": {
+    "profile_id": "current_hunyuan",
+    "case_id": "E25"
+  },
+  "R100": {
+    "profile_id": "translategemma",
+    "case_id": "E25"
+  },
+  "R101": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J01"
+  },
+  "R102": {
+    "profile_id": "milmmt",
+    "case_id": "J01"
+  },
+  "R103": {
+    "profile_id": "hy_mt2",
+    "case_id": "J01"
+  },
+  "R104": {
+    "profile_id": "translategemma",
+    "case_id": "J01"
+  },
+  "R105": {
+    "profile_id": "translategemma",
+    "case_id": "J02"
+  },
+  "R106": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J02"
+  },
+  "R107": {
+    "profile_id": "milmmt",
+    "case_id": "J02"
+  },
+  "R108": {
+    "profile_id": "hy_mt2",
+    "case_id": "J02"
+  },
+  "R109": {
+    "profile_id": "translategemma",
+    "case_id": "J03"
+  },
+  "R110": {
+    "profile_id": "hy_mt2",
+    "case_id": "J03"
+  },
+  "R111": {
+    "profile_id": "milmmt",
+    "case_id": "J03"
+  },
+  "R112": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J03"
+  },
+  "R113": {
+    "profile_id": "hy_mt2",
+    "case_id": "J04"
+  },
+  "R114": {
+    "profile_id": "translategemma",
+    "case_id": "J04"
+  },
+  "R115": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J04"
+  },
+  "R116": {
+    "profile_id": "milmmt",
+    "case_id": "J04"
+  },
+  "R117": {
+    "profile_id": "milmmt",
+    "case_id": "J05"
+  },
+  "R118": {
+    "profile_id": "translategemma",
+    "case_id": "J05"
+  },
+  "R119": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J05"
+  },
+  "R120": {
+    "profile_id": "hy_mt2",
+    "case_id": "J05"
+  },
+  "R121": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J06"
+  },
+  "R122": {
+    "profile_id": "hy_mt2",
+    "case_id": "J06"
+  },
+  "R123": {
+    "profile_id": "milmmt",
+    "case_id": "J06"
+  },
+  "R124": {
+    "profile_id": "translategemma",
+    "case_id": "J06"
+  },
+  "R125": {
+    "profile_id": "hy_mt2",
+    "case_id": "J07"
+  },
+  "R126": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J07"
+  },
+  "R127": {
+    "profile_id": "translategemma",
+    "case_id": "J07"
+  },
+  "R128": {
+    "profile_id": "milmmt",
+    "case_id": "J07"
+  },
+  "R129": {
+    "profile_id": "translategemma",
+    "case_id": "J08"
+  },
+  "R130": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J08"
+  },
+  "R131": {
+    "profile_id": "hy_mt2",
+    "case_id": "J08"
+  },
+  "R132": {
+    "profile_id": "milmmt",
+    "case_id": "J08"
+  },
+  "R133": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J09"
+  },
+  "R134": {
+    "profile_id": "translategemma",
+    "case_id": "J09"
+  },
+  "R135": {
+    "profile_id": "hy_mt2",
+    "case_id": "J09"
+  },
+  "R136": {
+    "profile_id": "milmmt",
+    "case_id": "J09"
+  },
+  "R137": {
+    "profile_id": "milmmt",
+    "case_id": "J10"
+  },
+  "R138": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J10"
+  },
+  "R139": {
+    "profile_id": "translategemma",
+    "case_id": "J10"
+  },
+  "R140": {
+    "profile_id": "hy_mt2",
+    "case_id": "J10"
+  },
+  "R141": {
+    "profile_id": "translategemma",
+    "case_id": "J11"
+  },
+  "R142": {
+    "profile_id": "milmmt",
+    "case_id": "J11"
+  },
+  "R143": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J11"
+  },
+  "R144": {
+    "profile_id": "hy_mt2",
+    "case_id": "J11"
+  },
+  "R145": {
+    "profile_id": "hy_mt2",
+    "case_id": "J12"
+  },
+  "R146": {
+    "profile_id": "translategemma",
+    "case_id": "J12"
+  },
+  "R147": {
+    "profile_id": "milmmt",
+    "case_id": "J12"
+  },
+  "R148": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J12"
+  },
+  "R149": {
+    "profile_id": "milmmt",
+    "case_id": "J13"
+  },
+  "R150": {
+    "profile_id": "hy_mt2",
+    "case_id": "J13"
+  },
+  "R151": {
+    "profile_id": "translategemma",
+    "case_id": "J13"
+  },
+  "R152": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J13"
+  },
+  "R153": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J14"
+  },
+  "R154": {
+    "profile_id": "hy_mt2",
+    "case_id": "J14"
+  },
+  "R155": {
+    "profile_id": "milmmt",
+    "case_id": "J14"
+  },
+  "R156": {
+    "profile_id": "translategemma",
+    "case_id": "J14"
+  },
+  "R157": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J15"
+  },
+  "R158": {
+    "profile_id": "milmmt",
+    "case_id": "J15"
+  },
+  "R159": {
+    "profile_id": "hy_mt2",
+    "case_id": "J15"
+  },
+  "R160": {
+    "profile_id": "translategemma",
+    "case_id": "J15"
+  },
+  "R161": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J16"
+  },
+  "R162": {
+    "profile_id": "translategemma",
+    "case_id": "J16"
+  },
+  "R163": {
+    "profile_id": "milmmt",
+    "case_id": "J16"
+  },
+  "R164": {
+    "profile_id": "hy_mt2",
+    "case_id": "J16"
+  },
+  "R165": {
+    "profile_id": "translategemma",
+    "case_id": "J17"
+  },
+  "R166": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J17"
+  },
+  "R167": {
+    "profile_id": "hy_mt2",
+    "case_id": "J17"
+  },
+  "R168": {
+    "profile_id": "milmmt",
+    "case_id": "J17"
+  },
+  "R169": {
+    "profile_id": "hy_mt2",
+    "case_id": "J18"
+  },
+  "R170": {
+    "profile_id": "milmmt",
+    "case_id": "J18"
+  },
+  "R171": {
+    "profile_id": "translategemma",
+    "case_id": "J18"
+  },
+  "R172": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J18"
+  },
+  "R173": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J19"
+  },
+  "R174": {
+    "profile_id": "milmmt",
+    "case_id": "J19"
+  },
+  "R175": {
+    "profile_id": "hy_mt2",
+    "case_id": "J19"
+  },
+  "R176": {
+    "profile_id": "translategemma",
+    "case_id": "J19"
+  },
+  "R177": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J20"
+  },
+  "R178": {
+    "profile_id": "hy_mt2",
+    "case_id": "J20"
+  },
+  "R179": {
+    "profile_id": "milmmt",
+    "case_id": "J20"
+  },
+  "R180": {
+    "profile_id": "translategemma",
+    "case_id": "J20"
+  },
+  "R181": {
+    "profile_id": "milmmt",
+    "case_id": "J21"
+  },
+  "R182": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J21"
+  },
+  "R183": {
+    "profile_id": "translategemma",
+    "case_id": "J21"
+  },
+  "R184": {
+    "profile_id": "hy_mt2",
+    "case_id": "J21"
+  },
+  "R185": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J22"
+  },
+  "R186": {
+    "profile_id": "milmmt",
+    "case_id": "J22"
+  },
+  "R187": {
+    "profile_id": "hy_mt2",
+    "case_id": "J22"
+  },
+  "R188": {
+    "profile_id": "translategemma",
+    "case_id": "J22"
+  },
+  "R189": {
+    "profile_id": "translategemma",
+    "case_id": "J23"
+  },
+  "R190": {
+    "profile_id": "milmmt",
+    "case_id": "J23"
+  },
+  "R191": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J23"
+  },
+  "R192": {
+    "profile_id": "hy_mt2",
+    "case_id": "J23"
+  },
+  "R193": {
+    "profile_id": "translategemma",
+    "case_id": "J24"
+  },
+  "R194": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J24"
+  },
+  "R195": {
+    "profile_id": "milmmt",
+    "case_id": "J24"
+  },
+  "R196": {
+    "profile_id": "hy_mt2",
+    "case_id": "J24"
+  },
+  "R197": {
+    "profile_id": "translategemma",
+    "case_id": "J25"
+  },
+  "R198": {
+    "profile_id": "hy_mt2",
+    "case_id": "J25"
+  },
+  "R199": {
+    "profile_id": "milmmt",
+    "case_id": "J25"
+  },
+  "R200": {
+    "profile_id": "current_hunyuan",
+    "case_id": "J25"
+  }
+}

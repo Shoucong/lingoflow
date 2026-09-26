@@ -1,0 +1,37 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LingoFlow · 50 条英日译中对照</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#202a36;background:#f4f6f8}
+body{max-width:1700px;margin:auto;padding:28px}h1{font-size:28px}p,li{line-height:1.6}
+.intro{max-width:1100px;color:#4e5c6a}.table{overflow:auto;background:white;border:1px solid #d6dce4;border-radius:10px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;white-space:nowrap}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid #e5e9ef}thead{background:#e9eef5}
+.filters{position:sticky;top:0;background:#f4f6f8f5;padding:14px 0;display:flex;gap:16px;flex-wrap:wrap;align-items:center;z-index:1}
+select,input{font:inherit;padding:7px;border:1px solid #bec9d5;border-radius:5px}label{display:flex;gap:6px;align-items:center}
+.case{background:white;border:1px solid #d6dce4;border-radius:12px;margin:20px 0;padding:20px}
+h2{font-size:19px;margin-top:0}.source{background:#edf2f8;padding:14px;border-radius:7px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:15px;line-height:1.7}
+details{color:#546271;margin-bottom:18px}summary{cursor:pointer}.outputs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+article{min-width:0;border-top:2px solid #a6b5c7}h3{font-size:14px;line-height:1.6;display:flex;justify-content:space-between;gap:7px}
+b{white-space:nowrap;border-radius:5px;padding:1px 6px}.s4{background:#d5efdf}.s3{background:#e6edf5}.s2{background:#fff0cb}.s1,.s0{background:#ffdcd5}
+.note{color:#5c6876;font-size:13px;border-top:1px solid #e6eaf0;padding-top:10px}[hidden]{display:none!important}
+@media(max-width:1100px){.outputs{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){body{padding:12px}.outputs{grid-template-columns:1fr}}
+</style><h1>50 条英日译中 · 四模型本机对照</h1>
+<p class="intro">25 条英语、25 条日语，含 8 条 AI 药物发现文本。全部为预先固定的合成样例。
+译文先隐藏模型名，再由本次助手逐条评分；这不是独立专业人工双盲评测。
+4 分：准确自然；3 分：基本可读、轻微问题；2 分：需实质修正；1 分：重大错误；0 分：不可用。
+分数不等于通用翻译准确率。表中内存为 Ollama 报告的驻留量，非整个系统峰值。</p>
+<div class="table"><table><thead><tr><th>模型 / 量化</th><th>英语 /4</th><th>日语 /4</th><th>药物发现 /4</th><th>可读 ≥3</th><th>冷首字¹</th><th>热首字中位</th><th>热总时长中位</th><th>驻留内存</th></tr></thead><tbody>__ROWS__</tbody></table></div>
+<p class="intro">¹ 每个模型仅一次冷启动；热请求的统计不含首次加载。不同模型使用其规定提示格式与推理参数，量化精度也不同。
+建议结合下方具体译文和问题说明判断，细微分差不代表统计显著优势。</p>
+<div class="filters"><label>语言<select id="language"><option value="all">全部</option><option value="en">英→中</option><option value="ja">日→中</option></select></label>
+<label>领域<select id="topic"><option value="all">全部</option><option value="ai_drug_discovery">AI 药物发现</option></select></label>
+<label><input type="checkbox" id="errors">仅显示有模型需要实质修正的样例</label>
+<input id="search" placeholder="搜索编号、术语或译文"><span id="count"></span></div>__CASES__
+<script>
+function filter(){const lang=document.querySelector('#language').value,topic=document.querySelector('#topic').value,
+bad=document.querySelector('#errors').checked,q=document.querySelector('#search').value.toLowerCase();let n=0;
+document.querySelectorAll('.case').forEach(c=>{const show=(lang==='all'||c.dataset.language===lang)&&(topic==='all'||c.dataset.topic===topic)&&(!bad||Number(c.dataset.worst)<=2)&&(!q||c.textContent.toLowerCase().includes(q));c.hidden=!show;if(show)n++});document.querySelector('#count').textContent=n+' / 50 条';}
+document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',filter));filter();
+</script></html>
