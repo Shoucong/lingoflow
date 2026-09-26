@@ -4,6 +4,8 @@ from lingoflow.config.constants import MILMMT_MODEL as MILMMT_MODEL
 from lingoflow.config.constants import SUPPORTED_LANGUAGES
 from lingoflow.core.errors import TranslationError
 
+MILMMT_MAX_PART_BYTES = 2048
+
 
 def is_milmmt_model(model: str) -> bool:
     name = model.rsplit("/", 1)[-1].split(":", 1)[0].casefold()

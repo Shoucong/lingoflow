@@ -168,6 +168,12 @@ def test_milmmt_resume_retries_only_failed_segment_without_chat_context():
     assert prompts[1] == prompts[2] and prompts.count(prompts[0]) == 1
     assert len(prompts) == saved.total + 1
     assert detected == [source, source]
+    delivered = [
+        prompt.split("\nEnglish: ", 1)[1].rsplit("\nChinese (Simplified):", 1)[0]
+        for prompt in [prompts[0], *prompts[2:]]
+    ]
+    assert all(len(part.encode("utf-8")) <= 2048 for part in delivered)
+    assert " ".join(" ".join(delivered).split()) == " ".join(source.split())
 
 
 def test_cancellation_during_detection_does_not_start_generation():

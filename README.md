@@ -61,7 +61,10 @@ The default translation model is **MiLMMT-46-4B-v1.0 Q4_K_M**. It uses the
 with local source-language detection for Auto-detect. Isolated Latin terms default to English;
 choose Text Source explicitly for ambiguous short text. Chinese variant names are mapped to
 the model's exact supported language names. Same-language input is returned unchanged.
-Each long-text segment uses the official prompt independently. MiLMMT does not use chat-style
+Each long-text segment uses the official prompt independently, with at most 2048 UTF-8 input
+bytes per part. This application limit reduces omissions observed in a repeated-text stress
+check; it is not an official model context limit or a guarantee against semantic omissions.
+MiLMMT does not use chat-style
 system prompts, academic presets or previous-segment instruction text; the UI disables those
 controls while retaining custom prompts for other models. Cancellation and resume remain available.
 Existing saved model choices are retained; selecting the MiLMMT tag enables its adapter automatically.

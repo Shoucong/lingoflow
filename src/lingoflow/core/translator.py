@@ -17,7 +17,12 @@ from lingoflow.core.errors import (
 )
 from lingoflow.core.ports import ChatProvider
 from lingoflow.core.text_preparation import TranslationCheckpoint, fingerprint, split_text
-from lingoflow.core.translation_profiles import is_milmmt_model, milmmt_options, milmmt_prompt
+from lingoflow.core.translation_profiles import (
+    MILMMT_MAX_PART_BYTES,
+    is_milmmt_model,
+    milmmt_options,
+    milmmt_prompt,
+)
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -196,6 +201,10 @@ class TranslationService:
             settings.ollama.context_window - settings.ollama.max_output_tokens - overhead,
             settings.ollama.max_output_tokens * 2,
         )
+        if raw:
+            # The small completion model can collapse repeated passages inside a large
+            # request. Keep reading-sized parts without altering the official prompt.
+            budget = min(budget, MILMMT_MAX_PART_BYTES)
         if budget < 128:
             raise TranslationError(
                 "Prompt and output budget leave too little input space. Increase context."
