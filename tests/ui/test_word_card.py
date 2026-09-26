@@ -147,3 +147,11 @@ def test_translate_with_model_is_offered_only_for_word_cards(popup, qtbot):
     assert requested.args == ["suppressed"]
     popup.leave_word_mode()
     assert not popup.is_word_card and popup.translation_text.toPlainText() == ""
+
+
+def test_word_in_no_dictionary_says_so_and_leads_with_the_model_translation():
+    miss = DictionaryResult("equivariance", "", False)
+    html = render_card(miss, colors("light"), 14, gloss="等变性", gloss_state="done")
+    assert "Not in the macOS dictionaries" in html
+    assert html.index("equivariance") < html.index("Model translation") < html.index("等变性")
+    assert "Source:" not in html

@@ -159,14 +159,18 @@ class TranslationWorkflow:
         except Exception:
             logger.exception("Dictionary lookup failed")
             return None
-        found = result is not None and result.found
+        if result is None:
+            return None  # no dictionary applies (language pair) or none is available
+        if result.found:
+            path = "dictionary" if result.bilingual else "definition + model"
+        else:
+            # Looked up but in neither dictionary (e.g. "equivariance"): still a word
+            # card, so it is visible that the dictionaries were checked.
+            path = "not in dictionaries, model"
+            result = DictionaryResult(result.query, "", bilingual=False)
         # No selected text in the log: only which path answered and how fast.
-        logger.info(
-            "trace word: %s in %.1f ms",
-            ("dictionary" if result.bilingual else "definition + model") if found else "model",
-            (time.perf_counter() - started) * 1000,
-        )
-        return result if found else None
+        logger.info("trace word: %s in %.1f ms", path, (time.perf_counter() - started) * 1000)
+        return result
 
     def _start_request(
         self,

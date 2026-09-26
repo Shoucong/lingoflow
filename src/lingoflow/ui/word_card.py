@@ -277,17 +277,23 @@ def render_card(
             _entry_html(entry, index, result, colors, font, expanded, index == 0, lead)
         )
     if not result.entries:
+        note = tr(
+            "Not in the macOS dictionaries; translated by the model.",
+            "系统词典未收录此词，以下为模型翻译。",
+        )
         html.append(
-            f"<p style='font-size:{font + 8}px;font-weight:600'>{escape(result.query)}</p>"
-            f"<p style='color:{colors['muted']}'>"
-            f"{escape(tr('Not in the dictionary.', '词典中没有这个词。'))}</p>"
+            f"<p style='margin:0'><span style='font-size:{font + 8}px;font-weight:600'>"
+            f"{escape(result.query)}</span></p>"
+            f"<p style='margin:2px 0 6px 0;color:{colors['muted']}'>{escape(note)}</p>"
+            f"{gloss_line}"
         )
     if result.bilingual and gloss_line:
         html.append(gloss_line)
-    html.append(
-        f"<p style='margin-top:8px;color:{colors['muted']};font-size:{max(10, font - 3)}px'>"
-        f"{escape(tr('Source: {name}', '来源：{name}', name=result.source_name))}</p>"
-    )
+    if result.source_name:
+        html.append(
+            f"<p style='margin-top:8px;color:{colors['muted']};font-size:{max(10, font - 3)}px'>"
+            f"{escape(tr('Source: {name}', '来源：{name}', name=result.source_name))}</p>"
+        )
     html.append("</div>")
     return "".join(html)
 

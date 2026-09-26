@@ -15,7 +15,7 @@ APP_NAME = "LingoFlow"
 try:
     APP_VERSION = version("lingoflow")
 except PackageNotFoundError:
-    APP_VERSION = "0.3.0"
+    APP_VERSION = "0.4.0"
 APP_AUTHOR = "Shoucong Jiao"
 BUNDLE_IDENTIFIER = "com.shoucong.lingoflow"
 

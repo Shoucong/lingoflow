@@ -702,13 +702,15 @@ def test_phrases_words_without_entries_and_the_disabled_setting_use_the_model(
     assert dictionary.queries == []
     assert harness.popup.dictionary_results == []
 
-    # A single word without any entry is translated by the model.
+    # A single word in neither dictionary still gets a card saying so, and the model
+    # translation fills it in.
     from lingoflow.core.dictionary import DictionaryResult
 
     dictionary.results["ubiquitination"] = DictionaryResult("ubiquitination", "D", True, ())
     harness.controller.translation_workflow._start_request("ubiquitination")
     assert dictionary.queries[-1][0] == "ubiquitination"
-    assert harness.popup.dictionary_results == []
+    miss = harness.popup.dictionary_results[-1]
+    assert (miss.query, miss.entries, miss.bilingual) == ("ubiquitination", (), False)
     qtbot.waitUntil(lambda: harness.popup.finished_count == 2, timeout=2000)
     assert harness.translator.requests[-1]["text"] == "ubiquitination"
 
