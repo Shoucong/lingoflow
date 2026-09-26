@@ -78,7 +78,7 @@ def test_refresh_does_not_silently_replace_missing_model(qtbot) -> None:
     dialog._active_models_task_id = 17
     dialog._on_models_refresh_finished(17, ["other-model"], "")
     assert dialog.model_combo.currentText() == "my-chosen-model"
-    assert "未安装" in dialog.connection_status.text()
+    assert "not installed" in dialog.connection_status.text()
 
 
 def test_cancel_settings_invalidates_pending_model_refresh(qtbot, monkeypatch) -> None:

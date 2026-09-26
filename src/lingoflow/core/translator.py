@@ -23,6 +23,7 @@ from lingoflow.core.translation_profiles import (
     milmmt_options,
     milmmt_prompt,
 )
+from lingoflow.i18n import tr
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -162,7 +163,7 @@ class TranslationService:
         if cancel_check and cancel_check():
             return
         if not text.strip():
-            raise TranslationError("请输入要翻译的文字。")
+            raise TranslationError(tr("Enter text to translate.", "请输入要翻译的文字。"))
         settings = self.settings.model_copy(deep=True)
         client = self.client
         target = target_language or settings.translation.target_language
@@ -180,7 +181,11 @@ class TranslationService:
                     return
                 if not source:
                     raise TranslationError(
-                        "无法识别原文语言，请在“设置 → 通用 → 原文语言”中手动选择。"
+                        tr(
+                            "Could not identify the source language. "
+                            "Choose it in Settings → General → Source language.",
+                            "无法识别原文语言，请在“设置 → 通用 → 原文语言”中手动选择。",
+                        )
                     )
                 if on_source_detected:
                     on_source_detected(source)
@@ -209,7 +214,11 @@ class TranslationService:
             budget = min(budget, MILMMT_MAX_PART_BYTES)
         if budget < 128:
             raise TranslationError(
-                "提示词和输出预算占满了上下文，请在“设置 → 模型与高级”中增大上下文窗口。"
+                tr(
+                    "The prompt and output budget fill the context. "
+                    "Increase the context window in Settings → Model & Advanced.",
+                    "提示词和输出预算占满了上下文，请在“设置 → 模型与高级”中增大上下文窗口。",
+                )
             )
         try:
             segments = split_text(text, budget)
@@ -297,12 +306,25 @@ class TranslationService:
                         if isinstance(error, ProviderConnectionError)
                         else TranslationError
                     )
-                    raise error_type(f"第 {index + 1}/{len(segments)} 段：{error}") from error
+                    raise error_type(
+                        tr(
+                            "Part {part}/{total}: {error}",
+                            "第 {part}/{total} 段：{error}",
+                            part=index + 1,
+                            total=len(segments),
+                            error=error,
+                        )
+                    ) from error
                 if cancel_check and cancel_check():
                     return
                 if not any(part.strip() for part in translated):
                     raise TranslationError(
-                        f"第 {index + 1}/{len(segments)} 段：模型没有返回译文。"
+                        tr(
+                            "Part {part}/{total}: the model returned no translation.",
+                            "第 {part}/{total} 段：模型没有返回译文。",
+                            part=index + 1,
+                            total=len(segments),
+                        )
                     )
             if segment.separator:
                 if on_chunk:

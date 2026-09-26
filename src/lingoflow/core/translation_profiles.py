@@ -3,6 +3,7 @@
 from lingoflow.config.constants import MILMMT_MODEL as MILMMT_MODEL
 from lingoflow.config.constants import SUPPORTED_LANGUAGES
 from lingoflow.core.errors import TranslationError
+from lingoflow.i18n import tr
 
 MILMMT_MAX_PART_BYTES = 2048
 
@@ -19,9 +20,19 @@ def milmmt_prompt(text: str, source: str, target: str) -> str:
         "Chinese(Traditional)": "Chinese (Traditional)",
     }
     if source == "auto" or source not in SUPPORTED_LANGUAGES:
-        raise TranslationError("请在“设置 → 通用 → 原文语言”中选择原文语言。")
+        raise TranslationError(
+            tr(
+                "Choose the Source language in Settings → General.",
+                "请在“设置 → 通用 → 原文语言”中选择原文语言。",
+            )
+        )
     if target == "auto" or target not in SUPPORTED_LANGUAGES:
-        raise TranslationError("请在“设置 → 通用 → 译文语言”中选择支持的语言。")
+        raise TranslationError(
+            tr(
+                "Choose a supported Target language in Settings → General.",
+                "请在“设置 → 通用 → 译文语言”中选择支持的语言。",
+            )
+        )
     source, target = names.get(source, source), names.get(target, target)
     return f"Translate this from {source} to {target}:\n{source}: {text}\n{target}:"
 

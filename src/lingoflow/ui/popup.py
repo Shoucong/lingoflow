@@ -3,7 +3,7 @@ Translation popup window for LingoFlow.
 
 A reading window: the translation takes the main space, the source is a short
 read-only excerpt that can be expanded, and actions appear only when they apply.
-Editing the source (typed input, OCR review, "编辑原文") is an explicit mode with
+Editing the source (typed input, OCR review, "Edit source") is an explicit mode with
 its own Translate/Cancel path and the retention rules of a normal window.
 
 Window policy has one source of truth, :meth:`_auto_dismiss_allowed`: an
@@ -42,6 +42,7 @@ from lingoflow.config.constants import (
 )
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.speech import LANGUAGE_LOCALES, SpeechRequest
+from lingoflow.i18n import tr
 from lingoflow.infrastructure.macos.event_monitor import OutsideInteractionMonitor
 from lingoflow.infrastructure.macos.speech import MacOSSpeechService
 from lingoflow.ui import icons
@@ -156,6 +157,7 @@ class TranslationPopup(QWidget):
         self._setup_ui()
         self.window_controller = PopupWindowController(self, window_state_path)
         self._connect_signals()
+        self._retranslate()
         self._refresh_theme()
         self._apply_pin_state()
         self._update_actions()
@@ -196,7 +198,7 @@ class TranslationPopup(QWidget):
         # --- Header: languages on the left, pin and more on the right ---
         header = QHBoxLayout()
         header.setSpacing(6)
-        self.mode_label = QLabel("编辑原文")
+        self.mode_label = QLabel()
         self.mode_label.setObjectName("modeLabel")
         header.addWidget(self.mode_label)
         self.source_label = QLabel(self._format_source_language())
@@ -209,7 +211,6 @@ class TranslationPopup(QWidget):
         self.target_combo.setObjectName("targetCombo")
         self.target_combo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.target_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
-        self.target_combo.setToolTip("译文语言")
         for lang in SUPPORTED_LANGUAGES:
             if lang != "auto":
                 self.target_combo.addItem(language_name(lang), lang)
@@ -223,25 +224,25 @@ class TranslationPopup(QWidget):
         self.pin_btn.setCheckable(True)
         header.addWidget(self.pin_btn)
 
-        self.more_btn = _tool_button("moreButton", "更多操作")
+        self.more_btn = _tool_button("moreButton", "")
         self.more_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.more_menu = QMenu(self.more_btn)
-        self.edit_action = self.more_menu.addAction("编辑原文")
+        self.edit_action = self.more_menu.addAction("")
         self.edit_action.triggered.connect(self.enter_edit_mode)
         self.more_menu.addSeparator()
-        self.copy_source_action = self.more_menu.addAction("复制原文")
+        self.copy_source_action = self.more_menu.addAction("")
         self.copy_source_action.triggered.connect(self._copy_source)
-        self.copy_both_action = self.more_menu.addAction("复制原文和译文")
+        self.copy_both_action = self.more_menu.addAction("")
         self.copy_both_action.triggered.connect(self._copy_bilingual)
         self.more_menu.addSeparator()
-        self.show_source_action = self.more_menu.addAction("显示原文")
+        self.show_source_action = self.more_menu.addAction("")
         self.show_source_action.setCheckable(True)
         self.show_source_action.toggled.connect(self._set_source_visible)
-        self.side_by_side_action = self.more_menu.addAction("原文与译文并排")
+        self.side_by_side_action = self.more_menu.addAction("")
         self.side_by_side_action.setCheckable(True)
         self.side_by_side_action.toggled.connect(self._set_side_by_side)
         self.more_menu.addSeparator()
-        self.speech_settings_action = self.more_menu.addAction("朗读与音色设置…")
+        self.speech_settings_action = self.more_menu.addAction("")
         self.speech_settings_action.triggered.connect(
             lambda: self.settings_requested.emit("speech")
         )
@@ -256,14 +257,13 @@ class TranslationPopup(QWidget):
         self.text_splitter = TranslationView()
         self.source_text = self.text_splitter.source
         self.translation_text = self.text_splitter.target
-        self.source_text.setPlaceholderText("输入或粘贴要翻译的文字")
 
         self.speak_source_btn = _tool_button("speakSourceButton", "")
         self.speak_source_btn.clicked.connect(self._speak_source)
         self.text_splitter.source_tools.addWidget(self.speak_source_btn)
         self.text_splitter.source_tools.addStretch()
 
-        self.expand_source_btn = QPushButton("展开原文")
+        self.expand_source_btn = QPushButton()
         self.expand_source_btn.setObjectName("linkButton")
         self.expand_source_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.expand_source_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -280,25 +280,23 @@ class TranslationPopup(QWidget):
         self.status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         footer.addWidget(self.status_label, 1)
 
-        self.stop_btn = _text_button("stopButton", "停止")
+        self.stop_btn = _text_button("stopButton", "")
         self.stop_btn.clicked.connect(self._on_stop_clicked)
         footer.addWidget(self.stop_btn)
-        self.retry_btn = _text_button("retryButton", "重试")
+        self.retry_btn = _text_button("retryButton", "")
         self.retry_btn.clicked.connect(self._on_retry_clicked)
         footer.addWidget(self.retry_btn)
-        self.latest_btn = _text_button("latestButton", "回到末尾")
-        self.latest_btn.setToolTip("取消选择并跟随新的译文")
+        self.latest_btn = _text_button("latestButton", "")
         self.latest_btn.clicked.connect(self._scroll_to_latest)
         footer.addWidget(self.latest_btn)
-        self.cancel_edit_btn = _text_button("cancelEditButton", "取消")
+        self.cancel_edit_btn = _text_button("cancelEditButton", "")
         self.cancel_edit_btn.clicked.connect(self._cancel_edit)
         footer.addWidget(self.cancel_edit_btn)
-        self.translate_btn = _text_button("primaryButton", "翻译")
-        self.translate_btn.setToolTip("翻译编辑后的原文（⌘↵）")
+        self.translate_btn = _text_button("primaryButton", "")
         self.translate_btn.clicked.connect(self._on_retry_clicked)
         footer.addWidget(self.translate_btn)
 
-        self.copy_btn = _tool_button("copyButton", "复制译文")
+        self.copy_btn = _tool_button("copyButton", "")
         self.copy_btn.clicked.connect(self._copy_translation)
         footer.addWidget(self.copy_btn)
         self.speak_translation_btn = _tool_button("speakTranslationButton", "")
@@ -338,6 +336,51 @@ class TranslationPopup(QWidget):
         self._retry_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
         self._retry_shortcut.activated.connect(self._on_submit_shortcut)
         QApplication.styleHints().colorSchemeChanged.connect(self._refresh_theme)
+
+    def _retranslate(self) -> None:
+        """Apply the interface language to every fixed label, menu item and tooltip."""
+        self.mode_label.setText(tr("Edit source", "编辑原文"))
+        self.target_combo.setToolTip(tr("Translation language", "译文语言"))
+        self._suppress_language_signal = True
+        try:
+            for index in range(self.target_combo.count()):
+                self.target_combo.setItemText(
+                    index, language_name(self.target_combo.itemData(index))
+                )
+        finally:
+            self._suppress_language_signal = False
+        more = tr("More actions", "更多操作")
+        self.more_btn.setToolTip(more)
+        self.more_btn.setAccessibleName(more)
+        for action, english, chinese in (
+            (self.edit_action, "Edit Source", "编辑原文"),
+            (self.copy_source_action, "Copy Source", "复制原文"),
+            (self.copy_both_action, "Copy Source and Translation", "复制原文和译文"),
+            (self.show_source_action, "Show Source", "显示原文"),
+            (self.side_by_side_action, "Source and Translation Side by Side", "原文与译文并排"),
+            (self.speech_settings_action, "Speech and Voice Settings…", "朗读与音色设置…"),
+        ):
+            action.setText(tr(english, chinese))
+        self.source_text.setPlaceholderText(
+            tr("Type or paste text to translate", "输入或粘贴要翻译的文字")
+        )
+        self.stop_btn.setText(tr("Stop", "停止"))
+        self.latest_btn.setText(tr("Back to End", "回到末尾"))
+        self.latest_btn.setToolTip(
+            tr("Clear the selection and follow new output", "取消选择并跟随新的译文")
+        )
+        self.cancel_edit_btn.setText(tr("Cancel", "取消"))
+        self.translate_btn.setText(tr("Translate", "翻译"))
+        self.translate_btn.setToolTip(
+            tr("Translate the edited source (⌘↵)", "翻译编辑后的原文（⌘↵）")
+        )
+        copy = tr("Copy translation", "复制译文")
+        self.copy_btn.setToolTip(copy)
+        self.copy_btn.setAccessibleName(copy)
+        if hasattr(self, "window_controller"):
+            self._apply_pin_state()
+            self._update_actions()
+            self._update_source_preview()
 
     # =============================================================================
     # Appearance
@@ -530,13 +573,16 @@ class TranslationPopup(QWidget):
         self._enter_editing()
 
     def set_detected_source_language(self, language: str) -> None:
-        """Show the language identified locally, instead of a generic "自动"."""
+        """Show the language identified locally, instead of a generic "Auto"."""
         self._detected_source = language
         self.source_label.setText(language_name(language))
-        self.source_label.setToolTip("本机自动识别的原文语言")
+        self.source_label.setToolTip(
+            tr("Source language identified on this Mac", "本机自动识别的原文语言")
+        )
 
     def update_settings(self, settings: AppSettings) -> None:
         self.settings = settings
+        self._retranslate()
         self._source_visible = settings.ui.show_source_text
         self._side_by_side = settings.ui.bilingual_layout == "side_by_side"
         self._refresh_theme()
@@ -550,13 +596,24 @@ class TranslationPopup(QWidget):
     def set_progress(self, completed: int, total: int) -> None:
         self._progress = (completed, total)
         if self._is_translating and total > 1:
-            self._set_status(f"正在翻译 · 第 {min(completed + 1, total)}/{total} 段")
+            self._set_status(
+                tr(
+                    "Translating · part {part}/{total}",
+                    "正在翻译 · 第 {part}/{total} 段",
+                    part=min(completed + 1, total),
+                    total=total,
+                )
+            )
 
     def stop_translation(self) -> None:
         """Keep useful partial text without labeling it a completed translation."""
         self._is_translating = False
         self._state = "stopped"
-        self._set_status("已停止 · 已保留部分译文" if self._translated_text else "已停止")
+        self._set_status(
+            tr("Stopped · partial translation kept", "已停止 · 已保留部分译文")
+            if self._translated_text
+            else tr("Stopped", "已停止")
+        )
         self._update_actions()
 
     def dismiss(self) -> None:
@@ -577,7 +634,7 @@ class TranslationPopup(QWidget):
         if self._state == "waiting":
             self._state = "streaming"
             if self._progress[1] <= 1:
-                self._set_status("正在翻译…")
+                self._set_status(tr("Translating…", "正在翻译…"))
         if first:
             self._update_actions()
 
@@ -588,7 +645,7 @@ class TranslationPopup(QWidget):
         self._progress = (0, 0)
         self._status_clear_timer.stop()
         self._set_mode(PopupMode.READING)
-        self._set_status("正在等待模型…")
+        self._set_status(tr("Waiting for the model…", "正在等待模型…"))
         self.translation_text.setPlaceholderText("")
         self.speech.stop(self._speech_owner)
         self._update_actions()
@@ -604,7 +661,10 @@ class TranslationPopup(QWidget):
         self._state = "failed"
         self._status_clear_timer.stop()
         self._set_status(
-            "翻译失败 · 已保留部分译文" if self._translated_text else "翻译失败", error=True
+            tr("Translation failed · partial translation kept", "翻译失败 · 已保留部分译文")
+            if self._translated_text
+            else tr("Translation failed", "翻译失败"),
+            error=True,
         )
         self.status_label.setToolTip(message)
         self.translation_text.setPlaceholderText(message)
@@ -615,7 +675,7 @@ class TranslationPopup(QWidget):
         self.translation_text.clear()
         if self._is_translating:
             self._state = "waiting"
-            self._set_status("正在重试…")
+            self._set_status(tr("Retrying…", "正在重试…"))
         self._update_actions()
 
     def _on_stop_clicked(self) -> None:
@@ -645,7 +705,7 @@ class TranslationPopup(QWidget):
         self._status_clear_timer.stop()
         self._edit_start_text = self.get_source_text()
         self._set_mode(PopupMode.EDITING)
-        self._set_status("⌘↵ 翻译")
+        self._set_status(tr("⌘↵ Translate", "⌘↵ 翻译"))
         self.status_label.setToolTip("")
         self._update_actions()
         if self.isVisible() and not self.window_controller.user_sized:
@@ -698,8 +758,11 @@ class TranslationPopup(QWidget):
             return True
         answer = QMessageBox.question(
             self,
-            "放弃编辑？",
-            "编辑过的原文还没有翻译，放弃后无法恢复。",
+            tr("Discard edits?", "放弃编辑？"),
+            tr(
+                "The edited source has not been translated. Discarded edits cannot be restored.",
+                "编辑过的原文还没有翻译，放弃后无法恢复。",
+            ),
             QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
             QMessageBox.StandardButton.Cancel,
         )
@@ -733,9 +796,13 @@ class TranslationPopup(QWidget):
         self.speak_source_btn.setVisible(reading and has_source)
         self.stop_btn.setVisible(reading and self._is_translating)
         resumable = self._progress[0] > 0 and self._progress[1] > 1 and has_output
-        self.retry_btn.setText("继续翻译" if resumable else "重试")
+        self.retry_btn.setText(
+            tr("Continue", "继续翻译") if resumable else tr("Retry", "重试")
+        )
         self.retry_btn.setToolTip(
-            "从未完成的段落继续（⌘↵）" if resumable else "重新翻译（⌘↵）"
+            tr("Continue from the unfinished part (⌘↵)", "从未完成的段落继续（⌘↵）")
+            if resumable
+            else tr("Translate again (⌘↵)", "重新翻译（⌘↵）")
         )
         self.retry_btn.setVisible(reading and ended and has_source)
         self.cancel_edit_btn.setVisible(editing)
@@ -748,14 +815,27 @@ class TranslationPopup(QWidget):
         self._refresh_icons()
 
     def _update_speech_tooltips(self) -> None:
-        for button, kind, name in (
-            (self.speak_source_btn, "source", "原文"),
-            (self.speak_translation_btn, "translation", "译文"),
+        for button, kind in (
+            (self.speak_source_btn, "source"),
+            (self.speak_translation_btn, "translation"),
         ):
+            source = kind == "source"
             if self.speech.is_active(self._speech_owner, kind):
-                tip = f"停止朗读{name}"
+                tip = (
+                    tr("Stop reading the source", "停止朗读原文")
+                    if source
+                    else tr("Stop reading the translation", "停止朗读译文")
+                )
+            elif source:
+                tip = tr(
+                    "Read the source aloud (only the selection, if any)",
+                    "朗读原文（有选中文字时只读选中部分）",
+                )
             else:
-                tip = f"朗读{name}（有选中文字时只读选中部分）"
+                tip = tr(
+                    "Read the translation aloud (only the selection, if any)",
+                    "朗读译文（有选中文字时只读选中部分）",
+                )
             button.setToolTip(tip)
             button.setAccessibleName(tip)
 
@@ -811,14 +891,20 @@ class TranslationPopup(QWidget):
         collapsed = self._collapsed_source_height()
         overflow = content > collapsed + 2
         bar = Qt.ScrollBarPolicy
+        panel = self.text_splitter.source_panel
         if editing or side:
+            panel.setMaximumHeight(16777215)
             self.source_text.setMinimumHeight(28)
             self.source_text.setMaximumHeight(16777215)
             self.source_text.setVerticalScrollBarPolicy(bar.ScrollBarAsNeeded)
             self.expand_source_btn.setVisible(False)
             return
         self.expand_source_btn.setVisible(overflow)
-        self.expand_source_btn.setText("收起原文" if self._source_expanded else "展开原文")
+        self.expand_source_btn.setText(
+            tr("Show Less", "收起原文")
+            if self._source_expanded
+            else tr("Show Full Source", "展开原文")
+        )
         if self._source_expanded:
             limit = max(collapsed, int(self.window_controller.max_auto_height * 0.4))
             height = max(collapsed, min(content, limit))
@@ -831,6 +917,14 @@ class TranslationPopup(QWidget):
         self.source_text.setVerticalScrollBarPolicy(policy)
         if self.source_text.height() != height or self.source_text.maximumHeight() != height:
             self.source_text.setFixedHeight(height)
+        # Spare window height belongs to the translation, never to the source excerpt.
+        panel.setMaximumHeight(16777215)
+        panel.layout().activate()  # size hints are stale right after the height change
+        panel_height = panel.sizeHint().height()
+        panel.setMaximumHeight(panel_height)
+        sizes = self.text_splitter.sizes()
+        if len(sizes) == 2 and sizes[0] != panel_height and sum(sizes) > panel_height:
+            self.text_splitter.setSizes([panel_height, sum(sizes) - panel_height])
 
     def _toggle_source_expanded(self) -> None:
         self._source_expanded = not self._source_expanded
@@ -901,12 +995,20 @@ class TranslationPopup(QWidget):
             self.pin_btn.setChecked(pinned)
             self.pin_btn.blockSignals(False)
         tip = (
-            "已固定：点击外部仍保持显示。点击取消固定"
+            tr(
+                "Pinned: stays open when you click elsewhere. Click to unpin",
+                "已固定：点击外部仍保持显示。点击取消固定",
+            )
             if pinned
-            else "固定窗口：点击外部时仍保持显示"
+            else tr(
+                "Pin window: keep it open when you click elsewhere",
+                "固定窗口：点击外部时仍保持显示",
+            )
         )
         self.pin_btn.setToolTip(tip)
-        self.pin_btn.setAccessibleName("取消固定窗口" if pinned else "固定窗口")
+        self.pin_btn.setAccessibleName(
+            tr("Unpin window", "取消固定窗口") if pinned else tr("Pin window", "固定窗口")
+        )
         self.pin_btn.setAccessibleDescription(tip)
         self._refresh_icons()
 
@@ -984,11 +1086,11 @@ class TranslationPopup(QWidget):
 
     def _copy_source(self) -> None:
         QApplication.clipboard().setText(self.get_source_text())
-        self._flash_status("已复制原文")
+        self._flash_status(tr("Source copied", "已复制原文"))
 
     def _copy_bilingual(self) -> None:
         QApplication.clipboard().setText(self.get_source_text() + "\n\n" + self._translated_text)
-        self._flash_status("已复制原文和译文")
+        self._flash_status(tr("Source and translation copied", "已复制原文和译文"))
 
     def _copy_translation(self) -> None:
         """Copy exactly the translation that is displayed."""
@@ -997,7 +1099,7 @@ class TranslationPopup(QWidget):
             QApplication.clipboard().setText(text)
             self._copy_feedback_timer.start(1200)
             self._refresh_icons()
-            self._flash_status("已复制译文")
+            self._flash_status(tr("Translation copied", "已复制译文"))
             logger.debug("Translation copied to clipboard")
 
     def _scroll_to_latest(self) -> None:
@@ -1060,16 +1162,19 @@ class TranslationPopup(QWidget):
 
     def _speech_failed(self, owner: str, message: str) -> None:
         if owner == self._speech_owner:
-            self._set_status(f"无法朗读：{message}", error=True)
+            self._set_status(
+                tr("Cannot read aloud: {message}", "无法朗读：{message}", message=message),
+                error=True,
+            )
 
     def _source_context_menu(self, position) -> None:
         menu = self.source_text.createStandardContextMenu()
         menu.addSeparator()
         if self._mode == PopupMode.EDITING:
-            restore = menu.addAction("恢复原来的原文")
+            restore = menu.addAction(tr("Restore Original Source", "恢复原来的原文"))
             restore.setEnabled(self.get_source_text() != self._source_text)
             restore.triggered.connect(self._restore_source)
-        action = menu.addAction("朗读选中文字")
+        action = menu.addAction(tr("Read Selection Aloud", "朗读选中文字"))
         action.setEnabled(self.source_text.textCursor().hasSelection())
         action.triggered.connect(self._speak_source)
         menu.exec(self.source_text.mapToGlobal(position))
@@ -1078,7 +1183,7 @@ class TranslationPopup(QWidget):
     def _translation_context_menu(self, position) -> None:
         menu = self.translation_text.createStandardContextMenu()
         menu.addSeparator()
-        action = menu.addAction("朗读选中文字")
+        action = menu.addAction(tr("Read Selection Aloud", "朗读选中文字"))
         action.setEnabled(
             self.translation_text.textCursor().hasSelection() and not self._is_translating
         )

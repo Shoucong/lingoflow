@@ -11,6 +11,7 @@ import subprocess
 from dataclasses import dataclass
 from enum import Enum
 
+from lingoflow.i18n import tr
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -88,20 +89,28 @@ class MacOSPermissionService:
             if granted:
                 return PermissionCheck(
                     key="accessibility",
-                    name="辅助功能",
-                    purpose="读取其他应用中选中的文字。",
+                    name=tr("Accessibility", "辅助功能"),
+                    purpose=tr(
+                        "Reads the text you select in other apps.", "读取其他应用中选中的文字。"
+                    ),
                     state=PermissionState.GRANTED,
-                    detail="已允许",
+                    detail=tr("Granted", "已允许"),
                     settings_url=self.ACCESSIBILITY_URL,
                 )
 
-            detail = "划词翻译需要此权限。"
+            detail = tr("Required for translating selected text.", "划词翻译需要此权限。")
             if ax_granted and not post_granted:
-                detail = "尚不能发送键盘事件，请在系统设置中关闭再重新打开 LingoFlow。"
+                detail = tr(
+                    "Keyboard events are not allowed yet. "
+                    "Turn LingoFlow off and on again in System Settings.",
+                    "尚不能发送键盘事件，请在系统设置中关闭再重新打开 LingoFlow。",
+                )
             return PermissionCheck(
                 key="accessibility",
-                name="辅助功能",
-                purpose="读取其他应用中选中的文字。",
+                name=tr("Accessibility", "辅助功能"),
+                purpose=tr(
+                    "Reads the text you select in other apps.", "读取其他应用中选中的文字。"
+                ),
                 state=PermissionState.MISSING,
                 detail=detail,
                 settings_url=self.ACCESSIBILITY_URL,
@@ -110,10 +119,12 @@ class MacOSPermissionService:
             logger.warning(f"Could not check Accessibility permission: {e}")
             return PermissionCheck(
                 key="accessibility",
-                name="辅助功能",
-                purpose="读取其他应用中选中的文字。",
+                name=tr("Accessibility", "辅助功能"),
+                purpose=tr(
+                    "Reads the text you select in other apps.", "读取其他应用中选中的文字。"
+                ),
                 state=PermissionState.UNKNOWN,
-                detail="无法自动检查。",
+                detail=tr("Could not check automatically.", "无法自动检查。"),
                 settings_url=self.ACCESSIBILITY_URL,
             )
 
@@ -140,19 +151,28 @@ class MacOSPermissionService:
                 if granted:
                     return PermissionCheck(
                         key="input_monitoring",
-                        name="输入监控",
-                        purpose="在其他应用中阅读时响应全局快捷键。",
+                        name=tr("Input Monitoring", "输入监控"),
+                        purpose=tr(
+                            "Lets the hotkeys work while you read in other apps.",
+                            "在其他应用中阅读时响应全局快捷键。",
+                        ),
                         state=PermissionState.GRANTED,
-                        detail="已允许",
+                        detail=tr("Granted", "已允许"),
                         settings_url=self.INPUT_MONITORING_URL,
                     )
 
                 return PermissionCheck(
                     key="input_monitoring",
-                    name="输入监控",
-                    purpose="在其他应用中阅读时响应全局快捷键。",
+                    name=tr("Input Monitoring", "输入监控"),
+                    purpose=tr(
+                        "Lets the hotkeys work while you read in other apps.",
+                        "在其他应用中阅读时响应全局快捷键。",
+                    ),
                     state=PermissionState.MISSING,
-                    detail="翻译与截图快捷键需要此权限。",
+                    detail=tr(
+                        "Required for the translate and screenshot hotkeys.",
+                        "翻译与截图快捷键需要此权限。",
+                    ),
                     settings_url=self.INPUT_MONITORING_URL,
                 )
         except Exception as e:
@@ -160,10 +180,16 @@ class MacOSPermissionService:
 
         return PermissionCheck(
             key="input_monitoring",
-            name="输入监控",
-            purpose="在其他应用中阅读时响应全局快捷键。",
+            name=tr("Input Monitoring", "输入监控"),
+            purpose=tr(
+                "Lets the hotkeys work while you read in other apps.",
+                "在其他应用中阅读时响应全局快捷键。",
+            ),
             state=PermissionState.UNKNOWN,
-            detail="无法自动检查，请确认已在系统设置中启用 LingoFlow。",
+            detail=tr(
+                "Could not check automatically. Make sure LingoFlow is enabled in System Settings.",
+                "无法自动检查，请确认已在系统设置中启用 LingoFlow。",
+            ),
             settings_url=self.INPUT_MONITORING_URL,
         )
 
@@ -189,29 +215,38 @@ class MacOSPermissionService:
             if granted:
                 return PermissionCheck(
                     key="screen_recording",
-                    name="屏幕录制",
-                    purpose="截取所选屏幕区域用于文字识别。",
+                    name=tr("Screen Recording", "屏幕录制"),
+                    purpose=tr(
+                        "Captures the selected screen area for text recognition.",
+                        "截取所选屏幕区域用于文字识别。",
+                    ),
                     state=PermissionState.GRANTED,
-                    detail="已允许",
+                    detail=tr("Granted", "已允许"),
                     settings_url=self.SCREEN_RECORDING_URL,
                 )
 
             return PermissionCheck(
                 key="screen_recording",
-                name="屏幕录制",
-                purpose="截取所选屏幕区域用于文字识别。",
+                name=tr("Screen Recording", "屏幕录制"),
+                purpose=tr(
+                    "Captures the selected screen area for text recognition.",
+                    "截取所选屏幕区域用于文字识别。",
+                ),
                 state=PermissionState.MISSING,
-                detail="截图识别翻译需要此权限。",
+                detail=tr("Required for screenshot translation.", "截图识别翻译需要此权限。"),
                 settings_url=self.SCREEN_RECORDING_URL,
             )
         except Exception as e:
             logger.warning(f"Could not check Screen Recording permission: {e}")
             return PermissionCheck(
                 key="screen_recording",
-                name="屏幕录制",
-                purpose="截取所选屏幕区域用于文字识别。",
+                name=tr("Screen Recording", "屏幕录制"),
+                purpose=tr(
+                    "Captures the selected screen area for text recognition.",
+                    "截取所选屏幕区域用于文字识别。",
+                ),
                 state=PermissionState.UNKNOWN,
-                detail="无法自动检查。",
+                detail=tr("Could not check automatically.", "无法自动检查。"),
                 settings_url=self.SCREEN_RECORDING_URL,
             )
 

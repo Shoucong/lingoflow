@@ -10,6 +10,16 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
+@pytest.fixture(autouse=True)
+def english_interface():
+    """Tests start in the default English interface and never leak a language choice."""
+    from lingoflow.i18n import set_language
+
+    set_language("en")
+    yield
+    set_language("en")
+
+
 @pytest.fixture
 def isolated_settings_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]:
     """Point persisted settings at a temp directory for one test."""

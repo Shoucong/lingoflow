@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QWid
 
 from lingoflow.config.constants import APP_NAME, APP_VERSION
 from lingoflow.config.settings import AppSettings
+from lingoflow.i18n import tr
 from lingoflow.ui.window_controller import set_stays_on_top
 from lingoflow.utils.logger import get_logger
 
@@ -105,7 +106,6 @@ class AboutWindow(QDialog):
 
     def __init__(self, settings: AppSettings, hotkeys: tuple[str, str], parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"关于 {APP_NAME}")
         self.setModal(False)
         self.setWindowModality(Qt.WindowModality.NonModal)
         layout = QVBoxLayout(self)
@@ -118,7 +118,7 @@ class AboutWindow(QDialog):
         self.details.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(self.details)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("好")
+        self._ok = buttons.button(QDialogButtonBox.StandardButton.Ok)
         buttons.accepted.connect(self.close)
         layout.addWidget(buttons)
         self.update_content(settings, hotkeys)
@@ -126,9 +126,22 @@ class AboutWindow(QDialog):
 
     def update_content(self, settings: AppSettings, hotkeys: tuple[str, str]) -> None:
         translate, ocr = hotkeys
+        self.setWindowTitle(tr("About {app}", "关于 {app}", app=APP_NAME))
+        self._ok.setText(tr("OK", "好"))
+        model = html.escape(settings.ollama.model)
         self.details.setText(
-            f"<p>版本 {APP_VERSION}</p>"
-            "<p>使用本机 Ollama 模型的划词与截图翻译工具。</p>"
-            f"<p>翻译模型：{html.escape(settings.ollama.model)}</p>"
-            f"<p>{translate}　翻译选中文字<br>{ocr}　截图识别并翻译</p>"
+            tr(
+                "<p>Version {version}</p>"
+                "<p>Translate selected text and screenshots with a local Ollama model.</p>"
+                "<p>Translation model: {model}</p>"
+                "<p>{translate}  Translate selected text<br>{ocr}  Capture and translate</p>",
+                "<p>版本 {version}</p>"
+                "<p>使用本机 Ollama 模型的划词与截图翻译工具。</p>"
+                "<p>翻译模型：{model}</p>"
+                "<p>{translate}　翻译选中文字<br>{ocr}　截图识别并翻译</p>",
+                version=APP_VERSION,
+                model=model,
+                translate=translate,
+                ocr=ocr,
+            )
         )

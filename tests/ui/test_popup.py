@@ -39,8 +39,8 @@ def test_popup_uses_readable_language_names_and_can_dismiss(qtbot, monkeypatch, 
     popup.append_translation("こんにちは")
     qtbot.waitUntil(lambda: "こんにちは" in popup.translation_text.toPlainText(), timeout=1000)
 
-    assert popup.source_label.text() == "英语"
-    assert popup.target_combo.currentText() == "日语"
+    assert popup.source_label.text() == "English"
+    assert popup.target_combo.currentText() == "Japanese"
     assert popup.get_target_language() == "Japanese"
 
     popup.dismiss()
@@ -48,11 +48,11 @@ def test_popup_uses_readable_language_names_and_can_dismiss(qtbot, monkeypatch, 
 
 
 def test_auto_source_shows_auto_until_the_language_is_identified(popup) -> None:
-    assert popup.source_label.text() == "自动"
+    assert popup.source_label.text() == "Auto"
     popup.set_detected_source_language("Japanese")
-    assert popup.source_label.text() == "日语"
+    assert popup.source_label.text() == "Japanese"
     popup.show_with_text("Another request")
-    assert popup.source_label.text() == "自动"
+    assert popup.source_label.text() == "Auto"
 
 
 @pytest.mark.parametrize(
@@ -170,14 +170,14 @@ def test_retry_clears_old_selection_and_follows_new_translation(popup, qtbot) ->
 
 def test_actions_appear_only_for_the_current_state(popup) -> None:
     popup.start_translation()
-    assert popup.status_label.text() == "正在等待模型…"
+    assert popup.status_label.text() == "Waiting for the model…"
     assert shown(popup.stop_btn)
     assert not shown(popup.retry_btn)
     assert not shown(popup.copy_btn)
     assert not shown(popup.speak_translation_btn)
 
     popup.append_translation("译文")
-    assert popup.status_label.text() == "正在翻译…"
+    assert popup.status_label.text() == "Translating…"
     assert shown(popup.copy_btn)
     assert not shown(popup.speak_translation_btn)
 
@@ -196,7 +196,7 @@ def test_error_preserves_partial_translation(popup) -> None:
     popup.append_translation("Useful partial text")
     popup.show_error("Connection lost")
     assert popup.translation_text.toPlainText() == "Useful partial text"
-    assert "部分译文" in popup.status_label.text()
+    assert "partial" in popup.status_label.text()
     assert popup.status_label.toolTip() == "Connection lost"
     assert not shown(popup.stop_btn)
     assert shown(popup.retry_btn)
@@ -207,8 +207,8 @@ def test_stop_and_retry_buttons_request_work_without_changing_source(popup, qtbo
     with qtbot.waitSignal(popup.stop_requested):
         popup.stop_btn.click()
     popup.stop_translation()
-    assert "已停止" in popup.status_label.text()
-    assert popup.retry_btn.text() == "重试"
+    assert "Stopped" in popup.status_label.text()
+    assert popup.retry_btn.text() == "Retry"
     with qtbot.waitSignal(popup.retry_requested) as signal:
         popup.retry_btn.click()
     assert signal.args == ["Original text"]
@@ -219,9 +219,9 @@ def test_stopped_multi_part_translation_offers_to_continue(popup) -> None:
     popup.set_progress(0, 3)
     popup.append_translation("第一段。")
     popup.set_progress(1, 3)
-    assert "第 2/3 段" in popup.status_label.text()
+    assert "part 2/3" in popup.status_label.text()
     popup.stop_translation()
-    assert popup.retry_btn.text() == "继续翻译"
+    assert popup.retry_btn.text() == "Continue"
 
 
 def test_copy_uses_the_displayed_translation_and_menu_offers_other_forms(popup) -> None:
@@ -304,7 +304,7 @@ def test_long_source_is_collapsed_to_an_expandable_excerpt(popup, qtbot) -> None
     collapsed = popup.source_text.maximumHeight()
     assert collapsed < popup.source_text.document().size().height()
     popup.expand_source_btn.click()
-    assert popup.expand_source_btn.text() == "收起原文"
+    assert popup.expand_source_btn.text() == "Show Less"
     assert popup.source_text.maximumHeight() > collapsed
     assert popup.get_source_text() == source
 
@@ -363,3 +363,15 @@ def test_speech_settings_are_one_click_from_the_more_menu(popup, qtbot) -> None:
     with qtbot.waitSignal(popup.settings_requested) as requested:
         popup.speech_settings_action.trigger()
     assert requested.args == ["speech"]
+
+
+def test_spare_window_height_goes_to_the_translation_not_the_excerpt(popup, qtbot):
+    popup.resize(460, 520)
+    popup.show_with_text("Protein kinases regulate most cellular pathways. " * 8)
+    popup.start_translation()
+    popup.append_translation("短译文")
+    qtbot.wait(30)
+    panel = popup.text_splitter.source_panel
+    source_size, target_size = popup.text_splitter.sizes()
+    assert source_size <= panel.sizeHint().height()
+    assert target_size > source_size

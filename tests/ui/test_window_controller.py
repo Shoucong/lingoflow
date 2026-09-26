@@ -44,7 +44,7 @@ def test_legacy_pinned_state_never_pins_a_new_window(make_popup, state_path):
     assert not popup.pin_btn.isChecked()
     assert not is_stays_on_top(popup)
     assert popup.window_controller.preferred_width == 700
-    assert popup.pin_btn.accessibleName() == "固定窗口"
+    assert popup.pin_btn.accessibleName() == "Pin window"
 
 
 def test_pin_is_per_window_and_not_restored_after_close(make_popup, state_path, qtbot):
@@ -84,8 +84,8 @@ def test_pin_toggles_in_place_without_hiding_or_losing_reading_state(make_popup,
         assert popup.is_pinned is pinned
         assert popup.pin_btn.isChecked() is pinned
         assert is_stays_on_top(popup) is pinned
-        assert ("已固定" in popup.pin_btn.toolTip()) is pinned
-        assert popup.pin_btn.accessibleName() == ("取消固定窗口" if pinned else "固定窗口")
+        assert ("Pinned" in popup.pin_btn.toolTip()) is pinned
+        assert popup.pin_btn.accessibleName() == ("Unpin window" if pinned else "Pin window")
         assert popup.isVisible()
 
     assert hides == []

@@ -252,6 +252,10 @@ class UISettings(SettingsModel):
     # The former hide_on_focus_loss switch is ignored when old files load: the
     # popup's pin is the only control deciding whether an unpinned window stays.
     bilingual_layout: Literal["stacked", "side_by_side"] = "stacked"
+    language: Literal["en", "zh"] = Field(
+        default="en",
+        description="Interface language: 'en' (English) or 'zh' (Chinese)",
+    )
 
     @field_validator("theme")
     @classmethod

@@ -109,7 +109,7 @@ def test_translate_stream_stops_when_external_cancel_check_is_true() -> None:
 
 def test_empty_model_response_is_an_error() -> None:
     service = service_with_fake_client(FakeOllamaClient([OllamaStreamChunk("", True)]))
-    with pytest.raises(OllamaError, match="没有返回译文"):
+    with pytest.raises(OllamaError, match="returned no translation"):
         list(service.translate_stream("hello"))
 
 
@@ -132,7 +132,7 @@ def test_long_translation_retries_only_incomplete_parts():
     service = TranslationService(settings, client=client)
     source = "A paragraph with exact values [12]. " * 300
     checkpoints = []
-    with pytest.raises(OllamaError, match="第 2/"):
+    with pytest.raises(OllamaError, match="Part 2/"):
         list(service.translate_stream(source, on_checkpoint=checkpoints.append))
     saved = checkpoints[-1]
     assert len(saved.completed) == 1

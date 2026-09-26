@@ -70,11 +70,11 @@ def test_menu_commands_run_once_after_the_menu_closes(qtbot, monkeypatch):
         on_about=lambda: calls.append("about"),
         on_quit=lambda: calls.append("quit"),
     )
-    about = next(a for a in tray.menu.actions() if a.text().startswith("关于"))
+    about = next(a for a in tray.menu.actions() if a.text().startswith("About"))
     about.trigger()
     # Not inside AppKit's menu tracking callback...
     assert calls == []
     qtbot.waitUntil(lambda: calls == ["about"], timeout=500)
     qtbot.wait(20)
     assert calls == ["about"]
-    assert tray.translate_action.text().startswith("翻译选中文字")
+    assert tray.translate_action.text().startswith("Translate Selection")

@@ -20,6 +20,7 @@ from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
 from lingoflow.core.models import HotkeyAction, OCRResult
 from lingoflow.core.ports import ClipboardPort, HotkeyBackend, LLMProvider, OCRBackend
+from lingoflow.i18n import set_language
 from lingoflow.infrastructure.macos.clipboard import ClipboardManager
 from lingoflow.infrastructure.macos.hotkeys import HotkeyManager
 from lingoflow.infrastructure.macos.ocr import OCRService
@@ -89,6 +90,7 @@ class MainController(QObject):
         super().__init__()
 
         self.settings = AppSettings.load()
+        set_language(self.settings.ui.language)
         self.signals = MainSignals()
 
         # Core services
@@ -446,6 +448,7 @@ class MainController(QObject):
         """Handle settings changes."""
         settings_snapshot = new_settings.model_copy(deep=True)
         self.settings = settings_snapshot
+        set_language(settings_snapshot.ui.language)
         self.settings_coordinator.update_settings(settings_snapshot)
 
         # Update services

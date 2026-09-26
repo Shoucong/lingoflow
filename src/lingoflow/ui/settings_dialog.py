@@ -33,6 +33,7 @@ from lingoflow.config.constants import SUPPORTED_LANGUAGES
 from lingoflow.config.settings import AppSettings, OllamaSettings
 from lingoflow.core.speech import LANGUAGE_LOCALES
 from lingoflow.core.translation_profiles import is_milmmt_model
+from lingoflow.i18n import tr
 from lingoflow.infrastructure.macos.speech import MacOSSpeechService
 from lingoflow.infrastructure.ollama_client import OllamaClient, OllamaError
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
@@ -48,9 +49,9 @@ class SettingsDialog(QDialog):
     Settings configuration dialog.
 
     Organized into tabs:
-    - 通用: languages, hotkeys, OCR and reading-window preferences
-    - 朗读: voices and speaking rate
-    - 模型与高级: Ollama connection, model parameters, prompts and diagnostics
+    - General: interface language, translation languages, hotkeys, OCR, reading window
+    - Speech: voices and speaking rate
+    - Model & Advanced: Ollama connection, model parameters, prompts and diagnostics
 
     Emits:
         settings_changed: When settings are saved
@@ -93,7 +94,7 @@ class SettingsDialog(QDialog):
 
     def _setup_window(self) -> None:
         """Configure dialog window."""
-        self.setWindowTitle("LingoFlow 设置")
+        self.setWindowTitle(tr("LingoFlow Settings", "LingoFlow 设置"))
         self.setMinimumWidth(520)
         self.setMinimumHeight(420)
         self.resize(600, 620)
@@ -108,21 +109,25 @@ class SettingsDialog(QDialog):
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
-        self._general_tab = self._add_scroll_tab(self._create_general_tab(), "通用")
-        self._speech_tab = self._add_scroll_tab(self._create_speech_tab(), "朗读")
-        self._advanced_tab = self._add_scroll_tab(self._create_advanced_tab(), "模型与高级")
+        self._general_tab = self._add_scroll_tab(
+            self._create_general_tab(), tr("General", "通用")
+        )
+        self._speech_tab = self._add_scroll_tab(self._create_speech_tab(), tr("Speech", "朗读"))
+        self._advanced_tab = self._add_scroll_tab(
+            self._create_advanced_tab(), tr("Model && Advanced", "模型与高级")  # "&&" shows one "&"
+        )
 
         button_layout = QHBoxLayout()
-        self.reset_btn = QPushButton("恢复默认设置")
+        self.reset_btn = QPushButton(tr("Restore Defaults", "恢复默认设置"))
         self.reset_btn.clicked.connect(self._reset_to_defaults)
         button_layout.addWidget(self.reset_btn)
         button_layout.addStretch()
 
-        self.cancel_btn = QPushButton("取消")
+        self.cancel_btn = QPushButton(tr("Cancel", "取消"))
         self.cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_btn)
 
-        self.save_btn = QPushButton("保存")
+        self.save_btn = QPushButton(tr("Save", "保存"))
         self.save_btn.setDefault(True)
         self.save_btn.clicked.connect(self._save_settings)
         button_layout.addWidget(self.save_btn)
@@ -166,67 +171,117 @@ class SettingsDialog(QDialog):
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
-        lang_group = QGroupBox("翻译")
+        interface_group = QGroupBox(tr("Interface", "界面"))
+        interface_layout = QFormLayout(interface_group)
+        self.interface_language_combo = QComboBox()
+        # Each option is written in its own language so it can always be found.
+        self.interface_language_combo.addItem("English", "en")
+        self.interface_language_combo.addItem("中文", "zh")
+        interface_layout.addRow(tr("Language:", "语言："), self.interface_language_combo)
+        interface_layout.addRow(
+            self._note(
+                tr(
+                    "Applies to menus, windows and messages after you save.",
+                    "保存后应用于菜单、窗口和提示信息。",
+                )
+            )
+        )
+        layout.addWidget(interface_group)
+
+        lang_group = QGroupBox(tr("Translation", "翻译"))
         lang_layout = QFormLayout(lang_group)
         self.source_lang_combo = QComboBox()
         for lang in SUPPORTED_LANGUAGES:
             self.source_lang_combo.addItem(
-                "自动识别" if lang == "auto" else language_name(lang), lang
+                (
+                    tr("Detect automatically", "自动识别")
+                    if lang == "auto"
+                    else language_name(lang)
+                ),
+                lang,
             )
         self.source_lang_combo.setToolTip(
-            "MiLMMT 在本机识别原文语言，单个拉丁字母单词按英语处理。"
-            "短文本识别不准时可在这里指定。"
+            tr(
+                "MiLMMT identifies the source language on this Mac and treats a single "
+                "Latin-letter word as English. Choose a language here if short text is "
+                "misidentified.",
+                "MiLMMT 在本机识别原文语言，单个拉丁字母单词按英语处理。"
+                "短文本识别不准时可在这里指定。",
+            )
         )
-        lang_layout.addRow("原文语言：", self.source_lang_combo)
+        lang_layout.addRow(tr("Source language:", "原文语言："), self.source_lang_combo)
         self.target_lang_combo = QComboBox()
         for lang in SUPPORTED_LANGUAGES:
             if lang != "auto":
                 self.target_lang_combo.addItem(language_name(lang), lang)
-        lang_layout.addRow("译文语言：", self.target_lang_combo)
+        lang_layout.addRow(tr("Target language:", "译文语言："), self.target_lang_combo)
         layout.addWidget(lang_group)
 
-        hotkeys_group = QGroupBox("快捷键")
+        hotkeys_group = QGroupBox(tr("Hotkeys", "快捷键"))
         hotkeys_layout = QFormLayout(hotkeys_group)
         self.translate_hotkey_input = QLineEdit()
         self.translate_hotkey_input.setPlaceholderText("<alt>+d")
-        hotkeys_layout.addRow("翻译选中文字：", self.translate_hotkey_input)
+        hotkeys_layout.addRow(
+            tr("Translate selection:", "翻译选中文字："), self.translate_hotkey_input
+        )
         self.ocr_hotkey_input = QLineEdit()
         self.ocr_hotkey_input.setPlaceholderText("<alt>+s")
-        hotkeys_layout.addRow("截图识别翻译：", self.ocr_hotkey_input)
+        hotkeys_layout.addRow(tr("Screenshot translate:", "截图识别翻译："), self.ocr_hotkey_input)
         hotkeys_layout.addRow(
             self._note(
-                "格式如 <alt>+d、<cmd>+<shift>+t。修饰键：<alt>（Option）、<ctrl>、<cmd>、<shift>。"
+                tr(
+                    "Format: <alt>+d, <cmd>+<shift>+t. Modifiers: <alt> (Option), <ctrl>, <cmd>, "
+                    "<shift>.",
+                    "格式如 <alt>+d、<cmd>+<shift>+t。"
+                    "修饰键：<alt>（Option）、<ctrl>、<cmd>、<shift>。",
+                )
             )
         )
         layout.addWidget(hotkeys_group)
 
-        ocr_group = QGroupBox("截图识别")
+        ocr_group = QGroupBox(tr("Screenshot Text", "截图识别"))
         ocr_layout = QFormLayout(ocr_group)
         self.ocr_lang_combo = QComboBox()
         for display, code in [
-            ("英语", "eng"),
-            ("简体中文", "chi_sim"),
-            ("繁体中文", "chi_tra"),
-            ("日语", "jpn"),
-            ("韩语", "kor"),
-            ("英语 + 中文", "eng+chi_sim"),
-            ("英语 + 日语", "eng+jpn"),
+            (language_name("English"), "eng"),
+            (language_name("Chinese(Simplified)"), "chi_sim"),
+            (language_name("Chinese(Traditional)"), "chi_tra"),
+            (language_name("Japanese"), "jpn"),
+            (language_name("Korean"), "kor"),
+            (tr("English + Chinese", "英语 + 中文"), "eng+chi_sim"),
+            (tr("English + Japanese", "英语 + 日语"), "eng+jpn"),
         ]:
             self.ocr_lang_combo.addItem(display, code)
-        ocr_layout.addRow("图片中的文字：", self.ocr_lang_combo)
-        self.enhance_image_check = QCheckBox("识别前增强图片")
-        self.enhance_image_check.setToolTip("提高对比度并锐化，改善识别效果")
+        ocr_layout.addRow(tr("Text in the image:", "图片中的文字："), self.ocr_lang_combo)
+        self.enhance_image_check = QCheckBox(
+            tr("Enhance image before recognition", "识别前增强图片")
+        )
+        self.enhance_image_check.setToolTip(
+            tr(
+                "Increase contrast and sharpen to improve recognition",
+                "提高对比度并锐化，改善识别效果",
+            )
+        )
         ocr_layout.addRow("", self.enhance_image_check)
-        self.ocr_review_check = QCheckBox("翻译前先校对识别结果")
+        self.ocr_review_check = QCheckBox(
+            tr(
+                "Review recognized text before translating",
+                "翻译前先校对识别结果",
+            )
+        )
         ocr_layout.addRow("", self.ocr_review_check)
         layout.addWidget(ocr_group)
 
-        popup_group = QGroupBox("阅读窗口")
+        popup_group = QGroupBox(tr("Reading Window", "阅读窗口"))
         popup_layout = QFormLayout(popup_group)
         self.theme_combo = QComboBox()
-        for display, value in [("跟随系统", "system"), ("浅色", "light"), ("深色", "dark")]:
+        for display, value in [
+            (tr("System", "跟随系统"), "system"),
+            (tr("Light", "浅色"), "light"),
+            (tr("Dark", "深色"), "dark"),
+        ]:
             self.theme_combo.addItem(display, value)
-        popup_layout.addRow("外观：", self.theme_combo)
+        popup_layout.addRow(tr("Appearance:", "外观："), self.theme_combo)
 
         font_size_layout = QHBoxLayout()
         self.font_size_spin = QSpinBox()
@@ -234,7 +289,7 @@ class SettingsDialog(QDialog):
         self.font_size_spin.setSuffix(" px")
         font_size_layout.addWidget(self.font_size_spin)
         font_size_layout.addStretch()
-        popup_layout.addRow("字号：", font_size_layout)
+        popup_layout.addRow(tr("Font size:", "字号："), font_size_layout)
 
         opacity_layout = QHBoxLayout()
         self.opacity_slider = QSlider(Qt.Orientation.Horizontal)
@@ -246,18 +301,29 @@ class SettingsDialog(QDialog):
         self.opacity_label.setMinimumWidth(40)
         self.opacity_slider.valueChanged.connect(lambda v: self.opacity_label.setText(f"{v}%"))
         opacity_layout.addWidget(self.opacity_label)
-        popup_layout.addRow("不透明度：", opacity_layout)
+        popup_layout.addRow(tr("Opacity:", "不透明度："), opacity_layout)
 
-        self.show_source_check = QCheckBox("显示原文摘要")
+        self.show_source_check = QCheckBox(tr("Show source excerpt", "显示原文摘要"))
         popup_layout.addRow("", self.show_source_check)
         self.bilingual_layout_combo = QComboBox()
-        self.bilingual_layout_combo.addItem("原文在上，译文在下", "stacked")
-        self.bilingual_layout_combo.addItem("原文与译文并排", "side_by_side")
-        popup_layout.addRow("排列：", self.bilingual_layout_combo)
+        self.bilingual_layout_combo.addItem(
+            tr("Source above translation", "原文在上，译文在下"), "stacked"
+        )
+        self.bilingual_layout_combo.addItem(
+            tr(
+                "Source and translation side by side",
+                "原文与译文并排",
+            )
+        , "side_by_side")
+        popup_layout.addRow(tr("Layout:", "排列："), self.bilingual_layout_combo)
         popup_layout.addRow(
             self._note(
-                "未固定的翻译窗口在点击或切换到其他应用时自动收起；"
-                "点击窗口右上角的图钉即可让它保持显示。"
+                tr(
+                    "An unpinned translation window closes when you click or switch to "
+                    "another app. Click the pin at its top right to keep it open.",
+                    "未固定的翻译窗口在点击或切换到其他应用时自动收起；"
+                    "点击窗口右上角的图钉即可让它保持显示。",
+                )
             )
         )
         layout.addWidget(popup_group)
@@ -268,27 +334,37 @@ class SettingsDialog(QDialog):
         tab = QWidget()
         layout = QFormLayout(tab)
         self.speech_locale_combo = QComboBox()
-        self.speech_locale_combo.addItem("英语（美国）", "en-US")
-        self.speech_locale_combo.addItem("英语（英国）", "en-GB")
+        self.speech_locale_combo.addItem(tr("English (US)", "英语（美国）"), "en-US")
+        self.speech_locale_combo.addItem(tr("English (UK)", "英语（英国）"), "en-GB")
         for language, locale in LANGUAGE_LOCALES.items():
             if language != "English":
                 self.speech_locale_combo.addItem(language_name(language), locale)
-        layout.addRow("自动识别时的原文口音：", self.speech_locale_combo)
+        layout.addRow(
+            tr(
+                "Accent for auto-detected source:",
+                "自动识别时的原文口音：",
+            )
+        , self.speech_locale_combo)
         self.source_voice_combo = QComboBox()
         self.target_voice_combo = QComboBox()
-        layout.addRow("原文音色：", self.source_voice_combo)
-        layout.addRow("译文音色：", self.target_voice_combo)
+        layout.addRow(tr("Source voice:", "原文音色："), self.source_voice_combo)
+        layout.addRow(tr("Translation voice:", "译文音色："), self.target_voice_combo)
         self.speech_rate_spin = QSpinBox()
         self.speech_rate_spin.setRange(80, 300)
-        self.speech_rate_spin.setSuffix(" 词/分钟")
-        layout.addRow("语速：", self.speech_rate_spin)
-        refresh = QPushButton("刷新已安装的音色")
+        self.speech_rate_spin.setSuffix(tr(" words/min", " 词/分钟"))
+        layout.addRow(tr("Speaking rate:", "语速："), self.speech_rate_spin)
+        refresh = QPushButton(tr("Refresh Installed Voices", "刷新已安装的音色"))
         refresh.clicked.connect(self._speech.refresh_voices)
         layout.addRow(refresh)
         layout.addRow(
             self._note(
-                "使用本机已下载的 macOS 语音，离线可用。更多音色可在“系统设置 → 辅助功能 → "
-                "朗读内容”中下载。原文与译文分别使用各自的音色。"
+                tr(
+                    "Uses macOS voices already downloaded on this Mac, so it works offline. "
+                    "Download more in System Settings → Accessibility → Read & Speak. "
+                    "Source and translation use separate voices.",
+                    "使用本机已下载的 macOS 语音，离线可用。更多音色可在“系统设置 → 辅助功能 → "
+                    "朗读内容”中下载。原文与译文分别使用各自的音色。",
+                )
             )
         )
         return tab
@@ -313,12 +389,19 @@ class SettingsDialog(QDialog):
         ]:
             current = combo.currentData() if combo.count() else saved
             combo.clear()
-            combo.addItem("自动选择", "")
+            combo.addItem(tr("Automatic", "自动选择"), "")
             for voice in self._speech.voices:
                 if voice.locale == locale:
                     combo.addItem(voice.name, voice.name)
             if current and combo.findData(current) < 0:
-                combo.addItem(f"{current}（当前语言不可用）", current)
+                combo.addItem(
+                    tr(
+                        "{voice} (unavailable for this language)",
+                        "{voice}（当前语言不可用）",
+                        voice=current,
+                    ),
+                    current,
+                )
             combo.setCurrentIndex(max(0, combo.findData(current)))
 
     def _create_advanced_tab(self) -> QWidget:
@@ -326,13 +409,13 @@ class SettingsDialog(QDialog):
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
-        ollama_group = QGroupBox("Ollama 连接与模型")
+        ollama_group = QGroupBox(tr("Ollama Connection and Model", "Ollama 连接与模型"))
         ollama_layout = QFormLayout(ollama_group)
         self.host_input = QLineEdit()
         self.host_input.setPlaceholderText("http://localhost:11434")
-        ollama_layout.addRow("地址：", self.host_input)
+        ollama_layout.addRow(tr("Host:", "地址："), self.host_input)
         test_layout = QHBoxLayout()
-        self.test_btn = QPushButton("测试连接")
+        self.test_btn = QPushButton(tr("Test Connection", "测试连接"))
         self.test_btn.clicked.connect(self._test_connection)
         test_layout.addWidget(self.test_btn)
         self.connection_status = QLabel("")
@@ -344,52 +427,65 @@ class SettingsDialog(QDialog):
         self.model_combo.setEditable(True)
         self.model_combo.setMinimumWidth(240)
         model_layout.addWidget(self.model_combo, 1)
-        self.refresh_models_btn = QPushButton("刷新")
+        self.refresh_models_btn = QPushButton(tr("Refresh", "刷新"))
         self.refresh_models_btn.clicked.connect(self._refresh_models)
         model_layout.addWidget(self.refresh_models_btn)
-        ollama_layout.addRow("翻译模型：", model_layout)
+        ollama_layout.addRow(tr("Translation model:", "翻译模型："), model_layout)
         layout.addWidget(ollama_group)
 
-        generation = QGroupBox("模型参数")
+        generation = QGroupBox(tr("Model Parameters", "模型参数"))
         form = QFormLayout(generation)
         self.context_spin = QSpinBox()
         self.context_spin.setRange(2048, 131072)
         self.context_spin.setSingleStep(1024)
-        form.addRow("上下文窗口（token）：", self.context_spin)
+        form.addRow(tr("Context window (tokens):", "上下文窗口（token）："), self.context_spin)
         self.output_spin = QSpinBox()
         self.output_spin.setRange(128, 32768)
         self.output_spin.setSingleStep(256)
-        form.addRow("每段输出上限（token）：", self.output_spin)
+        form.addRow(
+            tr("Output limit per part (tokens):", "每段输出上限（token）："), self.output_spin
+        )
         self.temperature_spin = QDoubleSpinBox()
         self.temperature_spin.setRange(0.0, 2.0)
         self.temperature_spin.setSingleStep(0.05)
-        form.addRow("温度：", self.temperature_spin)
+        form.addRow(tr("Temperature:", "温度："), self.temperature_spin)
         self.thinking_combo = QComboBox()
-        for display, value in [("关闭", "off"), ("自动", "auto"), ("开启", "on")]:
+        for display, value in [
+            (tr("Off", "关闭"), "off"),
+            (tr("Auto", "自动"), "auto"),
+            (tr("On", "开启"), "on"),
+        ]:
             self.thinking_combo.addItem(display, value)
-        form.addRow("思考（支持的模型）：", self.thinking_combo)
+        form.addRow(tr("Thinking (supported models):", "思考（支持的模型）："), self.thinking_combo)
         self.keep_alive_spin = QSpinBox()
         self.keep_alive_spin.setRange(0, 3600)
-        self.keep_alive_spin.setSuffix(" 秒")
-        form.addRow("模型保持加载：", self.keep_alive_spin)
+        self.keep_alive_spin.setSuffix(tr(" s", " 秒"))
+        form.addRow(tr("Keep model loaded:", "模型保持加载："), self.keep_alive_spin)
         self.timeout_spin = QSpinBox()
         self.timeout_spin.setRange(5, 600)
-        self.timeout_spin.setSuffix(" 秒")
-        form.addRow("生成读取超时：", self.timeout_spin)
+        self.timeout_spin.setSuffix(tr(" s", " 秒"))
+        form.addRow(tr("Generation read timeout:", "生成读取超时："), self.timeout_spin)
         self.model_profile_note = self._note(
-            "MiLMMT 使用官方推荐的翻译格式和确定性解码；温度、思考、翻译风格和自定义提示词"
-            "仅对其他模型生效。"
+            tr(
+                "MiLMMT uses its recommended translation format and deterministic decoding. "
+                "Temperature, thinking, translation style and custom prompts apply to other "
+                "models only.",
+                "MiLMMT 使用官方推荐的翻译格式和确定性解码；温度、思考、翻译风格和自定义提示词"
+                "仅对其他模型生效。",
+            )
         )
         form.addRow(self.model_profile_note)
         layout.addWidget(generation)
 
-        style_group = QGroupBox("翻译风格（其他模型）")
+        style_group = QGroupBox(tr("Translation Style (other models)", "翻译风格（其他模型）"))
         style_layout = QFormLayout(style_group)
         self.preset_combo = QComboBox()
-        self.preset_combo.addItem("忠实", "faithful")
-        self.preset_combo.addItem("学术", "academic")
-        style_layout.addRow("风格：", self.preset_combo)
-        self.custom_prompt_check = QCheckBox("使用自定义系统提示词")
+        self.preset_combo.addItem(tr("Faithful", "忠实"), "faithful")
+        self.preset_combo.addItem(tr("Academic", "学术"), "academic")
+        style_layout.addRow(tr("Style:", "风格："), self.preset_combo)
+        self.custom_prompt_check = QCheckBox(
+            tr("Use a custom system prompt", "使用自定义系统提示词")
+        )
         style_layout.addRow("", self.custom_prompt_check)
         self.custom_prompt_input = QTextEdit()
         self.custom_prompt_input.setAcceptRichText(False)
@@ -398,16 +494,43 @@ class SettingsDialog(QDialog):
         style_layout.addRow(self.custom_prompt_input)
         layout.addWidget(style_group)
 
-        privacy_group = QGroupBox("隐私与诊断")
+        privacy_group = QGroupBox(tr("Privacy and Diagnostics", "隐私与诊断"))
         privacy_layout = QFormLayout(privacy_group)
-        self.allow_content_logging_check = QCheckBox("在日志中记录选中文字和识别文字")
-        self.allow_content_logging_check.setToolTip("默认关闭。仅在排查问题时临时开启，日志可能包含私人内容。")
+        self.allow_content_logging_check = QCheckBox(
+            tr(
+                "Include selected and recognized text in logs",
+                "在日志中记录选中文字和识别文字",
+            )
+        )
+        self.allow_content_logging_check.setToolTip(
+            tr(
+                "Off by default. Enable only while troubleshooting; logs may then contain private "
+                "text.",
+                "默认关闭。仅在排查问题时临时开启，日志可能包含私人内容。",
+            )
+        )
         privacy_layout.addRow("", self.allow_content_logging_check)
-        self.keep_ocr_captures_check = QCheckBox("保留截图文件用于排查")
-        self.keep_ocr_captures_check.setToolTip("默认关闭。关闭时识别完成后会删除截图。")
+        self.keep_ocr_captures_check = QCheckBox(
+            tr(
+                "Keep screenshots for troubleshooting",
+                "保留截图文件用于排查",
+            )
+        )
+        self.keep_ocr_captures_check.setToolTip(
+            tr(
+                "Off by default. When off, screenshots are deleted after recognition.",
+                "默认关闭。关闭时识别完成后会删除截图。",
+            )
+        )
         privacy_layout.addRow("", self.keep_ocr_captures_check)
         privacy_layout.addRow(
-            self._note("日常使用请保持两项关闭，阅读内容不会写入日志，临时截图会被清理。")
+            self._note(
+                tr(
+                    "For everyday use keep both off: reading content stays out of logs and "
+                    "temporary screenshots are removed.",
+                    "日常使用请保持两项关闭，阅读内容不会写入日志，临时截图会被清理。",
+                )
+            )
         )
         layout.addWidget(privacy_group)
         layout.addStretch()
@@ -454,6 +577,9 @@ class SettingsDialog(QDialog):
         self.font_size_spin.setValue(s.ui.font_size)
         self.opacity_slider.setValue(int(s.ui.popup_opacity * 100))
         self.show_source_check.setChecked(s.ui.show_source_text)
+        self.interface_language_combo.setCurrentIndex(
+            max(0, self.interface_language_combo.findData(s.ui.language))
+        )
         self.bilingual_layout_combo.setCurrentIndex(
             self.bilingual_layout_combo.findData(s.ui.bilingual_layout)
         )
@@ -505,8 +631,12 @@ class SettingsDialog(QDialog):
         except Exception as e:
             QMessageBox.warning(
                 self,
-                "无法保存设置",
-                f"保存设置时出错：\n\n{e}",
+                tr("Could Not Save Settings", "无法保存设置"),
+                tr(
+                    "Could not save settings:\n\n{error}",
+                    "保存设置时出错：\n\n{error}",
+                    error=e,
+                ),
             )
             return
 
@@ -520,8 +650,11 @@ class SettingsDialog(QDialog):
         """Reset all settings to defaults."""
         reply = QMessageBox.question(
             self,
-            "恢复默认设置",
-            "确定要把所有设置恢复为默认值吗？保存后生效。",
+            tr("Restore Defaults", "恢复默认设置"),
+            tr(
+                "Restore all settings to their defaults? Changes apply when you save.",
+                "确定要把所有设置恢复为默认值吗？保存后生效。",
+            ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -541,7 +674,7 @@ class SettingsDialog(QDialog):
         if host is None:
             return
 
-        self.connection_status.setText("正在测试…")
+        self.connection_status.setText(tr("Testing…", "正在测试…"))
         self.connection_status.setStyleSheet("color: gray;")
         self._set_network_buttons_enabled(False)
 
@@ -554,11 +687,11 @@ class SettingsDialog(QDialog):
     def _connection_test_worker(self, task: BackgroundTask, host: str) -> None:
         """Perform the actual connection test."""
         available = False
-        message = "无法连接"
+        message = tr("Not reachable", "无法连接")
         try:
             client = OllamaClient(host=host, read_timeout=3.0)
             available = client.is_available()
-            message = "已连接" if available else "无法连接"
+            message = tr("Connected", "已连接") if available else tr("Not reachable", "无法连接")
         except Exception as e:
             message = str(e)
 
@@ -577,7 +710,7 @@ class SettingsDialog(QDialog):
 
         self._active_connection_task_id = None
         if available:
-            self.connection_status.setText("✓ 已连接")
+            self.connection_status.setText(tr("✓ Connected", "✓ 已连接"))
             self.connection_status.setStyleSheet("color: green;")
             self._refresh_models()
         else:
@@ -591,7 +724,7 @@ class SettingsDialog(QDialog):
         if host is None:
             return
 
-        self.connection_status.setText("正在获取模型列表…")
+        self.connection_status.setText(tr("Fetching models…", "正在获取模型列表…"))
         self.connection_status.setStyleSheet("color: gray;")
         self._set_network_buttons_enabled(False)
 
@@ -630,13 +763,17 @@ class SettingsDialog(QDialog):
         self._set_network_buttons_enabled(True)
 
         if error_message:
-            self.connection_status.setText("✗ 获取模型列表失败")
+            self.connection_status.setText(tr("✗ Could not fetch models", "✗ 获取模型列表失败"))
             self.connection_status.setStyleSheet("color: red;")
             logger.warning(f"Failed to refresh models: {error_message}")
             QMessageBox.warning(
                 self,
-                "无法获取模型",
-                f"获取模型列表失败：{error_message}\n\n请确认 Ollama 正在运行。",
+                tr("Could Not Fetch Models", "无法获取模型"),
+                tr(
+                    "Could not fetch models: {error}\n\nMake sure Ollama is running.",
+                    "获取模型列表失败：{error}\n\n请确认 Ollama 正在运行。",
+                    error=error_message,
+                ),
             )
             return
 
@@ -651,10 +788,17 @@ class SettingsDialog(QDialog):
             self.model_combo.setCurrentIndex(index)
         elif current_model:
             self.model_combo.setEditText(current_model)
-            self.connection_status.setText("当前模型未安装，请选择已安装的模型")
+            self.connection_status.setText(
+                tr(
+                    "The configured model is not installed; choose an installed model",
+                    "当前模型未安装，请选择已安装的模型",
+                )
+            )
             return
 
-        self.connection_status.setText(f"✓ {self.model_combo.count()} 个模型")
+        self.connection_status.setText(
+            tr("✓ {count} models", "✓ {count} 个模型", count=self.model_combo.count())
+        )
         self.connection_status.setStyleSheet("color: green;")
         logger.debug(f"Refreshed models: {list(model_names)}")
 
@@ -675,7 +819,7 @@ class SettingsDialog(QDialog):
         except ValidationError as e:
             QMessageBox.warning(
                 self,
-                "Ollama 地址无效",
+                tr("Invalid Ollama Host", "Ollama 地址无效"),
                 self._format_validation_error(e),
             )
             return None
@@ -720,6 +864,7 @@ class SettingsDialog(QDialog):
         data["ui"]["font_size"] = self.font_size_spin.value()
         data["ui"]["popup_opacity"] = self.opacity_slider.value() / 100.0
         data["ui"]["show_source_text"] = self.show_source_check.isChecked()
+        data["ui"]["language"] = self.interface_language_combo.currentData()
         data["ui"]["bilingual_layout"] = self.bilingual_layout_combo.currentData()
 
         data["ocr"]["language"] = self.ocr_lang_combo.currentData()
@@ -740,7 +885,7 @@ class SettingsDialog(QDialog):
         except ValidationError as e:
             QMessageBox.warning(
                 self,
-                "设置无效",
+                tr("Invalid Settings", "设置无效"),
                 self._format_validation_error(e),
             )
             return None

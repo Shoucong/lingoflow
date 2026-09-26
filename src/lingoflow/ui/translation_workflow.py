@@ -11,6 +11,7 @@ from lingoflow.core.errors import ProviderConnectionError, TranslationError
 from lingoflow.core.ports import ClipboardPort, LLMProvider, Notifier
 from lingoflow.core.session import SessionStatus, TranslationSession
 from lingoflow.core.text_preparation import TranslationCheckpoint
+from lingoflow.i18n import tr
 from lingoflow.infrastructure.tasks import BackgroundTask, TaskRunner
 from lingoflow.ui import messages
 from lingoflow.ui.popup import TranslationPopup
@@ -239,7 +240,11 @@ class TranslationWorkflow:
 
                     if emitted_text:
                         raise TranslationError(
-                            "连接中断，已保留部分译文，可稍后重试。"
+                            tr(
+                                "Connection interrupted. The partial translation is kept; "
+                                "retry when ready.",
+                                "连接中断，已保留部分译文，可稍后重试。",
+                            )
                         ) from e
                     retry_count += 1
                     if retry_count <= max_retries:
@@ -271,7 +276,10 @@ class TranslationWorkflow:
                 return
 
             logger.error(f"Translation error: {e}")
-            self._signals.translation_error.emit(task.task_id, f"翻译失败：{e}")
+            self._signals.translation_error.emit(
+                task.task_id,
+                tr("Translation failed: {error}", "翻译失败：{error}", error=e),
+            )
 
         finally:
             if not task.is_cancelled():
