@@ -21,6 +21,7 @@ class OCRSignals(Protocol):
     """Signals emitted by OCR workers."""
 
     ocr_finished: object
+    ocr_recognizing: object
 
 
 class OCRWorkflow:
@@ -52,38 +53,37 @@ class OCRWorkflow:
 
     def apply_settings(self, settings: AppSettings) -> None:
         """Apply settings to the workflow."""
+        self.cancel_active()
         self.settings = settings
 
     def request_ocr(self) -> None:
-        """Capture a selected screen region and translate extracted text."""
-        if self._app_state.is_translating or self._app_state.is_ocr_active:
-            logger.debug("Translation or OCR already in progress, ignoring")
-            return
-
-        logger.info("Starting OCR capture")
+        """Capture and recognize on a worker, keeping the tray and window responsive."""
+        self.cancel_active()
         self._app_state.set(AppState.CAPTURING)
         self._notifier.update_status("Capturing...")
-
-        try:
-            image_path = self.ocr_service.capture_interactive()
-        except ScreenCaptureError as e:
-            logger.error(f"OCR capture failed: {e}")
-            self._notifier.show_notification(messages.OCR_ERROR_TITLE, str(e))
-            self._app_state.reset()
-            self._notifier.update_status("Ready")
-            return
-
-        if image_path is None:
-            logger.debug("OCR cancelled by user")
-            self._app_state.reset()
-            self._notifier.update_status("Ready")
-            return
-
-        self._app_state.set(AppState.OCR_RECOGNIZING)
-        self._notifier.update_status("Recognizing...")
-
         self.active_task = self._task_runner.create("ocr")
-        self.active_task.start(lambda task: self._ocr_worker(task, image_path))
+        self.active_task.start(self._capture_worker)
+
+    def _capture_worker(self, task: BackgroundTask) -> None:
+        try:
+            image_path = self.ocr_service.capture_interactive(cancel_check=task.is_cancelled)
+            if image_path is not None:
+                self._signals.ocr_recognizing.emit(task.task_id)
+                self._ocr_worker(task, image_path)
+                return
+            result = OCRResult(text="", cancelled=True)
+        except ScreenCaptureError as error:
+            result = OCRResult(text="", success=False, error_message=str(error))
+        except Exception:
+            logger.exception("Screenshot capture failed")
+            result = OCRResult(text="", success=False, error_message="Screenshot capture failed.")
+        if not task.is_cancelled():
+            self._signals.ocr_finished.emit(task.task_id, result)
+
+    def on_recognizing(self, task_id: int) -> None:
+        if self.is_active_task(task_id):
+            self._app_state.set(AppState.OCR_RECOGNIZING)
+            self._notifier.update_status("Recognizing...")
 
     def _ocr_worker(self, task: BackgroundTask, image_path: Path) -> None:
         """Background worker for OCR text extraction."""
@@ -91,7 +91,7 @@ class OCRWorkflow:
         try:
             if task.is_cancelled():
                 return
-            result = self.ocr_service.extract_text(image_path)
+            result = self.ocr_service.extract_text(image_path, cancel_check=task.is_cancelled)
         except Exception as e:
             logger.error(f"OCR worker failed: {e}")
             result = OCRResult(text="", success=False, error_message=str(e))
@@ -110,6 +110,10 @@ class OCRWorkflow:
 
         self._app_state.reset()
         self.active_task = None
+
+        if result.cancelled:
+            self._notifier.update_status("Ready")
+            return
 
         if not result.success:
             logger.error(f"OCR failed: {result.error_message}")
@@ -148,7 +152,9 @@ class OCRWorkflow:
 
     def cancel_active(self) -> None:
         """Cancel active OCR work."""
-        self._task_runner.cancel(self.active_task)
+        if self.active_task:
+            self._task_runner.cancel(self.active_task)
+            self.ocr_service.cancel()
         self.active_task = None
         if self._app_state.is_ocr_active:
             self._app_state.reset()

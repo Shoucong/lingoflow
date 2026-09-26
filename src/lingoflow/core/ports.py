@@ -15,7 +15,7 @@ from lingoflow.core.ocr import OCRResult
 class ClipboardPort(Protocol):
     """Reads selected text from the frontmost app."""
 
-    def get_selected_text(self) -> str:
+    def get_selected_text(self, cancel_check: Callable[[], bool] | None = None) -> str | None:
         """Return currently selected text, or an empty string."""
 
 
@@ -50,11 +50,18 @@ class LLMProvider(Protocol):
 class OCRBackend(Protocol):
     """OCR capture and recognition backend."""
 
-    def capture_interactive(self) -> Path | None:
+    def capture_interactive(self, cancel_check: Callable[[], bool] | None = None) -> Path | None:
         """Let the user select a screen region and return the capture path."""
 
-    def extract_text(self, image_path: Path) -> OCRResult:
+    def extract_text(
+        self,
+        image_path: Path,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> OCRResult:
         """Extract text from a captured image."""
+
+    def cancel(self) -> None:
+        """Stop active capture/recognition if supported."""
 
     def cleanup_capture(self, image_path: Path | str) -> bool:
         """Remove a managed capture path when retention is disabled."""

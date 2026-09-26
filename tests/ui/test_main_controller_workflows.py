@@ -68,7 +68,7 @@ class FakeClipboard:
     def __init__(self) -> None:
         self.selected_text = ""
 
-    def get_selected_text(self) -> str:
+    def get_selected_text(self, cancel_check=None) -> str:
         return self.selected_text
 
 
@@ -137,15 +137,18 @@ class FakeOCRService:
         self.cleanup_paths: list[Path] = []
         self.updated_settings: list[AppSettings] = []
 
-    def capture_interactive(self) -> Path | None:
+    def capture_interactive(self, cancel_check=None) -> Path | None:
         self.capture_calls += 1
         if self.capture_error:
             raise self.capture_error
         return self.capture_result
 
-    def extract_text(self, image_path: Path) -> OCRResult:
+    def extract_text(self, image_path: Path, cancel_check=None) -> OCRResult:
         self.extract_paths.append(image_path)
         return self.extract_result
+
+    def cancel(self) -> None:
+        pass
 
     def cleanup_capture(self, image_path: Path) -> bool:
         self.cleanup_paths.append(image_path)
@@ -423,6 +426,7 @@ def test_ocr_success_extracts_text_then_translates(
 
 
 def test_ocr_cancelled_restores_ready_without_popup(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -430,12 +434,13 @@ def test_ocr_cancelled_restores_ready_without_popup(
 
     harness.controller._on_ocr_requested()
 
-    assert harness.controller._is_processing_ocr is False
+    qtbot.waitUntil(lambda: not harness.controller._is_processing_ocr)
     assert harness.popup is None
     assert "Ready" in harness.controller.tray_icon.tooltip
 
 
 def test_ocr_capture_error_notifies_without_starting_worker(
+    qtbot,
     controller_harness: ControllerHarness,
 ) -> None:
     harness = controller_harness
@@ -443,6 +448,7 @@ def test_ocr_capture_error_notifies_without_starting_worker(
 
     harness.controller._on_ocr_requested()
 
+    qtbot.waitUntil(lambda: not harness.controller._is_processing_ocr)
     assert harness.popup is None
     assert harness.controller._active_ocr_task is None
     assert harness.controller.tray_icon.messages[-1] == (
@@ -577,3 +583,27 @@ def test_new_selection_replaces_old_task_and_rejects_late_output(qtbot, controll
     assert session.source_text == "new selection"
     assert "obsolete" not in session.translated_text
     qtbot.waitUntil(lambda: harness.controller._task_runner.active_count == 0)
+
+
+def test_cancelled_capture_keeps_ui_responsive_and_cleans_late_image(
+    qtbot, controller_harness, monkeypatch,
+):
+    harness = controller_harness
+    entered, release = threading.Event(), threading.Event()
+
+    def capture(cancel_check=None):
+        entered.set()
+        release.wait(2)
+        return harness.ocr.capture_result
+
+    monkeypatch.setattr(harness.ocr, "capture_interactive", capture)
+    try:
+        harness.controller._on_ocr_requested()
+        qtbot.waitUntil(entered.is_set)
+        assert harness.controller.app_state == AppState.CAPTURING
+        harness.controller.ocr_workflow.cancel_active()
+    finally:
+        release.set()
+    qtbot.waitUntil(lambda: harness.controller._task_runner.active_count == 0)
+    assert harness.popup is None
+    assert harness.ocr.cleanup_paths == [harness.ocr.capture_result]

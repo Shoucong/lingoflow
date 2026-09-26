@@ -57,6 +57,7 @@ class MainSignals(QObject):
     translation_error = pyqtSignal(int, str)  # task id, message
     translation_completed = pyqtSignal(int)  # task id
     translation_finished = pyqtSignal(int)  # translation task id
+    ocr_recognizing = pyqtSignal(int)
     ocr_finished = pyqtSignal(int, object)  # task id, OCRResult
 
 
@@ -217,6 +218,7 @@ class MainController(QObject):
         self.signals.translation_completed.connect(self._on_translation_completed)
         self.signals.translation_finished.connect(self._on_translation_finished)
         self.signals.ocr_finished.connect(self._on_ocr_finished)
+        self.signals.ocr_recognizing.connect(self.ocr_workflow.on_recognizing)
 
     def _setup_tray(self) -> None:
         """Set up the system tray icon and menu."""
@@ -294,6 +296,7 @@ class MainController(QObject):
     def _on_ocr_requested(self) -> None:
         """Handle OCR request (main thread)."""
         self.translation_workflow.cancel_active("New OCR requested")
+        self.translation_workflow.dismiss_popup("Starting screenshot capture")
         self.ocr_workflow.request_ocr()
 
     def _ocr_worker(self, task: BackgroundTask, image_path) -> None:

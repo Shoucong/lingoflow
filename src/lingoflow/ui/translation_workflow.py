@@ -84,7 +84,7 @@ class TranslationWorkflow:
         try:
             if task.is_cancelled():
                 return
-            text = (self.clipboard.get_selected_text() or "").strip()
+            text = (self.clipboard.get_selected_text(cancel_check=task.is_cancelled) or "").strip()
             if not text:
                 error = "empty"
             elif not task.is_cancelled() and not self.translator.is_available():

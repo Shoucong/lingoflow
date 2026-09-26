@@ -6,11 +6,15 @@ Uses Apple Vision and macOS screencapture.
 """
 
 import subprocess
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 from uuid import uuid4
 
+import objc
 from PIL import Image, ImageEnhance, ImageFilter
 
 from lingoflow.config.constants import OCR_CAPTURE_DIR
@@ -57,6 +61,7 @@ class OCRResult:
     source_image_path: Optional[str] = None
     success: bool = True
     error_message: Optional[str] = None
+    cancelled: bool = False
 
 
 # ==========================================================
@@ -129,6 +134,12 @@ class OCRService:
         """
         self.settings = settings or AppSettings.load()
         self._capture_dir = OCR_CAPTURE_DIR
+        self._capture_gate = threading.Lock()
+        self._vision_gate = threading.Lock()
+        self._operation_lock = threading.Lock()
+        self._capture_process = None
+        self._capture_cancel = None
+        self._vision_request = None
         self._prepare_capture_dir()
         if not self.settings.privacy.keep_ocr_captures:
             self.cleanup_stale_captures()
@@ -142,7 +153,11 @@ class OCRService:
     # Public Methods
     # ==========================================================
 
-    def extract_text(self, image_path: Path) -> OCRResult:
+    def extract_text(
+        self,
+        image_path: Path,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> OCRResult:
         """
         Extract text from an image file.
 
@@ -164,7 +179,10 @@ class OCRService:
             )
 
         try:
-            return self._extract_text_apple_vision(image_path)
+            with self._vision_gate, objc.autorelease_pool():
+                if cancel_check and cancel_check():
+                    return OCRResult(text="", cancelled=True)
+                return self._extract_text_apple_vision(image_path)
         except Exception as e:
             logger.error(f"OCR extraction failed: {e}")
             return OCRResult(text="", success=False, error_message=str(e))
@@ -201,7 +219,10 @@ class OCRService:
             logger.error(f"Screen capture failed: {e}")
             raise ScreenCaptureError(f"Failed to capture screen: {e}") from e
 
-    def capture_interactive(self) -> Optional[Path]:
+    def capture_interactive(
+        self,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> Optional[Path]:
         """
         Let user interactively select a screen region to capture.
 
@@ -212,11 +233,13 @@ class OCRService:
         logger.info("Starting interactive screen capture")
 
         try:
-            return self._capture_interactive_macos(output_path)
+            return self._capture_interactive_macos(output_path, cancel_check)
         except ScreenCaptureError:
+            self.cleanup_capture(output_path)
             raise
         except Exception as e:
             logger.error(f"Interactive capture failed: {e}")
+            self.cleanup_capture(output_path)
             return None
 
     def capture_and_extract(self, region: Optional[CaptureRegion] = None) -> OCRResult:
@@ -332,7 +355,13 @@ class OCRService:
             logger.debug(f"Vision request with languages: {apple_languages}")
 
             # Perform OCR
-            success, error = request_handler.performRequests_error_([request], None)
+            with self._operation_lock:
+                self._vision_request = request
+            try:
+                success, error = request_handler.performRequests_error_([request], None)
+            finally:
+                with self._operation_lock:
+                    self._vision_request = None
 
             if not success:
                 error_msg = str(error) if error else "Unknown Vision error"
@@ -400,57 +429,89 @@ class OCRService:
     # macOS: Screen Capture
     # ==========================================================
 
-    def _capture_macos(self, region: CaptureRegion, output_path: Path) -> None:
-        """
-        Capture screen region on macOS using screencapture.
-        """
-        try:
-            result = subprocess.run(
-                [
-                    "screencapture",
-                    "-x",
-                    "-R",
-                    f"{region.x}, {region.y}, {region.width}, {region.height}",
-                    str(output_path),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=10.0,
-            )
-        except subprocess.TimeoutExpired as e:
-            raise ScreenCaptureError(
-                "Screen capture timed out. Check macOS Screen Recording permission."
-            ) from e
+    def cancel(self) -> None:
+        """Cancel only this service's capture process and current Vision request."""
+        with self._operation_lock:
+            process, cancelled = self._capture_process, self._capture_cancel
+            request = self._vision_request
+        if cancelled:
+            cancelled.set()
+        if process and process.poll() is None:
+            try:
+                process.terminate()
+            except OSError:
+                pass
+        if request is not None:
+            request.cancel()
 
+    def _run_capture(self, arguments, timeout: float, cancel_check=None):
+        while not self._capture_gate.acquire(timeout=0.05):
+            if cancel_check and cancel_check():
+                return subprocess.CompletedProcess(arguments, -1, "", "")
+        process = None
+        cancelled = threading.Event()
+        try:
+            if cancel_check and cancel_check():
+                return subprocess.CompletedProcess(arguments, -1, "", "")
+            process = subprocess.Popen(
+                arguments,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            with self._operation_lock:
+                self._capture_process, self._capture_cancel = process, cancelled
+            deadline = time.monotonic() + timeout
+            while True:
+                if cancelled.is_set() or (cancel_check and cancel_check()):
+                    return subprocess.CompletedProcess(arguments, -1, "", "")
+                if time.monotonic() >= deadline:
+                    raise ScreenCaptureError("Screen capture timed out.")
+                try:
+                    stdout, stderr = process.communicate(timeout=0.1)
+                    if cancelled.is_set() or (cancel_check and cancel_check()):
+                        return subprocess.CompletedProcess(arguments, -1, "", "")
+                    return subprocess.CompletedProcess(
+                        arguments, process.returncode, stdout, stderr
+                    )
+                except subprocess.TimeoutExpired:
+                    continue
+        finally:
+            if process and process.poll() is None:
+                process.kill()
+                process.communicate()
+            with self._operation_lock:
+                self._capture_process = self._capture_cancel = None
+            self._capture_gate.release()
+
+    def _capture_macos(self, region: CaptureRegion, output_path: Path) -> None:
+        result = self._run_capture(
+            [
+                "/usr/sbin/screencapture",
+                "-x",
+                "-R",
+                f"{region.x},{region.y},{region.width},{region.height}",
+                str(output_path),
+            ],
+            10.0,
+        )
         if result.returncode != 0:
             raise ScreenCaptureError(self._format_macos_capture_error(result.stderr))
 
-    def _capture_interactive_macos(self, output_path: Path) -> Optional[Path]:
-        """
-        Interactive screen capture on macOS.
-        """
-        try:
-            result = subprocess.run(
-                ["screencapture", "-i", "-s", "-x", str(output_path)],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=120.0,
-            )
-        except subprocess.TimeoutExpired as e:
-            raise ScreenCaptureError("Screen capture timed out.") from e
-
+    def _capture_interactive_macos(self, output_path: Path, cancel_check=None) -> Optional[Path]:
+        result = self._run_capture(
+            ["/usr/sbin/screencapture", "-i", "-s", "-x", str(output_path)],
+            120.0,
+            cancel_check,
+        )
+        if result.returncode == -1:
+            self.cleanup_capture(output_path)
+            return None
         if output_path.exists():
             self._secure_capture_file(output_path)
-            logger.info("Interactive capture saved to managed OCR cache")
             return output_path
-
-        stderr = result.stderr.strip() if result.stderr else ""
-        if result.returncode != 0 and stderr:
-            raise ScreenCaptureError(self._format_macos_capture_error(stderr))
-
-        logger.info("Interactive capture cancelled by user")
+        if result.returncode != 0 and result.stderr.strip():
+            raise ScreenCaptureError(self._format_macos_capture_error(result.stderr))
         return None
 
     # ==========================================================

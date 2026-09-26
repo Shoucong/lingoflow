@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+import threading
+import time
 from pathlib import Path
 
 from lingoflow.config.settings import AppSettings
@@ -64,3 +67,25 @@ def test_new_capture_path_is_unique_and_managed(isolated_ocr_capture_dir: Path) 
     assert first.parent == isolated_ocr_capture_dir
     assert first.name.startswith("capture-")
     assert first.suffix == ".png"
+
+
+def test_cancelling_capture_terminates_its_process(isolated_ocr_capture_dir: Path) -> None:
+    service = make_service()
+    results = []
+    worker = threading.Thread(target=lambda: results.append(service._run_capture(
+        [sys.executable, "-c", "import time; time.sleep(30)"], timeout=5,
+    )))
+    worker.start()
+    try:
+        deadline = time.monotonic() + 2
+        while service._capture_process is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert service._capture_process is not None
+        service.cancel()
+        worker.join(2)
+        assert not worker.is_alive()
+        assert results[0].returncode == -1
+        assert service._capture_process is None
+    finally:
+        service.cancel()
+        worker.join(3)
