@@ -29,6 +29,13 @@ Run these checks from a signed `.app` installed through the `.dmg`.
 
 ## Window Behavior
 
+- While a translation is streaming, select a word in the output and copy it with Cmd+C.
+- Confirm incoming text is appended at the end and neither replaces nor extends the selection.
+- Repeat with a backwards selection and with a selection that reaches the end of the output.
+- Scroll up during streaming and confirm the reading position stays put. Clear the selection
+  and scroll back to the bottom to resume following new output.
+- Translate source text containing literal tags such as `<b>word</b>` and an ampersand.
+  Confirm the source is displayed and can be selected exactly as written.
 - Open Settings, then trigger translation and OCR.
 - Confirm the popup can be closed while Settings remains open.
 - Click outside the popup after translation completes.

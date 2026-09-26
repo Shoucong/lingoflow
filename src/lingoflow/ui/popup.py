@@ -8,7 +8,7 @@ import platform
 from typing import Optional
 
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QCursor
+from PyQt6.QtGui import QCursor, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -187,6 +187,7 @@ class TranslationPopup(QWidget):
         # --- Source text (collapsible) ---
         self.source_text_label = QLabel()
         self.source_text_label.setObjectName("sourceText")
+        self.source_text_label.setTextFormat(Qt.TextFormat.PlainText)
         self.source_text_label.setWordWrap(True)
         self.source_text_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.source_text_label.setVisible(self.settings.ui.show_source_text)
@@ -428,14 +429,31 @@ class TranslationPopup(QWidget):
     # =============================================================================
 
     def _on_chunk_received(self, chunk: str) -> None:
-        """Handle incoming translation chunk."""
-        self._restore_if_translating()
-        self._translated_text += chunk
-        self.translation_text.insertPlainText(chunk)
+        """Append output without replacing a selection or moving the reader."""
+        if not chunk:
+            return
 
-        # Auto-scroll to bottom
+        self._restore_if_translating()
+        reader_cursor = self.translation_text.textCursor()
+        # Save numeric positions: live QTextCursors move when text is inserted
+        # at their boundary, including selections ending at the document end.
+        anchor, position = reader_cursor.anchor(), reader_cursor.position()
         scrollbar = self.translation_text.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
+        scroll_position = scrollbar.value()
+        follow_output = (
+            scroll_position >= scrollbar.maximum() - 2 and not reader_cursor.hasSelection()
+        )
+
+        output_cursor = QTextCursor(self.translation_text.document())
+        output_cursor.movePosition(QTextCursor.MoveOperation.End)
+        output_cursor.insertText(chunk)
+        self._translated_text += chunk
+
+        reader_cursor.setPosition(anchor)
+        reader_cursor.setPosition(position, QTextCursor.MoveMode.KeepAnchor)
+        self.translation_text.setTextCursor(reader_cursor)
+        # setTextCursor can scroll to the selection, so restore the viewport last.
+        scrollbar.setValue(scrollbar.maximum() if follow_output else scroll_position)
 
     def _on_translation_started(self) -> None:
         """Handle translation start."""

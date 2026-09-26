@@ -1,0 +1,131 @@
+{
+  "retrieval_date": "2026-09-26",
+  "snapshot_written_at_utc": "2026-09-26T06:47:24.129988+00:00",
+  "notes": [
+    "Public GitHub repository metadata and default-branch heads; star counts are time-sensitive.",
+    "Latest-release 404 is not evidence that no releases or automated builds exist.",
+    "Repository source was inspected; third-party apps were not installed or functionally benchmarked."
+  ],
+  "local_baseline": {
+    "commit": "f39985f2ede8841dcd9f6cef2d1f04cce7183acc",
+    "source_python_files": 29,
+    "source_lines_including_comments_and_blanks": 6457,
+    "tests_passed": 59,
+    "test_duration_seconds": 1.29,
+    "test_mode": "QT_QPA_PLATFORM=offscreen; config, logs and caches redirected to temporary directory; no real inference"
+  },
+  "repositories": [
+    {
+      "full_name": "tisfeng/Easydict",
+      "default_branch": "dev",
+      "stargazers_count": 14754,
+      "archived": false,
+      "pushed_at": "2026-09-25T16:28:59Z",
+      "updated_at": "2026-09-26T06:13:43Z",
+      "language": "Swift",
+      "license": "GPL-3.0",
+      "latest_release": {
+        "tag_name": "2.22.0",
+        "published_at": "2026-08-23T04:20:10Z",
+        "html_url": "https://github.com/tisfeng/Easydict/releases/tag/2.22.0"
+      },
+      "head_commit": {
+        "sha": "eedc893918b976d8454f682d6eaae576758b3481",
+        "date": "2026-09-25T16:28:58Z",
+        "url": "https://github.com/tisfeng/Easydict/commit/eedc893918b976d8454f682d6eaae576758b3481"
+      },
+      "repository_url": "https://github.com/tisfeng/Easydict",
+      "metadata_api_url": "https://api.github.com/repos/tisfeng/Easydict",
+      "latest_release_api_url": "https://api.github.com/repos/tisfeng/Easydict/releases/latest"
+    },
+    {
+      "full_name": "pot-app/pot-desktop",
+      "default_branch": "master",
+      "stargazers_count": 19416,
+      "archived": true,
+      "pushed_at": "2026-07-04T11:01:27Z",
+      "updated_at": "2026-09-25T12:57:40Z",
+      "language": "JavaScript",
+      "license": "GPL-3.0",
+      "latest_release": {
+        "tag_name": "3.0.7",
+        "published_at": "2025-05-10T01:14:01Z",
+        "html_url": "https://github.com/pot-app/pot-desktop/releases/tag/3.0.7"
+      },
+      "head_commit": {
+        "sha": "594d32ede96acd106b0256deaa8bb440ffcdff40",
+        "date": "2026-07-04T11:01:21Z",
+        "url": "https://github.com/pot-app/pot-desktop/commit/594d32ede96acd106b0256deaa8bb440ffcdff40"
+      },
+      "repository_url": "https://github.com/pot-app/pot-desktop",
+      "metadata_api_url": "https://api.github.com/repos/pot-app/pot-desktop",
+      "latest_release_api_url": "https://api.github.com/repos/pot-app/pot-desktop/releases/latest",
+      "archive_date_from_repository_banner": "2026-09-07"
+    },
+    {
+      "full_name": "nextai-translator/nextai-translator",
+      "default_branch": "main",
+      "stargazers_count": 24986,
+      "archived": false,
+      "pushed_at": "2026-09-03T09:35:54Z",
+      "updated_at": "2026-09-25T14:14:01Z",
+      "language": "TypeScript",
+      "license": "AGPL-3.0",
+      "latest_release": {
+        "tag_name": "v0.6.43",
+        "published_at": "2026-08-23T19:15:06Z",
+        "html_url": "https://github.com/nextai-translator/nextai-translator/releases/tag/v0.6.43"
+      },
+      "head_commit": {
+        "sha": "a9681a4ab0599bef7013e29fca701f250d7738a2",
+        "date": "2026-09-03T09:16:17Z",
+        "url": "https://github.com/nextai-translator/nextai-translator/commit/a9681a4ab0599bef7013e29fca701f250d7738a2"
+      },
+      "repository_url": "https://github.com/nextai-translator/nextai-translator",
+      "metadata_api_url": "https://api.github.com/repos/nextai-translator/nextai-translator",
+      "latest_release_api_url": "https://api.github.com/repos/nextai-translator/nextai-translator/releases/latest"
+    },
+    {
+      "full_name": "XapaJIaMnu/translateLocally",
+      "default_branch": "master",
+      "stargazers_count": 631,
+      "archived": false,
+      "pushed_at": "2025-03-30T19:11:35Z",
+      "updated_at": "2026-09-24T19:55:39Z",
+      "language": "C++",
+      "license": "MIT",
+      "release_error": "HTTP Error 404: Not Found",
+      "head_commit": {
+        "sha": "1d0d382cd6c9085cb4b8144c4a8962d74ed609c8",
+        "date": "2025-03-30T19:11:35Z",
+        "url": "https://github.com/XapaJIaMnu/translateLocally/commit/1d0d382cd6c9085cb4b8144c4a8962d74ed609c8"
+      },
+      "repository_url": "https://github.com/XapaJIaMnu/translateLocally",
+      "metadata_api_url": "https://api.github.com/repos/XapaJIaMnu/translateLocally",
+      "latest_release_api_url": "https://api.github.com/repos/XapaJIaMnu/translateLocally/releases/latest"
+    },
+    {
+      "full_name": "vlr-code/transly",
+      "default_branch": "main",
+      "stargazers_count": 1,
+      "archived": false,
+      "pushed_at": "2026-05-30T15:05:24Z",
+      "updated_at": "2026-09-24T00:21:10Z",
+      "language": "Swift",
+      "license": "MIT",
+      "latest_release": {
+        "tag_name": "v1.0",
+        "published_at": "2026-05-30T14:56:39Z",
+        "html_url": "https://github.com/vlr-code/transly/releases/tag/v1.0"
+      },
+      "head_commit": {
+        "sha": "b3444f2fd1ffe50e9df7db952148e0f3b694b028",
+        "date": "2026-05-30T15:05:22Z",
+        "url": "https://github.com/vlr-code/transly/commit/b3444f2fd1ffe50e9df7db952148e0f3b694b028"
+      },
+      "repository_url": "https://github.com/vlr-code/transly",
+      "metadata_api_url": "https://api.github.com/repos/vlr-code/transly",
+      "latest_release_api_url": "https://api.github.com/repos/vlr-code/transly/releases/latest"
+    }
+  ]
+}
