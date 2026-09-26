@@ -76,6 +76,9 @@ def run(output: Path) -> None:
             assert (reader.anchor(), reader.position()) == (10, 2)
             popup._install_outside_click_monitor()
             monitors = popup._native_monitor.active_count
+            # One global click monitor plus one app-activation observer.
+            assert monitors == 2, f"Native interaction monitors not installed: {monitors}"
+            assert popup.is_pinned is False
             app.processEvents()
             popup.showMinimized()
             app.processEvents()
@@ -105,6 +108,8 @@ def run(output: Path) -> None:
             evidence["window_cycles"].append(
                 {"cycle": index + 1, "rss_kib": rss_kib, "registered_monitors": monitors}
             )
+
+        evidence["pin_toggles"] = _check_pin_in_place(app, settings, root)
 
         dialog = SettingsDialog(settings)
         dialog.show()
@@ -141,6 +146,66 @@ def run(output: Path) -> None:
             json.dumps(evidence, ensure_ascii=False, indent=2) + "\n"
         )
         print(json.dumps({"completed": True, "report": str(output / "self-check.json")}))
+
+
+
+def _check_pin_in_place(app, settings, root: Path) -> dict:
+    """Toggle the pin 20 times and read the native NSWindow each time."""
+    import objc
+    from PyQt6.QtCore import QEvent, QObject
+    from PyQt6.QtGui import QTextCursor
+
+    from lingoflow.ui.popup import TranslationPopup
+
+    events = []
+
+    class Recorder(QObject):
+        def eventFilter(self, _watched, event):  # noqa: N802
+            if event.type() in {QEvent.Type.Hide, QEvent.Type.Show, QEvent.Type.WinIdChange}:
+                events.append(event.type().name)
+            return False
+
+    (root / "pin.json").write_text('{"width": 520, "height": 420, "pinned": true}')
+    popup = TranslationPopup(settings, window_state_path=root / "pin.json")
+    popup.show_with_text("Pin state must not flash the window.")
+    popup.start_translation()
+    popup.append_translation("\n".join(f"固定切换不应闪烁 {i}" for i in range(80)))
+    popup.finish_translation()
+    app.processEvents()
+    assert popup.is_pinned is False, "A legacy pinned=true file must not pin a new window"
+    bar = popup.translation_text.verticalScrollBar()
+    bar.setValue(bar.maximum() // 2)
+    reader = popup.translation_text.textCursor()
+    reader.setPosition(12)
+    reader.setPosition(3, QTextCursor.MoveMode.KeepAnchor)
+    popup.translation_text.setTextCursor(reader)
+    recorder = Recorder()
+    popup.installEventFilter(recorder)
+    ns_window = objc.objc_object(c_void_p=int(popup.winId())).window()
+    number, geometry, offset = ns_window.windowNumber(), popup.geometry(), bar.value()
+    levels = []
+    for _ in range(20):
+        popup.pin_btn.click()
+        app.processEvents()
+        current = objc.objc_object(c_void_p=int(popup.winId())).window()
+        levels.append(int(current.level()))
+        assert current.windowNumber() == number and current.isVisible()
+    cursor = popup.translation_text.textCursor()
+    result = {
+        "toggles": 20,
+        "levels": levels,
+        "same_native_window": True,
+        "hide_show_events": list(events),
+        "geometry_unchanged": popup.geometry() == geometry,
+        "scroll_unchanged": bar.value() == offset,
+        "selection_unchanged": (cursor.anchor(), cursor.position()) == (12, 3),
+    }
+    assert not events and result["geometry_unchanged"] and result["scroll_unchanged"]
+    assert result["selection_unchanged"]
+    assert levels[0] > 0 and levels[1] == 0
+    popup.close()
+    app.processEvents()
+    return result
 
 
 if __name__ == "__main__":

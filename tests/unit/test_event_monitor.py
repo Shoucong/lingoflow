@@ -45,7 +45,7 @@ class FakeCenter:
         self.observers = {}
         self.fail = fail
 
-    def addObserverForName_object_queue_handler_(self, name, obj, queue, handler):  # noqa: N802
+    def addObserverForName_object_queue_usingBlock_(self, name, obj, queue, handler):  # noqa: N802
         if self.fail:
             raise RuntimeError("Cannot observe")
         self.observers["activation"] = handler

@@ -84,7 +84,8 @@ class OutsideInteractionMonitor:
                 workspace = api.NSWorkspace.sharedWorkspace()
                 owner = workspace.menuBarOwningApplication()
                 self.reading_pid = int(owner.processIdentifier()) if owner else None
-                observer = workspace.notificationCenter().addObserverForName_object_queue_handler_(
+                center = workspace.notificationCenter()
+                observer = center.addObserverForName_object_queue_usingBlock_(
                     api.NSWorkspaceDidActivateApplicationNotification,
                     None,
                     api.NSOperationQueue.mainQueue(),
