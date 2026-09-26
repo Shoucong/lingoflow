@@ -110,6 +110,7 @@ def run(output: Path) -> None:
             )
 
         evidence["pin_toggles"] = _check_pin_in_place(app, settings, root)
+        evidence["dictionary"] = _check_dictionary()
 
         dialog = SettingsDialog(settings)
         dialog.show()
@@ -206,6 +207,28 @@ def _check_pin_in_place(app, settings, root: Path) -> dict:
     popup.close()
     app.processEvents()
     return result
+
+
+
+def _check_dictionary() -> dict:
+    """Look up a few words offline; reports availability instead of failing on other Macs."""
+    from lingoflow.infrastructure.macos.dictionary import MacOSDictionaryService
+
+    service = MacOSDictionaryService()
+    if not service.available:
+        return {"available": False}
+    report = {"available": True, "words": {}}
+    for word in ["inhibited", "ran", "kinase"]:
+        started = time.perf_counter()
+        result = service.lookup(word, "Chinese(Simplified)")
+        report["words"][word] = {
+            "ms": round((time.perf_counter() - started) * 1000, 2),
+            "bilingual": result.bilingual if result else None,
+            "headword": result.entries[0].headword if result and result.entries else None,
+        }
+    assert report["words"]["inhibited"]["headword"] == "inhibit"
+    assert report["words"]["ran"]["headword"] == "run"
+    return report
 
 
 if __name__ == "__main__":

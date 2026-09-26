@@ -204,6 +204,10 @@ class TranslationSettings(SettingsModel):
         description="Default target language for translations",
     )
     preset: Literal["faithful", "academic"] = "faithful"
+    dictionary_lookup: bool = Field(
+        default=True,
+        description="Show an offline dictionary card when a single word is selected",
+    )
     custom_prompt: Optional[str] = Field(
         default=None,
         description="Custom prompt template for translations",

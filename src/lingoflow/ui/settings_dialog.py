@@ -216,6 +216,21 @@ class SettingsDialog(QDialog):
             if lang != "auto":
                 self.target_lang_combo.addItem(language_name(lang), lang)
         lang_layout.addRow(tr("Target language:", "译文语言："), self.target_lang_combo)
+        self.dictionary_check = QCheckBox(
+            tr(
+                "Look up single words in the macOS dictionary (offline)",
+                "单个单词使用系统词典查词（离线）",
+            )
+        )
+        self.dictionary_check.setToolTip(
+            tr(
+                "Uses the Oxford English–Chinese dictionary that ships with macOS for "
+                "English ↔ Simplified Chinese. Other words and languages use the model.",
+                "使用 macOS 自带的《牛津英汉汉英词典》，适用于英语与简体中文互查；"
+                "其他情况仍使用模型翻译。",
+            )
+        )
+        lang_layout.addRow("", self.dictionary_check)
         layout.addWidget(lang_group)
 
         hotkeys_group = QGroupBox(tr("Hotkeys", "快捷键"))
@@ -564,6 +579,7 @@ class SettingsDialog(QDialog):
         if target_index >= 0:
             self.target_lang_combo.setCurrentIndex(target_index)
         self.preset_combo.setCurrentIndex(max(0, self.preset_combo.findData(s.translation.preset)))
+        self.dictionary_check.setChecked(s.translation.dictionary_lookup)
         self.custom_prompt_check.setChecked(bool(s.translation.custom_prompt))
         self.custom_prompt_input.setPlainText(s.translation.custom_prompt or "")
         self.custom_prompt_input.setEnabled(bool(s.translation.custom_prompt))
@@ -847,6 +863,7 @@ class SettingsDialog(QDialog):
         data["translation"]["source_language"] = self.source_lang_combo.currentData()
         data["translation"]["target_language"] = self.target_lang_combo.currentData()
         data["translation"]["preset"] = self.preset_combo.currentData()
+        data["translation"]["dictionary_lookup"] = self.dictionary_check.isChecked()
         data["translation"]["custom_prompt"] = (
             (self.custom_prompt_input.toPlainText().strip() or None)
             if self.custom_prompt_check.isChecked()

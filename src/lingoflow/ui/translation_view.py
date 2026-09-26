@@ -2,7 +2,7 @@
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QTextCursor
-from PyQt6.QtWidgets import QHBoxLayout, QSplitter, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QSplitter, QTextBrowser, QTextEdit, QVBoxLayout, QWidget
 
 
 class TranslationView(QSplitter):
@@ -43,7 +43,10 @@ class TranslationView(QSplitter):
         target_layout = QVBoxLayout(self.target_panel)
         target_layout.setContentsMargins(0, 0, 0, 0)
         target_layout.setSpacing(0)
-        self.target = QTextEdit()
+        # A read-only QTextEdit that can also report clicks on links (word cards).
+        self.target = QTextBrowser()
+        self.target.setOpenLinks(False)
+        self.target.setOpenExternalLinks(False)
         self.target.setObjectName("translationText")
         self.target.setReadOnly(True)
         self.target.setMinimumHeight(36)

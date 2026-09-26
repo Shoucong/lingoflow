@@ -161,6 +161,18 @@ class FakeOCRService:
         self.updated_settings.append(settings)
 
 
+class FakeDictionary:
+    """Answers only for words registered by a test; everything else goes to the model."""
+
+    def __init__(self) -> None:
+        self.results: dict[str, object] = {}
+        self.queries: list[tuple[str, str]] = []
+
+    def lookup(self, word: str, target_language: str):
+        self.queries.append((word, target_language))
+        return self.results.get(word)
+
+
 class FakeHotkeyManager:
     def __init__(self) -> None:
         self.registrations: list[tuple[object, str, object]] = []
@@ -191,6 +203,9 @@ class FakePopup:
         self.stop_requested = FakeSignal()
         self.retry_requested = FakeSignal()
         self.settings_requested = FakeSignal()
+        self.model_translation_requested = FakeSignal()
+        self.dictionary_results: list = []
+        self.left_word_mode = 0
         self.is_pinned = False
         self.detected_languages: list[str] = []
         self.target_language = settings.translation.target_language
@@ -243,6 +258,12 @@ class FakePopup:
 
     def set_detected_source_language(self, language: str) -> None:
         self.detected_languages.append(language)
+
+    def show_dictionary(self, result, expect_gloss: bool = True) -> None:
+        self.dictionary_results.append(result)
+
+    def leave_word_mode(self) -> None:
+        self.left_word_mode += 1
 
     def clear_translation(self) -> None:
         self.cleared_count += 1
@@ -308,6 +329,7 @@ def controller_harness(monkeypatch, qapp, isolated_settings_paths) -> Controller
     monkeypatch.setattr(main_window, "OCRService", lambda _settings: ocr)
     monkeypatch.setattr(main_window, "ClipboardManager", lambda: clipboard)
     monkeypatch.setattr(main_window, "HotkeyManager", lambda _settings: hotkeys)
+    monkeypatch.setattr(main_window, "MacOSDictionaryService", lambda: FakeDictionary())
     monkeypatch.setattr(main_window, "MacOSPermissionService", UnsupportedPermissions)
     monkeypatch.setattr(tray_controller, "QSystemTrayIcon", FakeTrayIcon)
 
@@ -646,3 +668,71 @@ def test_ocr_review_waits_for_explicit_translation(qtbot, controller_harness):
     harness.popup.retry_requested.emit("corrected OCR text")
     wait_for_idle_translation(qtbot, harness)
     assert harness.translator.requests[-1]["text"] == "corrected OCR text"
+
+
+def test_single_word_shows_a_dictionary_card_and_a_model_gloss(qtbot, controller_harness):
+    from lingoflow.core.dictionary import DictionaryResult
+
+    harness = controller_harness
+    dictionary = harness.controller.translation_workflow._dictionary
+    dictionary.results["inhibited"] = DictionaryResult(
+        "inhibited", "D", True, (_found_entry("inhibit"),)
+    )
+    harness.clipboard.selected_text = "inhibited"
+    harness.translator.stream_chunks = ["抑制"]
+
+    harness.controller._on_translate_requested()
+    wait_for_idle_translation(qtbot, harness)
+
+    assert harness.popup.dictionary_results[-1].query == "inhibited"
+    assert dictionary.queries[-1] == ("inhibited", harness.settings.translation.target_language)
+    # The gloss is the ordinary model request for the same word.
+    assert harness.translator.requests[-1]["text"] == "inhibited"
+    assert harness.popup.detected_languages[-1] == "English"
+
+
+def test_phrases_words_without_entries_and_the_disabled_setting_use_the_model(
+    qtbot, controller_harness
+):
+    harness = controller_harness
+    dictionary = harness.controller.translation_workflow._dictionary
+    harness.clipboard.selected_text = "binding affinity"
+    harness.controller._on_translate_requested()
+    wait_for_idle_translation(qtbot, harness)
+    assert dictionary.queries == []
+    assert harness.popup.dictionary_results == []
+
+    # A single word without any entry is translated by the model.
+    from lingoflow.core.dictionary import DictionaryResult
+
+    dictionary.results["ubiquitination"] = DictionaryResult("ubiquitination", "D", True, ())
+    harness.controller.translation_workflow._start_request("ubiquitination")
+    assert dictionary.queries[-1][0] == "ubiquitination"
+    assert harness.popup.dictionary_results == []
+    qtbot.waitUntil(lambda: harness.popup.finished_count == 2, timeout=2000)
+    assert harness.translator.requests[-1]["text"] == "ubiquitination"
+
+    harness.settings.translation.dictionary_lookup = False
+    dictionary.queries.clear()
+    dictionary.results["inhibited"] = object()
+    harness.controller.translation_workflow._start_request("inhibited")
+    assert dictionary.queries == []
+
+
+def test_translate_with_model_skips_the_dictionary(qtbot, controller_harness):
+    harness = controller_harness
+    dictionary = harness.controller.translation_workflow._dictionary
+    harness.controller.translation_workflow.ensure_popup()
+    popup = harness.popup
+    popup.shown.append({"source_text": "inhibited"})
+    harness.controller.translation_workflow.translate_with_model("inhibited")
+    qtbot.waitUntil(lambda: popup.finished_count == 1, timeout=2000)
+    assert dictionary.queries == []
+    assert popup.left_word_mode == 1
+    assert harness.translator.requests[-1]["text"] == "inhibited"
+
+
+def _found_entry(headword):
+    from lingoflow.core.dictionary import DictionaryEntry, PartOfSpeech, Sense
+
+    return DictionaryEntry(headword, (), (PartOfSpeech("verb", (Sense(translations=("抑制",)),)),))

@@ -7,6 +7,7 @@ from typing import Protocol
 
 from lingoflow.config.settings import AppSettings
 from lingoflow.core.app_state import AppState, AppStateTracker
+from lingoflow.core.dictionary import DictionaryResult, word_script
 from lingoflow.core.errors import ProviderConnectionError, TranslationError
 from lingoflow.core.ports import ClipboardPort, LLMProvider, Notifier
 from lingoflow.core.session import SessionStatus, TranslationSession
@@ -47,6 +48,7 @@ class TranslationWorkflow:
         notifier: Notifier,
         popup_factory: Callable[[AppSettings], TranslationPopup],
         on_settings_requested: Callable[[str], None] | None = None,
+        dictionary=None,
     ) -> None:
         self.settings = settings
         self.translator = translator
@@ -57,6 +59,7 @@ class TranslationWorkflow:
         self._notifier = notifier
         self._popup_factory = popup_factory
         self._on_settings_requested = on_settings_requested
+        self._dictionary = dictionary
 
         self.popup: TranslationPopup | None = None
         self.active_task: BackgroundTask | None = None
@@ -138,7 +141,52 @@ class TranslationWorkflow:
             text,
             source_language=self.settings.translation.source_language,
         )
-        self.start_translation(text)
+        self._start_request(text)
+
+    def _lookup_word(self, text: str) -> DictionaryResult | None:
+        """Offline dictionary entry for a single selected word, if one applies."""
+        if (
+            self._dictionary is None
+            or not self.popup
+            or not self.settings.translation.dictionary_lookup
+            or word_script(text) is None
+        ):
+            return None
+        try:
+            result = self._dictionary.lookup(text.strip(), self.popup.get_target_language())
+        except Exception:
+            logger.exception("Dictionary lookup failed")
+            return None
+        return result if result is not None and result.found else None
+
+    def _start_request(
+        self,
+        text: str,
+        checkpoint: TranslationCheckpoint | None = None,
+        allow_dictionary: bool = True,
+    ) -> None:
+        """Show a word card for single words (plus a model gloss), else translate."""
+        if not self.popup:
+            return
+        result = self._lookup_word(text) if allow_dictionary else None
+        if result is not None:
+            self.popup.show_dictionary(result, expect_gloss=True)
+            if self.settings.translation.source_language == "auto":
+                script = word_script(text)
+                self.popup.set_detected_source_language(
+                    "English" if script == "latin" else "Chinese(Simplified)"
+                )
+            self.start_translation(text.strip())
+            return
+        self.popup.leave_word_mode()
+        self.start_translation(text, checkpoint)
+
+    def translate_with_model(self, text: str) -> None:
+        """Translate a word as ordinary text, skipping the dictionary."""
+        if not text.strip() or not self.popup:
+            return
+        self.cancel_active("Model translation requested", update_status=False)
+        self._start_request(text, allow_dictionary=False)
 
     def review_text(self, text: str) -> None:
         """Show editable input without sending it to a model until requested."""
@@ -346,6 +394,7 @@ class TranslationWorkflow:
             self.popup.closed.connect(self.on_popup_closed)
             self.popup.stop_requested.connect(self.stop_from_popup)
             self.popup.retry_requested.connect(self.retry_from_popup)
+            self.popup.model_translation_requested.connect(self.translate_with_model)
             if self._on_settings_requested:
                 self.popup.settings_requested.connect(self._on_settings_requested)
 
@@ -408,7 +457,7 @@ class TranslationWorkflow:
         self.cancel_active("Retry requested", update_status=False)
         if self.popup:
             self.popup.clear_translation()
-            self.start_translation(text, checkpoint)
+            self._start_request(text, checkpoint)
 
     def on_popup_closed(self) -> None:
         """Cancel translation work when the popup is dismissed."""
@@ -431,7 +480,7 @@ class TranslationWorkflow:
         source_text = self.popup.get_source_text()
         if source_text:
             self.popup.clear_translation()
-            self.start_translation(source_text)
+            self._start_request(source_text)
 
     def shutdown(self) -> None:
         """Cancel active translation during app shutdown."""

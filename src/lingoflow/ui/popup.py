@@ -41,6 +41,7 @@ from lingoflow.config.constants import (
     SUPPORTED_LANGUAGES,
 )
 from lingoflow.config.settings import AppSettings
+from lingoflow.core.dictionary import DictionaryResult
 from lingoflow.core.speech import LANGUAGE_LOCALES, SpeechRequest
 from lingoflow.i18n import tr
 from lingoflow.infrastructure.macos.event_monitor import OutsideInteractionMonitor
@@ -50,6 +51,7 @@ from lingoflow.ui.languages import language_name
 from lingoflow.ui.theme import apply_palette, colors
 from lingoflow.ui.translation_view import TranslationView
 from lingoflow.ui.window_controller import PopupWindowController
+from lingoflow.ui.word_card import render_card
 from lingoflow.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -112,6 +114,7 @@ class TranslationPopup(QWidget):
     stop_requested = pyqtSignal()
     retry_requested = pyqtSignal(str)
     settings_requested = pyqtSignal(str)
+    model_translation_requested = pyqtSignal(str)
     pinned_changed = pyqtSignal(bool)
 
     def __init__(
@@ -139,6 +142,11 @@ class TranslationPopup(QWidget):
         self._source_expanded = False
         self._source_visible = self.settings.ui.show_source_text
         self._side_by_side = self.settings.ui.bilingual_layout == "side_by_side"
+        # Word card state: dictionary result plus the model gloss that arrives later.
+        self._word: DictionaryResult | None = None
+        self._word_gloss = ""
+        self._word_gloss_state = "none"
+        self._word_expanded: set[str] = set()
         self._suppress_language_signal = False
         self._dismiss_emitted = False
         self._closing = False
@@ -227,6 +235,10 @@ class TranslationPopup(QWidget):
         self.more_btn = _tool_button("moreButton", "")
         self.more_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.more_menu = QMenu(self.more_btn)
+        self.model_translate_action = self.more_menu.addAction("")
+        self.model_translate_action.triggered.connect(
+            lambda: self.model_translation_requested.emit(self.get_source_text())
+        )
         self.edit_action = self.more_menu.addAction("")
         self.edit_action.triggered.connect(self.enter_edit_mode)
         self.more_menu.addSeparator()
@@ -326,6 +338,7 @@ class TranslationPopup(QWidget):
         self.source_text.customContextMenuRequested.connect(self._source_context_menu)
         self.translation_text.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.translation_text.customContextMenuRequested.connect(self._translation_context_menu)
+        self.translation_text.anchorClicked.connect(self._on_card_link)
         self.source_text.textChanged.connect(self._source_edited)
         self.source_text.document().documentLayout().documentSizeChanged.connect(
             self._source_layout_changed
@@ -353,6 +366,7 @@ class TranslationPopup(QWidget):
         self.more_btn.setToolTip(more)
         self.more_btn.setAccessibleName(more)
         for action, english, chinese in (
+            (self.model_translate_action, "Translate with Model", "用模型翻译"),
             (self.edit_action, "Edit Source", "编辑原文"),
             (self.copy_source_action, "Copy Source", "复制原文"),
             (self.copy_both_action, "Copy Source and Translation", "复制原文和译文"),
@@ -493,6 +507,8 @@ class TranslationPopup(QWidget):
         self._closing = False
         self._status_clear_timer.stop()
         self._source_expanded = False
+        self._word = None
+        self._word_gloss_state = "none"
         self._set_mode(PopupMode.READING)
 
         self.source_text.blockSignals(True)
@@ -572,6 +588,72 @@ class TranslationPopup(QWidget):
         self._edit_origin = "reading"
         self._enter_editing()
 
+    def show_dictionary(self, result: DictionaryResult, expect_gloss: bool = True) -> None:
+        """Show a word card for a single word; a model gloss may follow."""
+        self._word = result
+        self._word_gloss = ""
+        self._word_gloss_state = "pending" if expect_gloss else "none"
+        self._word_expanded = set()
+        self._is_translating = False
+        self._state = "done"
+        self._set_mode(PopupMode.READING)
+        self._set_status("")
+        self._render_word()
+        self._update_actions()
+        self._schedule_fit()
+
+    def leave_word_mode(self) -> None:
+        """Return to ordinary sentence translation (e.g. "Translate with Model")."""
+        if self._word is None:
+            return
+        self._word = None
+        self._word_gloss_state = "none"
+        self._translated_text = ""
+        self.translation_text.clear()
+        self._update_actions()
+        self._schedule_fit()
+
+    @property
+    def is_word_card(self) -> bool:
+        return self._word is not None
+
+    def _render_word(self) -> None:
+        if self._word is None:
+            return
+        bar = self.translation_text.verticalScrollBar()
+        offset = bar.value()
+        html = render_card(
+            self._word,
+            colors(self.settings.ui.theme),
+            self.settings.ui.font_size,
+            gloss=self._word_gloss,
+            gloss_state=self._word_gloss_state,
+            expanded=self._word_expanded,
+        )
+        self.translation_text.setHtml(html)
+        # Copy takes exactly what the card shows.
+        self._translated_text = self.translation_text.toPlainText()
+        bar.setValue(offset)
+
+    def _on_card_link(self, url) -> None:
+        link = url.toString()
+        if link.startswith("speak:"):
+            _scheme, locale, word = link.split(":", 2)
+            self.speech.speak(
+                SpeechRequest(
+                    owner=self._speech_owner,
+                    kind="word",
+                    text=word,
+                    locale=locale,
+                    voice="",
+                    rate=self.settings.speech.rate,
+                )
+            )
+        elif link.startswith("more:"):
+            self._word_expanded.add(link.split(":", 1)[1])
+            self._render_word()
+            self._schedule_fit()
+
     def set_detected_source_language(self, language: str) -> None:
         """Show the language identified locally, instead of a generic "Auto"."""
         self._detected_source = language
@@ -595,7 +677,7 @@ class TranslationPopup(QWidget):
 
     def set_progress(self, completed: int, total: int) -> None:
         self._progress = (completed, total)
-        if self._is_translating and total > 1:
+        if self._is_translating and total > 1 and self._word is None:
             self._set_status(
                 tr(
                     "Translating · part {part}/{total}",
@@ -607,6 +689,12 @@ class TranslationPopup(QWidget):
 
     def stop_translation(self) -> None:
         """Keep useful partial text without labeling it a completed translation."""
+        if self._word is not None:
+            self._is_translating = False
+            self._word_gloss_state = "failed" if self._word_gloss_state == "pending" else "done"
+            self._render_word()
+            self._update_actions()
+            return
         self._is_translating = False
         self._state = "stopped"
         self._set_status(
@@ -628,6 +716,10 @@ class TranslationPopup(QWidget):
     def _on_chunk_received(self, chunk: str) -> None:
         if not chunk:
             return
+        if self._word is not None:
+            # The gloss is a few characters; show it once complete, keeping any selection.
+            self._word_gloss += chunk
+            return
         first = not self._translated_text
         self.text_splitter.append_output(chunk)
         self._translated_text += chunk
@@ -639,6 +731,13 @@ class TranslationPopup(QWidget):
             self._update_actions()
 
     def _on_translation_started(self) -> None:
+        if self._word is not None:
+            self._word_gloss = ""
+            self._word_gloss_state = "pending"
+            self._is_translating = True
+            self._render_word()
+            self._update_actions()
+            return
         self._source_text = self.get_source_text()
         self._is_translating = True
         self._state = "waiting"
@@ -651,12 +750,26 @@ class TranslationPopup(QWidget):
         self._update_actions()
 
     def _on_translation_finished(self) -> None:
+        if self._word is not None:
+            self._is_translating = False
+            self._word_gloss_state = "done"
+            self._render_word()
+            self._update_actions()
+            self._schedule_fit()
+            return
         self._is_translating = False
         self._state = "done"
         self._set_status("")
         self._update_actions()
 
     def _on_translation_error(self, message: str) -> None:
+        if self._word is not None:
+            self._is_translating = False
+            self._word_gloss_state = "failed"
+            self.status_label.setToolTip(message)
+            self._render_word()
+            self._update_actions()
+            return
         self._is_translating = False
         self._state = "failed"
         self._status_clear_timer.stop()
@@ -671,6 +784,9 @@ class TranslationPopup(QWidget):
         self._update_actions()
 
     def _on_translation_cleared(self) -> None:
+        if self._word is not None:
+            self._word_gloss = ""
+            return
         self._translated_text = ""
         self.translation_text.clear()
         if self._is_translating:
@@ -792,9 +908,12 @@ class TranslationPopup(QWidget):
         self.mode_label.setVisible(editing)
         self.pin_btn.setVisible(reading)
         self.more_btn.setVisible(reading)
-        self.text_splitter.source_panel.setVisible(editing or self._source_visible)
+        word = reading and self._word is not None
+        self.text_splitter.source_panel.setVisible(
+            editing or (self._source_visible and self._word is None)
+        )
         self.speak_source_btn.setVisible(reading and has_source)
-        self.stop_btn.setVisible(reading and self._is_translating)
+        self.stop_btn.setVisible(reading and self._is_translating and not word)
         resumable = self._progress[0] > 0 and self._progress[1] > 1 and has_output
         self.retry_btn.setText(
             tr("Continue", "继续翻译") if resumable else tr("Retry", "重试")
@@ -804,12 +923,17 @@ class TranslationPopup(QWidget):
             if resumable
             else tr("Translate again (⌘↵)", "重新翻译（⌘↵）")
         )
-        self.retry_btn.setVisible(reading and ended and has_source)
+        self.retry_btn.setVisible(reading and ended and has_source and not word)
         self.cancel_edit_btn.setVisible(editing)
         self.translate_btn.setVisible(editing)
         self.translate_btn.setEnabled(has_source)
         self.copy_btn.setVisible(reading and has_output)
-        self.speak_translation_btn.setVisible(reading and has_output and not self._is_translating)
+        self.speak_translation_btn.setVisible(
+            reading and has_output and not self._is_translating and not word
+        )
+        self.model_translate_action.setVisible(word)
+        self.show_source_action.setVisible(not word)
+        self.side_by_side_action.setVisible(not word)
         self._update_latest_button()
         self._update_speech_tooltips()
         self._refresh_icons()
@@ -1114,7 +1238,10 @@ class TranslationPopup(QWidget):
         away = scrollbar.value() < scrollbar.maximum() - 2
         paused = self._is_translating and self.translation_text.textCursor().hasSelection()
         self.latest_btn.setVisible(
-            self._mode == PopupMode.READING and bool(self._translated_text) and (away or paused)
+            self._mode == PopupMode.READING
+            and self._word is None
+            and bool(self._translated_text)
+            and (away or paused)
         )
 
     # =============================================================================

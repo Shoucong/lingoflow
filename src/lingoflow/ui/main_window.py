@@ -22,6 +22,7 @@ from lingoflow.core.models import HotkeyAction, OCRResult
 from lingoflow.core.ports import ClipboardPort, HotkeyBackend, LLMProvider, OCRBackend
 from lingoflow.i18n import set_language
 from lingoflow.infrastructure.macos.clipboard import ClipboardManager
+from lingoflow.infrastructure.macos.dictionary import MacOSDictionaryService
 from lingoflow.infrastructure.macos.hotkeys import HotkeyManager
 from lingoflow.infrastructure.macos.ocr import OCRService
 from lingoflow.infrastructure.macos.permissions import MacOSPermissionService
@@ -124,6 +125,7 @@ class MainController(QObject):
             notifier=self.tray_controller,
             popup_factory=lambda settings: TranslationPopup(settings),
             on_settings_requested=self._show_settings,
+            dictionary=MacOSDictionaryService(),
         )
         self.ocr_workflow = OCRWorkflow(
             settings=self.settings,
