@@ -1,0 +1,258 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Asia/Shanghai",
+  "started_at": "2026-10-08T10:34:07.977028+08:00",
+  "retained": {
+    "path": "/Applications/LingoFlow.app",
+    "version": "0.4.1",
+    "binary_sha256": "d0125238f4642083941933ad2aa9330458423782b06605481081b7cb13f5a2eb",
+    "codesign": "verified",
+    "latest_build_duplicate_verified_identical": true,
+    "compared_file_and_symlink_entries": 389
+  },
+  "registered_paths_before": [
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/build/dmg/LingoFlow/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/installed-backups/20260926-181722/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/selection-fix-20260926/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/refactor-20260926/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/milmmt-20260926/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/installed-backups/20260926-224742/LingoFlow-0.2.1.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/0.4.0-20260927/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/ui-redesign-20260926/LingoFlow.app",
+    "/Applications/LingoFlow.app",
+    "/Users/shoucong/Desktop/Projects/Lingoflow/dist/0.4.1-20260927/LingoFlow.app"
+  ],
+  "settings_hashes_before": {
+    "/Users/shoucong/Library/Application Support/LingoFlow/settings.json": "1adffaef50202e6c80f02ec06a3b89b0549189e23b1a2c802a495b6e041d3fff",
+    "/Users/shoucong/Library/Application Support/LingoFlow/window-state.json": "36c43e6ab221712d82711fd0f1ca2b893d8afcaddda47b1e18f2bc866e090a63"
+  },
+  "removed": [
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/dmg/LingoFlow/LingoFlow.app",
+      "version": "0.2.0",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app",
+      "moved_at": "2026-10-08T10:34:13.092984+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/0.4.0-20260927/LingoFlow.app",
+      "version": "0.4.0",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-132.app",
+      "moved_at": "2026-10-08T10:34:13.133267+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/0.4.1-20260927/LingoFlow.app",
+      "version": "0.4.1",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-166.app",
+      "moved_at": "2026-10-08T10:34:13.166657+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/LingoFlow.app",
+      "version": "0.1.0",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-202.app",
+      "moved_at": "2026-10-08T10:34:13.202284+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/installed-backups/20260926-181722/LingoFlow.app",
+      "version": "0.1.0",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-239.app",
+      "moved_at": "2026-10-08T10:34:13.240021+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/installed-backups/20260926-224742/LingoFlow-0.2.1.app",
+      "version": "0.2.1",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow-0.2.1.app",
+      "moved_at": "2026-10-08T10:34:13.259791+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/milmmt-20260926/LingoFlow.app",
+      "version": "0.2.1",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-296.app",
+      "moved_at": "2026-10-08T10:34:13.296463+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/refactor-20260926/LingoFlow.app",
+      "version": "0.2.0",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-331.app",
+      "moved_at": "2026-10-08T10:34:13.332083+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/selection-fix-20260926/LingoFlow.app",
+      "version": "0.1.0",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-365.app",
+      "moved_at": "2026-10-08T10:34:13.365651+08:00"
+    },
+    {
+      "kind": "app",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/ui-redesign-20260926/LingoFlow.app",
+      "version": "0.3.0",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.app 10-34-13-398.app",
+      "moved_at": "2026-10-08T10:34:13.398857+08:00"
+    },
+    {
+      "kind": "installer",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/LingoFlow.dmg",
+      "version": "0.1.0",
+      "version_verified_by": "Read-only mount of contained app Info.plist; detached before cleanup",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.dmg",
+      "moved_at": "2026-10-08T10:34:13.400877+08:00"
+    },
+    {
+      "kind": "installer",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/refactor-20260926/LingoFlow.dmg",
+      "version": "0.2.0",
+      "version_verified_by": "Read-only mount of contained app Info.plist; detached before cleanup",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow.dmg 10-34-13-402.dmg",
+      "moved_at": "2026-10-08T10:34:13.402149+08:00"
+    },
+    {
+      "kind": "collected_runtime",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/0.4.0-20260927/LingoFlow",
+      "version": "0.4.0",
+      "binary_sha256": "abc451e3c6372ece2dec7e4b4a445df7aee59c48ea070cb040fe1118e9d32410",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow",
+      "moved_at": "2026-10-08T10:37:04.808873+08:00"
+    },
+    {
+      "kind": "build_executable",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/0.4.0-20260927/LingoFlow/LingoFlow",
+      "version": "0.4.0",
+      "binary_sha256": "abc451e3c6372ece2dec7e4b4a445df7aee59c48ea070cb040fe1118e9d32410",
+      "version_verified_by": "Byte-identical to versioned collected runtime executable",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-810",
+      "moved_at": "2026-10-08T10:37:04.811852+08:00"
+    },
+    {
+      "kind": "collected_runtime",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/0.4.1-20260927/LingoFlow",
+      "version": "0.4.1",
+      "binary_sha256": "d97c97a9e4e2bb13189d5ea0e24d8bdebbf76827d9033f13eca4244e4da6fe8c",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-813",
+      "moved_at": "2026-10-08T10:37:04.813664+08:00"
+    },
+    {
+      "kind": "build_executable",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/0.4.1-20260927/LingoFlow/LingoFlow",
+      "version": "0.4.1",
+      "binary_sha256": "d97c97a9e4e2bb13189d5ea0e24d8bdebbf76827d9033f13eca4244e4da6fe8c",
+      "version_verified_by": "Byte-identical to versioned collected runtime executable",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-815",
+      "moved_at": "2026-10-08T10:37:04.814849+08:00"
+    },
+    {
+      "kind": "collected_runtime",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/LingoFlow",
+      "version": "0.1.0",
+      "binary_sha256": "7873d5c7dead0fa7de372e3ea326d648409d96b4f5a5c2037e2e6131ae46b11d",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-817",
+      "moved_at": "2026-10-08T10:37:04.817148+08:00"
+    },
+    {
+      "kind": "build_executable",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/LingoFlow/LingoFlow",
+      "version": "0.1.0",
+      "binary_sha256": "7873d5c7dead0fa7de372e3ea326d648409d96b4f5a5c2037e2e6131ae46b11d",
+      "version_verified_by": "Byte-identical to versioned collected runtime executable",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-820",
+      "moved_at": "2026-10-08T10:37:04.820051+08:00"
+    },
+    {
+      "kind": "collected_runtime",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/milmmt-20260926/LingoFlow",
+      "version": "0.2.1",
+      "binary_sha256": "abe83494e364d9581242c03b53e749f657d8adf4be7aeb2ee1a8b9078013b25a",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-822",
+      "moved_at": "2026-10-08T10:37:04.822034+08:00"
+    },
+    {
+      "kind": "build_executable",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/milmmt-20260926/LingoFlow/LingoFlow",
+      "version": "0.2.1",
+      "binary_sha256": "abe83494e364d9581242c03b53e749f657d8adf4be7aeb2ee1a8b9078013b25a",
+      "version_verified_by": "Byte-identical to versioned collected runtime executable",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-823",
+      "moved_at": "2026-10-08T10:37:04.823882+08:00"
+    },
+    {
+      "kind": "collected_runtime",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/refactor-20260926/LingoFlow",
+      "version": "0.2.0",
+      "binary_sha256": "a8b0eb9951ec6bea7600c00e778f308349e6352aa384f3e5761b16d002169818",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-825",
+      "moved_at": "2026-10-08T10:37:04.825869+08:00"
+    },
+    {
+      "kind": "build_executable",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/refactor-20260926/LingoFlow/LingoFlow",
+      "version": "0.2.0",
+      "binary_sha256": "a8b0eb9951ec6bea7600c00e778f308349e6352aa384f3e5761b16d002169818",
+      "version_verified_by": "Byte-identical to versioned collected runtime executable",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-827",
+      "moved_at": "2026-10-08T10:37:04.827486+08:00"
+    },
+    {
+      "kind": "collected_runtime",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/selection-fix-20260926/LingoFlow",
+      "version": "0.1.0",
+      "binary_sha256": "69fce191eca32b9f53c56e899702a3c4dd22aac7ed68183b84e9c039caba1ca9",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-829",
+      "moved_at": "2026-10-08T10:37:04.828889+08:00"
+    },
+    {
+      "kind": "build_executable",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/selection-fix-20260926/LingoFlow/LingoFlow",
+      "version": "0.1.0",
+      "binary_sha256": "69fce191eca32b9f53c56e899702a3c4dd22aac7ed68183b84e9c039caba1ca9",
+      "version_verified_by": "Byte-identical to versioned collected runtime executable",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-830",
+      "moved_at": "2026-10-08T10:37:04.830104+08:00"
+    },
+    {
+      "kind": "collected_runtime",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/dist/ui-redesign-20260926/LingoFlow",
+      "version": "0.3.0",
+      "binary_sha256": "a89521ff8a06214d31ca2afa2cecda0e3f140f98a7f04e95a5d46e4ceb4eb2e4",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-831",
+      "moved_at": "2026-10-08T10:37:04.831342+08:00"
+    },
+    {
+      "kind": "build_executable",
+      "original_path": "/Users/shoucong/Desktop/Projects/Lingoflow/build/ui-redesign-20260926/LingoFlow/LingoFlow",
+      "version": "0.3.0",
+      "binary_sha256": "a89521ff8a06214d31ca2afa2cecda0e3f140f98a7f04e95a5d46e4ceb4eb2e4",
+      "version_verified_by": "Byte-identical to versioned collected runtime executable",
+      "trash_path": "/Users/shoucong/.Trash/LingoFlow 10-37-04-832",
+      "moved_at": "2026-10-08T10:37:04.833045+08:00"
+    }
+  ],
+  "removal_method": "macOS NSFileManager trashItemAtURL; Trash not emptied",
+  "completed": true,
+  "registered_paths_after": [
+    "/Applications/LingoFlow.app"
+  ],
+  "registration_cleanup_note": "macOS followed bundle moves to Trash asynchronously. Unregistered final Trash URLs after moving; no global LaunchServices reset.",
+  "available_launch_targets": [
+    "/Applications/LingoFlow.app"
+  ],
+  "resolved_launch_target": "/Applications/LingoFlow.app",
+  "spotlight_results_after": [
+    "/Applications/LingoFlow.app"
+  ],
+  "counts": {
+    "app": 10,
+    "installer": 2,
+    "collected_runtime": 7,
+    "build_executable": 7
+  },
+  "retained_binary_and_settings_unchanged": true,
+  "completed_at": "2026-10-08T10:39:46.157957+08:00"
+}
